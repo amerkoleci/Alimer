@@ -86,6 +86,8 @@ if (NOT DEFINED CMAKE_ARCHIVE_OUTPUT_DIRECTORY)
 	set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 endif()
 
+# Source
+add_subdirectory(Source)
 
 # Print current build configuration
 alimer_print_options()
@@ -93,8 +95,8 @@ alimer_print_options()
 # Install files
 # README.md and license
 install (FILES
-	${ALIMER_ROOT_DIR}/README.md
-	${ALIMER_ROOT_DIR}/LICENSE
+	${CMAKE_CURRENT_SOURCE_DIR}/README.md
+	${CMAKE_CURRENT_SOURCE_DIR}/LICENSE
 	DESTINATION .
 )
 

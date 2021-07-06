@@ -83,8 +83,9 @@ else()
 endif()
 
 # Install directories
-set (DEST_INCLUDE_DIR include/Alimer)
-set (DEST_THIRDPARTY_HEADERS_DIR ${DEST_INCLUDE_DIR}/ThirdParty)
+set (INSTALL_BASE_INCLUDE_DIR include)
+set (INSTALL_INCLUDE_DIR ${INSTALL_BASE_INCLUDE_DIR}/Alimer)
+set (INSTALL_THIRDPARTY_DIR ${INSTALL_INCLUDE_DIR}/ThirdParty)
 set (DEST_SHARE_DIR share)
 
 # Compiler-specific setup
@@ -121,3 +122,49 @@ function(alimer_print_options)
     message(STATUS "  Network         ${ALIMER_NETWORK}")
     message(STATUS "  Physics         ${ALIMER_PHYSICS}")
 endfunction()
+
+macro (alimer_define_engine_source_files)
+	cmake_parse_arguments(DEFINE_SRC_FILES "NO_INSTALL" "" "" ${ARGN} )
+
+	foreach (path ${DEFINE_SRC_FILES_UNPARSED_ARGUMENTS})
+		# Get header files
+		file (GLOB _files RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${path}/*.hpp ${path}/*.h ${path}/*.inl)
+		list (APPEND HEADER_FILES ${_files})
+
+		# Install them
+		file (GLOB INSTALL_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${path}/*.hpp ${path}/*.h ${path}/*.inl)
+
+		if (NOT DEFINE_SRC_FILES_NO_INSTALL)
+			install (
+				DIRECTORY ${path} 
+				DESTINATION include
+				FILES_MATCHING
+				PATTERN "*.h"
+				PATTERN "*.hpp"
+				PATTERN "Private" EXCLUDE
+			)
+		endif ()
+
+		# Get source files
+		file (GLOB _files RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${path}/*.c ${path}/*.cpp)
+		list (APPEND SOURCE_FILES ${_files})
+
+		# Get natvis files for MSVC
+		if (MSVC)
+			file (GLOB NATVIS_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${path}/*.natvis)
+			list (APPEND SOURCE_FILES ${NATVIS_FILES})
+		endif ()
+	endforeach ()
+endmacro()
+
+# Groups sources into subfolders.
+macro(alimer_group_sources)
+	file (GLOB_RECURSE children LIST_DIRECTORIES true RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/**)
+	foreach (child ${children})
+		if (IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${child})
+		  string(REPLACE "/" "\\" groupname "${child}")
+		  file (GLOB files LIST_DIRECTORIES false ${CMAKE_CURRENT_SOURCE_DIR}/${child}/*)
+		  source_group(${groupname} FILES ${files})
+		endif ()
+	endforeach ()
+endmacro()
