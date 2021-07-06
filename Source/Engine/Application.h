@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "AlimerConfig.h"
-#include "Core/Types.h"
+#include "Core/Signal.h"
+#include "Core/Main.h"
 #include <memory>
 
 namespace Alimer
@@ -13,7 +13,7 @@ namespace Alimer
 	{
 	public:
 		/// Occurs when the application is about to eit.
-		//Signal<int32_t> Exit;
+		Signal<int32_t> Exit;
 
 		/// Destructor.
 		virtual ~Application();
@@ -56,30 +56,12 @@ namespace Alimer
 	};
 }
 
-#if defined(_MSC_VER) && !defined(ALIMER_WIN32_CONSOLE)
-#ifndef WIN32_LEAN_AND_MEAN
-#   define WIN32_LEAN_AND_MEAN
-#endif
-#include <Windows.h>
-
+#if !defined(ALIMER_DEFINE_APPLICATION)
 #define ALIMER_DEFINE_APPLICATION(className) \
-int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow) \
+int RunApplication() \
 { \
-	UNREFERENCED_PARAMETER(hPrevInstance);\
-	UNREFERENCED_PARAMETER(lpCmdLine);\
-	UNREFERENCED_PARAMETER(nCmdShow);\
-	Alimer::ParseArguments(GetCommandLineW());\
-	std::unique_ptr<className> application = std::make_unique<className>();\
-	application->Run(); \
-	return 0; \
-}
-#else
-#define ALIMER_DEFINE_APPLICATION(className) \
-int main(int argc, const char* argv[]) \
-{ \
-	Alimer::Platform::ParseArguments(argc, argv); \
-	std::unique_ptr<className> application = std::make_unique<className>();\
-	application->Run(argc, argv); \
-	return 0; \
-}
+    std::unique_ptr<className> application= std::make_unique<className>();\
+    return application->Run(); \
+} \
+ALIMER_DEFINE_MAIN(RunApplication());
 #endif

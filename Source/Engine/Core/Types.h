@@ -10,23 +10,20 @@
 #include <memory>
 #include <type_traits>
 #include <utility>
-#include <string>
+#include "Core/String.h"
 #include <vector>
 #include <array>
 
 namespace Alimer
 {
-	using String = std::string;
-    using StringView = std::string_view;
+    template<typename T>
+    using Vector = std::vector<T>;
 
     template<typename T>
     using SharedPtr = std::shared_ptr<T>;
 
     template<typename T>
     using UniquePtr = std::unique_ptr<T>;
-
-    static constexpr uint32_t kConversionBufferLength = 128;
-    static constexpr uint32_t kMatrixConversionBufferLength = 256;
 
     // Basic comparisons
     template<typename T> inline T Abs(T v) { return (v >= 0) ? v : -v; }
