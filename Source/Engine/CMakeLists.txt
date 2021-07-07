@@ -20,17 +20,17 @@ alimer_define_engine_source_files(Platform/${ALIMER_PLATFORM_NAME} NO_INSTALL)
 alimer_group_sources()
 
 if (ALIMER_BUILD_SHARED)
-	add_library(${TARGET_NAME} SHARED ${SOURCE_FILES} ${HEADER_FILES} ${CMAKE_CURRENT_BINARY_DIR}/AlimerConfig.h)
-    #set_property(TARGET ${TARGET_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
+  add_library(${TARGET_NAME} SHARED ${SOURCE_FILES} ${HEADER_FILES} ${CMAKE_CURRENT_BINARY_DIR}/AlimerConfig.h)
+  #set_property(TARGET ${TARGET_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-	target_compile_definitions(${TARGET_NAME}
-		PRIVATE -DALIMER_EXPORTS=1
-		PUBLIC -DALIMER_IMPORTS=1
-	)
+  target_compile_definitions(${TARGET_NAME}
+    PRIVATE -DALIMER_EXPORTS=1
+  	PUBLIC -DALIMER_IMPORTS=1
+  )
 else()
-	add_library(${TARGET_NAME} ${SOURCE_FILES} ${HEADER_FILES} ${CMAKE_CURRENT_BINARY_DIR}/AlimerConfig.h)
+  add_library(${TARGET_NAME} ${SOURCE_FILES} ${HEADER_FILES} ${CMAKE_CURRENT_BINARY_DIR}/AlimerConfig.h)
 
-    target_compile_definitions (${TARGET_NAME} PUBLIC -DALIMER_STATIC)
+  target_compile_definitions (${TARGET_NAME} PUBLIC -DALIMER_STATIC)
 endif ()
 
 target_include_directories(${TARGET_NAME} PUBLIC
@@ -45,3 +45,7 @@ target_link_libraries(${TARGET_NAME} PUBLIC
   #stb
   spdlog
 )
+
+if (WIN32)
+    target_compile_definitions(${TARGET_NAME} PRIVATE _UNICODE UNICODE)
+endif ()

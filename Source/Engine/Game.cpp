@@ -24,6 +24,7 @@ namespace Alimer
 
         // Initialize host first.
         host = GameHost::Create(this);
+        host->Exiting.ConnectMember(this, &Game::HostExiting);
 
         g_currentGame = this;
     }
@@ -31,7 +32,7 @@ namespace Alimer
     Game::~Game()
     {
         // Shutdown modules.
-        //PlatformShutdown();
+        host.reset();
         //gLog().Shutdown();
         g_currentGame = nullptr;
     }
@@ -41,17 +42,9 @@ namespace Alimer
         return g_currentGame;
     }
 
-    void Game::RequestExit(int exitCode)
+    GameWindow* Game::GetWindow() const
     {
-        exiting = true;
-        paused = true;
-
-        if (running)
-        {
-            OnExit(exitCode);
-
-            running = false;
-        }
+        return host->GetMainWindow();
     }
 
     int Game::Run()
@@ -61,17 +54,53 @@ namespace Alimer
             return EXIT_SUCCESS;
         }
 
-        running = false;
+#if !defined(__GNUC__) || __EXCEPTIONS
+        try
+        {
+#endif
+            host->Run();
+
+            if (host->IsBlockingRun())
+            {
+                // If the previous call was blocking, then we can call Endrun
+                EndRun();
+            }
+            else
+            {
+                // EndRun will be executed on Exit
+                endRunRequired = true;
+            }
+
+#if !defined(__GNUC__) || __EXCEPTIONS
+        }
+        catch (std::bad_alloc&)
+        {
+            //ErrorDialog(GetTypeName(), "An out-of-memory error occurred. The application will now exit.");
+            return EXIT_FAILURE;
+        }
+#endif
+
+        if (!endRunRequired)
+        {
+            running = false;
+        }
+
         return exitCode;
     }
 
     void Game::Tick()
     {
-        
+
     }
 
     void Game::Update()
     {
+    }
+
+    void Game::HostExiting(int32_t exitCode_)
+    {
+        exitCode = exitCode_;
+        Exiting.Emit(exitCode_);
     }
 
     void Game::Render()
@@ -95,8 +124,14 @@ namespace Alimer
 
     }
 
-    void Game::OnExit(int32_t exitCode)
+    void Game::Exit()
     {
-        //Exit.Emit(exitCode);
+        exiting = true;
+        host->Exit();
+        if (running && endRunRequired)
+        {
+            EndRun();
+            running = false;
+        }
     }
 }

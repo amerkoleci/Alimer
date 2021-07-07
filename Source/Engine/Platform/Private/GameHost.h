@@ -13,6 +13,8 @@ namespace Alimer
 	class ALIMER_API GameHost
 	{
 	public:
+        [[nodiscard]] static UniquePtr<GameHost> Create(_In_ Game* game);
+
         virtual ~GameHost() = default;
 
         GameHost(const GameHost&) = delete;
@@ -20,7 +22,17 @@ namespace Alimer
         GameHost& operator=(const GameHost&) = delete;
         GameHost& operator=(GameHost&&) = delete;
 
-        [[nodiscard]] static UniquePtr<GameHost> Create(_In_ Game* game);
+        // Events
+        Signal<> Activated;
+        Signal<> Deactivated;
+        Signal<int32_t> Exiting;
+
+        /// Run main loop and return exit code.
+        virtual void Run() = 0;
+        virtual void Exit() = 0;
+
+        [[nodiscard]] virtual GameWindow* GetMainWindow() const = 0;
+        [[nodiscard]] virtual bool IsBlockingRun() const = 0;
 
 	protected:
 		/// Constructor.

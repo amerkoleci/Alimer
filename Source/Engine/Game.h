@@ -14,8 +14,8 @@ namespace Alimer
 	class ALIMER_API Game
 	{
 	public:
-		/// Occurs when the game is about to eit.
-		Signal<int32_t> Exit;
+		/// Occurs when the game is about to exit.
+		Signal<int32_t> Exiting;
 
 		/// Destructor.
 		virtual ~Game();
@@ -24,17 +24,17 @@ namespace Alimer
 		static Game* GetCurrent();
 
 		/// Setups all subsystem and run's platform main loop.
-		int Run();
+        int32_t Run();
 
 		void Tick();
 
-		/// Request the application to exit.
-		void RequestExit(int exitCode = 0);
+		/// Request the game to exit.
+		void Exit();
 
 		/// Checks whether exit was requested.
 		[[nodiscard]] bool IsExitRequested() const noexcept { return exiting; }
 
-		//[[nodiscard]] Window* GetMainWindow() const { return mainWindow; }
+        [[nodiscard]] GameWindow* GetWindow() const;
 
 	protected:
 		/// Constructor.
@@ -44,17 +44,20 @@ namespace Alimer
 		virtual void Update();
 		virtual void OnDraw();
 
-		virtual void OnExit(int32_t exitCode);
+        virtual void BeginRun() {}
+        virtual void EndRun() {}
 
     private:
+        void HostExiting(int32_t exitCode);
         void Render();
 
 	protected:
+        bool headless{ false };
 		bool running{ false };
 		bool paused{ false };
-		bool exiting = false;
-		bool headless = false;
-        int exitCode{ 0 };
+        bool exiting{ false };
+        int32_t exitCode{ 0 };
+        bool endRunRequired{ false };
 
     private:
         /// OS game host.

@@ -19,8 +19,16 @@ namespace Alimer
         GameWindow& operator=(const GameWindow&) = delete;
         GameWindow& operator=(GameWindow&&) = delete;
 
+        String GetTitle() const noexcept { return title; }
+        void SetTitle(const String& title);
+        void SetTitle(const StringView& title);
+
 	protected:
 		/// Constructor.
-        GameWindow() = default;
+        GameWindow(const StringView& title);
+
+        virtual void ApiSetTitle(const StringView& title) = 0;
+
+        String title;
 	};
 }

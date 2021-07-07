@@ -5,5 +5,21 @@
 
 namespace Alimer
 {
-    
+    GameWindow::GameWindow(const StringView& title)
+        : title{ title }
+    {
+
+    }
+
+    void GameWindow::SetTitle(const String& title_)
+    {
+        title = title_;
+        ApiSetTitle(title);
+    }
+
+    void GameWindow::SetTitle(const StringView& title_)
+    {
+        title = title_;
+        ApiSetTitle(title_);
+    }
 }
