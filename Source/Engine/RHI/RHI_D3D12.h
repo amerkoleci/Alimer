@@ -4,14 +4,15 @@
 #pragma once
 
 #include "AlimerConfig.h"
-#include "PlatformDef.h"
+#if defined(ALIMER_RHI_D3D12)
+#include "RHI/RHI.h"
 
-// Core
-#include "Core/Types.h"
+namespace Alimer
+{
+    class RHIDeviceD3D12 final : public RHIDevice
+    {
 
-// Assets
-#include "Assets/Asset.h"
-#include "Assets/AssetManager.h"
+    };
+}
 
-// Game
-#include "Game.h"
+#endif /* defined(ALIMER_RHI_D3D12) */

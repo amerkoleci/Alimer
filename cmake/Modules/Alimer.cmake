@@ -74,6 +74,19 @@ elseif(ANDROID)
     set(ALIMER_BUILD_SHARED ON CACHE BOOL "Always enable shared library on (ANDROID)" FORCE)
 endif ()
 
+# Graphics backends
+if (WIN32)
+	option(ALIMER_RHI_D3D12 "RHI Direct3D12 backend" ON)
+	
+    if (NOT WINDOWS_STORE)
+    	option(ALIMER_RHI_VULKAN "RHI Vulkan backend" ON)
+	endif ()
+elseif(APPLE)
+	set(ALIMER_RHI_METAL ON CACHE BOOL "Use Metal Graphics API" FORCE)
+else()
+	set(ALIMER_RHI_VULKAN ON CACHE BOOL "RHI Vulkan backend" FORCE)
+endif ()
+
 if (ANDROID OR IOS OR EMSCRIPTEN)
 	set(ALIMER_CSHARP OFF CACHE INTERNAL "Build C# bindings" FORCE)
 	set(ALIMER_BUILD_TOOLS OFF CACHE INTERNAL "Disable Build tools" FORCE)

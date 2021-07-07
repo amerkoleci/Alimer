@@ -11,6 +11,8 @@ source_group("" FILES ${SOURCE_FILES})
 
 alimer_define_engine_source_files(
   Core
+  RHI
+  Assets
 )
 
 # Include platform files.
