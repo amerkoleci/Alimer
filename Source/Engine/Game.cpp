@@ -1,7 +1,8 @@
 // Copyright © Amer Koleci and Contributors.
 // Licensed under the MIT License (MIT). See LICENSE in the repository root for more information.
 
-#include "Application.h"
+#include "Game.h"
+#include "Platform/Private/GameHost.h"
 
 namespace Alimer
 {
@@ -15,32 +16,32 @@ namespace Alimer
 #endif
     }
 
-    static Application* s_currentApplication = nullptr;
+    static Game* g_currentGame = nullptr;
 
-    Application::Application()
+    Game::Game()
     {
-        //ALIMER_VERIFY_MSG(s_currentApplication == nullptr, "Cannot create more than one Application");
+        //ALIMER_VERIFY_MSG(g_currentGame == nullptr, "Cannot create more than one Application");
 
-        // Initialize platform system first
-        //PlatformConstruct();
+        // Initialize host first.
+        host = GameHost::Create(this);
 
-        s_currentApplication = this;
+        g_currentGame = this;
     }
 
-    Application::~Application()
+    Game::~Game()
     {
         // Shutdown modules.
         //PlatformShutdown();
         //gLog().Shutdown();
-        s_currentApplication = nullptr;
+        g_currentGame = nullptr;
     }
 
-    Application* Application::GetCurrent()
+    Game* Game::GetCurrent()
     {
-        return s_currentApplication;
+        return g_currentGame;
     }
 
-    void Application::RequestExit(int exitCode)
+    void Game::RequestExit(int exitCode)
     {
         exiting = true;
         paused = true;
@@ -53,7 +54,7 @@ namespace Alimer
         }
     }
 
-    int Application::Run()
+    int Game::Run()
     {
         if (running)
         {
@@ -64,16 +65,16 @@ namespace Alimer
         return exitCode;
     }
 
-    void Application::Tick()
+    void Game::Tick()
     {
         
     }
 
-    void Application::Update()
+    void Game::Update()
     {
     }
 
-    void Application::Render()
+    void Game::Render()
     {
         // Don't try to render anything before the first Update or rendering is not allowed
         if (exiting/* ||
@@ -88,19 +89,14 @@ namespace Alimer
         OnDraw();
     }
 
-    void Application::OnDraw()
+    void Game::OnDraw()
     {
 
 
     }
 
-    void Application::OnExit(int32_t exitCode)
+    void Game::OnExit(int32_t exitCode)
     {
         //Exit.Emit(exitCode);
-    }
-
-    Application& gApplication()
-    {
-        return *s_currentApplication;
     }
 }

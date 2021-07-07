@@ -13,6 +13,7 @@
 #include "Core/String.h"
 #include <vector>
 #include <array>
+#include <functional>
 
 namespace Alimer
 {
@@ -24,6 +25,9 @@ namespace Alimer
 
     template<typename T>
     using UniquePtr = std::unique_ptr<T>;
+
+    template<typename T>
+    using Function = std::function<T>;
 
     // Basic comparisons
     template<typename T> inline T Abs(T v) { return (v >= 0) ? v : -v; }

@@ -1,13 +1,11 @@
 // Copyright © Amer Koleci and Contributors.
 // Licensed under the MIT License (MIT). See LICENSE in the repository root for more information.
 
-#pragma once
+#include "GameWindow_Win32.h"
 
-#include "AlimerConfig.h"
-#include "PlatformDef.h"
-
-// Core
-#include "Core/Types.h"
-
-// Game
-#include "Game.h"
+namespace Alimer
+{
+    GameWindowWin32::~GameWindowWin32()
+    {
+    }
+}

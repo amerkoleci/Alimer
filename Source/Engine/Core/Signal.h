@@ -1,12 +1,11 @@
-// Copyright © Amer Koleci and Contributors.
+// Copyright Â© Amer Koleci and Contributors.
 // Licensed under the MIT License (MIT). See LICENSE in the repository root for more information.
 // Based on: https://schneegans.github.io/tutorials/2015/09/20/signal-slot
 
 #pragma once
 
-#include "PlatformDef.h"
+#include "Core/Types.h"
 #include <map>
-#include <functional>
 
 namespace Alimer
 {
@@ -52,12 +51,12 @@ namespace Alimer
 		}
 
 		/**
-		 * Connects a std::function to the signal.
+		 * Connects a Function to the signal.
 		 *
 		 * @param slot The callback function slot.
 		 * @return The slot connection id. It can be used to disconnect the function.
 		 */
-		uint32_t Connect(const std::function<void(Args...)>& slot) const
+		uint32_t Connect(const Function<void(Args...)>& slot) const
 		{
 			slots.insert(std::make_pair(++currentId, slot));
 			return currentId;
@@ -142,7 +141,7 @@ namespace Alimer
 		}
 
 	private:
-		mutable std::map<uint32_t, std::function<void(Args...)>> slots;
+		mutable std::map<uint32_t, Function<void(Args...)>> slots;
 		mutable uint32_t currentId{ 0 };
 	};
 }

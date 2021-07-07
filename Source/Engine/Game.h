@@ -3,23 +3,25 @@
 
 #pragma once
 
-#include "Core/Signal.h"
+#include "GameWindow.h"
 #include "Core/Main.h"
-#include <memory>
 
 namespace Alimer
 {
-	class ALIMER_API Application
+    class GameHost;
+
+	/// Class that provides graphics initialization, game logic, and rendering code.
+	class ALIMER_API Game
 	{
 	public:
-		/// Occurs when the application is about to eit.
+		/// Occurs when the game is about to eit.
 		Signal<int32_t> Exit;
 
 		/// Destructor.
-		virtual ~Application();
+		virtual ~Game();
 
-		/// Gets the current Application instance.
-		static Application* GetCurrent();
+		/// Gets the current Game instance.
+		static Game* GetCurrent();
 
 		/// Setups all subsystem and run's platform main loop.
 		int Run();
@@ -36,7 +38,7 @@ namespace Alimer
 
 	protected:
 		/// Constructor.
-		Application();
+        Game();
 
 		virtual void Initialize() {}
 		virtual void Update();
@@ -53,15 +55,19 @@ namespace Alimer
 		bool exiting = false;
 		bool headless = false;
         int exitCode{ 0 };
+
+    private:
+        /// OS game host.
+        UniquePtr<GameHost> host;
 	};
 }
 
-#if !defined(ALIMER_DEFINE_APPLICATION)
-#define ALIMER_DEFINE_APPLICATION(className) \
-int RunApplication() \
+#if !defined(ALIMER_DEFINE_GAME)
+#define ALIMER_DEFINE_GAME(className) \
+int RunGame() \
 { \
-    std::unique_ptr<className> application= std::make_unique<className>();\
-    return application->Run(); \
+    std::unique_ptr<className> game = std::make_unique<className>();\
+    return game->Run(); \
 } \
-ALIMER_DEFINE_MAIN(RunApplication());
+ALIMER_DEFINE_MAIN(RunGame());
 #endif

@@ -4,12 +4,11 @@
 #include <Alimer.h>
 using namespace Alimer;
 
-class TriangleApp final : public Application
+class TriangleGame final : public Game
 {
 private:
 public:
-    TriangleApp()
-        : Application()
+    TriangleGame()
     {
         //config.title = "Triangle";
     }
@@ -24,4 +23,4 @@ public:
     }
 };
 
-ALIMER_DEFINE_APPLICATION(TriangleApp);
+ALIMER_DEFINE_GAME(TriangleGame);

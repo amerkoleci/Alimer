@@ -10,8 +10,12 @@ source_group("" FILES ${HEADER_FILES})
 source_group("" FILES ${SOURCE_FILES})
 
 alimer_define_engine_source_files(
-	Core
+  Core
 )
+
+# Include platform files.
+alimer_define_engine_source_files(Platform/Private NO_INSTALL)
+alimer_define_engine_source_files(Platform/${ALIMER_PLATFORM_NAME} NO_INSTALL)
 
 alimer_group_sources()
 

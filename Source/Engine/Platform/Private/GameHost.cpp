@@ -1,13 +1,13 @@
 // Copyright © Amer Koleci and Contributors.
 // Licensed under the MIT License (MIT). See LICENSE in the repository root for more information.
 
-#pragma once
+#include "GameHost.h"
 
-#include "AlimerConfig.h"
-#include "PlatformDef.h"
+namespace Alimer
+{
+    GameHost::GameHost(_In_ Game* game)
+        : game{ game }
+    {
 
-// Core
-#include "Core/Types.h"
-
-// Game
-#include "Game.h"
+    }
+}

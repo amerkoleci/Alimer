@@ -47,8 +47,11 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
 // Other Win32 or minidumps disabled: just execute the function
 #elif defined(_WIN32) && !defined(ALIMER_WIN32_CONSOLE)
 #define ALIMER_DEFINE_MAIN(function) \
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, PSTR cmdLine, int showCmd) \
+int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow) \
 { \
+    UNREFERENCED_PARAMETER(hPrevInstance);\
+	UNREFERENCED_PARAMETER(lpCmdLine);\
+	UNREFERENCED_PARAMETER(nCmdShow);\
     Alimer::CommandLine::Parse(GetCommandLineW()); \
     return function; \
 }
