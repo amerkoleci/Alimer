@@ -11,7 +11,14 @@ namespace Alimer
 {
     class RHIDeviceVulkan final : public RHIDevice
     {
+    public:
+        [[nodiscard]] static bool IsAvailable();
 
+        bool Initialize(RHIValidationMode validationMode) override;
+        void Shutdown() override;
+
+        bool BeginFrame() override;
+        void EndFrame() override;
     };
 }
 

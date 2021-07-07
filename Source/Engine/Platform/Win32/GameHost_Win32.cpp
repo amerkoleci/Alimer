@@ -30,7 +30,7 @@ namespace Alimer
         bool IsBlockingRun() const override;
 
     private:
-        HINSTANCE hInstance;
+        HINSTANCE hInstance{ nullptr };
         UniquePtr<GameWindowWin32> mainWindow;
         bool exitRequested{ false };
     };
@@ -62,6 +62,7 @@ namespace Alimer
 
         // Create main window.
         mainWindow = std::make_unique<GameWindowWin32>(hInstance, "Alimer", 1200, 800);
+
     }
 
     GameHostWin32::~GameHostWin32()
@@ -71,6 +72,8 @@ namespace Alimer
 
     void GameHostWin32::Run()
     {
+        Ready.Emit();
+
         // Main message loop
         MSG msg = {};
         while (WM_QUIT != msg.message)

@@ -48,6 +48,12 @@ target_link_libraries(${TARGET_NAME} PUBLIC
   spdlog
 )
 
+if (ALIMER_RHI_D3D12)
+  target_link_libraries(${TARGET_NAME} PRIVATE D3D12MemoryAllocator)
+endif ()
+
 if (WIN32)
-    target_compile_definitions(${TARGET_NAME} PRIVATE _UNICODE UNICODE)
+  target_compile_definitions(${TARGET_NAME} PRIVATE _UNICODE UNICODE _CRT_SECURE_NO_WARNINGS)
+elseif (WINDOWS_STORE)
+  target_link_libraries(${TARGET_NAME} PRIVATE d3d12 dxgi)
 endif ()

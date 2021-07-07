@@ -23,9 +23,11 @@ namespace Alimer
         GameHost& operator=(GameHost&&) = delete;
 
         // Events
+        Signal<> Ready;
+        Signal<int32_t> Exiting;
+
         Signal<> Activated;
         Signal<> Deactivated;
-        Signal<int32_t> Exiting;
 
         /// Run main loop and return exit code.
         virtual void Run() = 0;

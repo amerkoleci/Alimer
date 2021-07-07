@@ -7,7 +7,7 @@
 #include "PlatformDef.h"
 
 // Core
-#include "Core/Types.h"
+#include "Core/Log.h"
 
 // Assets
 #include "Assets/Asset.h"

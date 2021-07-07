@@ -3,16 +3,17 @@
 
 #pragma once
 
-#include "Core/Types.h"
-//#include "Core/Object.h"
+#include "Core/Object.h"
 
 namespace Alimer
 {
 	class Stream;
 
     /// Base class for Assets.
-	class ALIMER_API Asset// : public Object
+	class ALIMER_API Asset : public Object
 	{
+        ALIMER_OBJECT(Asset, Object);
+
 	public:
 		/// Destructor.
 		virtual ~Asset() = default;

@@ -48,7 +48,10 @@ namespace Alimer
         virtual void EndRun() {}
 
     private:
+        void HostReady();
         void HostExiting(int32_t exitCode);
+
+        void InitializeBeforeRun();
         void Render();
 
 	protected:

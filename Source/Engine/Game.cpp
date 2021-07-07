@@ -2,6 +2,9 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repository root for more information.
 
 #include "Game.h"
+#include "RHI/RHI.h"
+#include "Core/Assert.h"
+#include "Core/Log.h"
 #include "Platform/Private/GameHost.h"
 
 namespace Alimer
@@ -20,10 +23,14 @@ namespace Alimer
 
     Game::Game()
     {
-        //ALIMER_VERIFY_MSG(g_currentGame == nullptr, "Cannot create more than one Application");
+        ALIMER_VERIFY_MSG(g_currentGame == nullptr, "Cannot create more than one Application");
 
-        // Initialize host first.
+        // Init log first.
+        gLog().Start();
+
+        // Initialize host.
         host = GameHost::Create(this);
+        host->Ready.ConnectMember(this, &Game::HostReady);
         host->Exiting.ConnectMember(this, &Game::HostExiting);
 
         g_currentGame = this;
@@ -32,8 +39,9 @@ namespace Alimer
     Game::~Game()
     {
         // Shutdown modules.
+        RHIShutdown();
         host.reset();
-        //gLog().Shutdown();
+        gLog().Shutdown();
         g_currentGame = nullptr;
     }
 
@@ -97,10 +105,32 @@ namespace Alimer
     {
     }
 
+    void Game::HostReady()
+    {
+        InitializeBeforeRun();
+    }
+
     void Game::HostExiting(int32_t exitCode_)
     {
         exitCode = exitCode_;
         Exiting.Emit(exitCode_);
+    }
+
+    void Game::InitializeBeforeRun()
+    {
+        // Platform logic has been setup and main window has been created.
+
+        // Init RHI
+        RHIValidationMode validationMode = RHIValidationMode::GPU;
+
+        if (!RHInitialize(validationMode))
+        {
+            headless = true;
+        }
+        else
+        {
+
+        }
     }
 
     void Game::Render()

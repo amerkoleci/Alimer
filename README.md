@@ -21,3 +21,5 @@ Uses the following open-source and third-party libraries:
 - [stb](https://github.com/nothings/stb): Single-file public domain (or MIT licensed) libraries
 - [spdlog](https://github.com/gabime/spdlog): Fast C++ logging library
 - [fmt](https://fmt.dev): A modern formatting library
+- [DirectX-Headers](https://github.com/microsoft/DirectX-Headers): Official MIT licensed Direct3D 12 headers
+- [D3D12MemoryAllocator](https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator): Easy to integrate memory allocation library for Direct3D 12

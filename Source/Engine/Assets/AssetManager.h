@@ -3,11 +3,8 @@
 
 #pragma once
 
-#include "Core/Types.h"
+#include "Core/Object.h"
 #include "Core/Module.h"
-#include <memory>
-#include <string>
-#include <vector>
 
 namespace Alimer
 {
@@ -19,19 +16,20 @@ namespace Alimer
 		/// Constructor.
 		AssetManager(const String& rootDirectory);
 
-		/// Return a resource by type and name. Load if not loaded yet. Return null if not found or if fails, unless SetReturnFailedResources(true) has been called. Can be called only from the main thread.
-		//RefPtr<Object> Load(const TypeInfo* type, const std::string& name);
+		/// Return a asset by type and name. Load if not loaded yet. Return null if not found or if fails.
+		SharedPtr<Asset> Load(const TypeInfo* type, const StringView& name);
 
-		/// Template version of returning a resource by name.
-		//template <class T> RefPtr<T> Load(const std::string& name)
-		//{
-		//	return StaticCast<T>(Load(T::GetTypeInfoStatic(), name));
-		//}
+		/// Template version of returning a asset by name.
+		template <class T> SharedPtr<T> Load(const std::string& name)
+		{
+            static_assert((std::is_base_of<Asset, T>::value), "Specified type is not a valid Asset.");
+
+			return std::static_pointer_cast<T>(Load(T::GetTypeInfoStatic(), name));
+		}
 
 	private:
 		String rootDirectory;
-		//std::vector<std::unique_ptr<AssetLoader>> loaders;
-		//std::unordered_map<StringId32, RefPtr<Object>> assets;
+		std::unordered_map<StringId32, SharedPtr<Asset>> assets;
 	};
 
 	/** Provides easier access to Assets module. */
