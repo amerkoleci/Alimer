@@ -62,7 +62,6 @@ namespace Alimer
 
         // Create main window.
         mainWindow = std::make_unique<GameWindowWin32>(hInstance, "Alimer", 1200, 800);
-
     }
 
     GameHostWin32::~GameHostWin32()

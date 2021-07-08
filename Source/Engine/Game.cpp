@@ -98,7 +98,7 @@ namespace Alimer
 
     void Game::Tick()
     {
-
+        Render();
     }
 
     void Game::Update()
@@ -131,24 +131,38 @@ namespace Alimer
         {
 
         }
+
+        host->GetMainWindow()->Show();
     }
 
     void Game::Render()
     {
         // Don't try to render anything before the first Update or rendering is not allowed
-        if (exiting/* ||
-            frameCount == 0 ||
-            mainWindow->IsMinimized() ||
-            gGraphics().IsDeviceLost()*/)
+        if (!exiting &&
+            //frameCount > 0 &&
+            !host->GetMainWindow()->IsMinimized() &&
+            BeginDraw())
         {
-            return;
+            // Custom application draw.
+            RHICommandBuffer* commandBuffer = RHIBeginCommandBuffer();
+            commandBuffer->BeginRenderPass(host->GetMainWindow()->GetRHISwapChain());
+            OnDraw(commandBuffer);
+            commandBuffer->EndRenderPass();
+            EndDraw();
         }
-
-        // Custom application draw.
-        OnDraw();
     }
 
-    void Game::OnDraw()
+    bool Game::BeginDraw()
+    {
+        return RHIBeginFrame();
+    }
+
+    void Game::EndDraw()
+    {
+        RHIEndFrame();
+    }
+
+    void Game::OnDraw(_In_ RHICommandBuffer* commandBuffer)
     {
 
 

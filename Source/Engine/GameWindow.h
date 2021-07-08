@@ -24,6 +24,11 @@ namespace Alimer
         void SetTitle(const String& title);
         void SetTitle(const StringView& title);
 
+        virtual void Show() = 0;
+        virtual bool IsMinimized() const = 0;
+
+        const RHISwapChain* GetRHISwapChain() const { return &rhiSwapChain; }
+
 	protected:
 		/// Constructor.
         GameWindow(const StringView& title);
@@ -33,6 +38,6 @@ namespace Alimer
         void CreateSwapChain(void* windowHandle);
 
         String title;
-        RHISwapChain swapChain;
+        RHISwapChain rhiSwapChain;
 	};
 }

@@ -26,6 +26,6 @@ namespace Alimer
     void GameWindow::CreateSwapChain(void* windowHandle)
     {
         RHISwapChainDescriptor swapChainDesc{};
-        GRHIDevice->CreateSwapChain(windowHandle, &swapChainDesc, &swapChain);
+        ALIMER_ASSERT(GRHIDevice->CreateSwapChain(windowHandle, &swapChainDesc, &rhiSwapChain));
     }
 }

@@ -42,10 +42,13 @@ namespace Alimer
 
 		virtual void Initialize() {}
 		virtual void Update();
-		virtual void OnDraw();
+		virtual void OnDraw([[maybe_unused]] RHICommandBuffer* commandBuffer);
 
         virtual void BeginRun() {}
         virtual void EndRun() {}
+
+        virtual bool BeginDraw();
+        virtual void EndDraw();
 
     private:
         void HostReady();

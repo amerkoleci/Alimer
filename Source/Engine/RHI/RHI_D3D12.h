@@ -18,16 +18,32 @@
 #   include <dxgidebug.h>
 #endif
 
+#include <mutex>
+
 class RHICommandBufferD3D12 final : public RHICommandBuffer
 {
-private:
-    const D3D12_COMMAND_LIST_TYPE& type;
-    Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocators[kRHIMaxFramesInFlight];
-    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList6> commandList;
-
 public:
-    RHICommandBufferD3D12(_In_ ID3D12Device5* device, D3D12_COMMAND_LIST_TYPE type);
+    RHICommandBufferD3D12(_In_ ID3D12Device5* device, RHIQueueType queueType);
     ~RHICommandBufferD3D12() override;
+
+    void Reset(uint32_t frameIndex);
+    void PresentSwapChains();
+    void FlushQueries();
+    void FlushBarriers();
+
+    void BeginRenderPass(const RHISwapChain* swapChain) override;
+    void EndRenderPass() override;
+
+    auto GetHandle() const noexcept { return commandList; }
+
+private:
+    RHIQueueType queueType;
+
+    ID3D12CommandAllocator* commandAllocators[kRHIMaxFramesInFlight] = {};
+    ID3D12GraphicsCommandList6* commandList = nullptr;
+
+    std::vector<D3D12_RESOURCE_BARRIER> resourceBarriers;
+    std::vector<const RHISwapChain*> swapChains;
 };
 
 class RHIDeviceD3D12 final : public RHIDevice
@@ -39,8 +55,11 @@ public:
 
     bool Initialize(RHIValidationMode validationMode) override;
     void Shutdown() override;
+
+    void WaitForIdle() override;
     bool BeginFrame() override;
     void EndFrame() override;
+    void SubmitCommandBuffers();
 
     RHICommandBuffer* BeginCommandBuffer(RHIQueueType type = RHIQueueType::Graphics) override;
     bool CreateSwapChain(void* window, const RHISwapChainDescriptor* descriptor, RHISwapChain* pSwapChain) const override;
@@ -57,15 +76,56 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Device5> d3dDevice;
     D3D12MA::Allocator* allocator = nullptr;
 
+    /* Caps */
+    D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_12_0;
+
     struct CommandQueue
     {
         Microsoft::WRL::ComPtr<ID3D12CommandQueue> handle;
         Microsoft::WRL::ComPtr<ID3D12Fence> fence;
-        //ID3D12CommandList* submit_cmds[COMMANDLIST_COUNT] = {};
-        //uint32_t submit_count = 0;
+        ID3D12CommandList* submitCommandLists[kRHIMaxFrameCommandBuffers] = {};
+        uint32_t submitCount = 0;
     } queues[(uint32_t)RHIQueueType::Count];
 
-    D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_12_0;
+    std::atomic_uint32_t commandBuffersCount{ 0 };
+    std::unique_ptr<RHICommandBufferD3D12> commandBuffers[kRHIMaxFrameCommandBuffers][(uint32_t)RHIQueueType::Count];
+    struct CommandListMetadata
+    {
+        RHIQueueType queueType = {};
+        std::vector<uint32_t> waits;
+    } commandBuffersMeta[(uint32_t)RHIQueueType::Count];
+
+    inline RHICommandBufferD3D12* GetCommandBuffer(uint32_t index)
+    {
+        return commandBuffers[index][(uint32_t)commandBuffersMeta[index].queueType].get();
+    }
+
+    Microsoft::WRL::ComPtr<ID3D12Fence> frameFences[kRHIMaxFramesInFlight][(uint32_t)RHIQueueType::Count];
+
+    struct CopyAllocator
+    {
+        RHIDeviceD3D12* device = nullptr;
+        ID3D12CommandQueue* queue = nullptr;
+        std::mutex locker;
+
+        struct CopyCMD
+        {
+            Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocator;
+            Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList;
+            Microsoft::WRL::ComPtr<ID3D12Fence> fence;
+            //GPUBuffer uploadbuffer;
+            //void* data = nullptr;
+            //ID3D12Resource* upload_resource = nullptr;
+        };
+        std::vector<CopyCMD> freelist;
+
+        void Initialize(RHIDeviceD3D12* device);
+        void Shutdown();
+
+        CopyCMD Allocate(uint64_t size);
+        void Submit(CopyCMD cmd);
+    };
+    mutable CopyAllocator copyAllocator;
 };
 
 #endif /* defined(ALIMER_RHI_D3D12) */

@@ -27,8 +27,6 @@ namespace Alimer
             throw std::system_error(GetLastError(), std::system_category(), "Failed to create window");
 
         SetWindowLongPtrW(handle, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
-
-        ShowWindow(handle, SW_SHOW);
     }
 
     GameWindowWin32::~GameWindowWin32()
@@ -37,6 +35,21 @@ namespace Alimer
         {
             DestroyWindow(handle);
         }
+    }
+
+    void GameWindowWin32::Show()
+    {
+        if (!rhiSwapChain.IsValid())
+        {
+            CreateSwapChain(handle);
+        }
+
+        ShowWindow(handle, SW_SHOW);
+    }
+
+    bool GameWindowWin32::IsMinimized() const
+    {
+        return ::IsIconic(handle);
     }
 
     void GameWindowWin32::ApiSetTitle(const StringView& title)

@@ -14,6 +14,7 @@ static constexpr uint32_t kRHIMaxVertexBufferBindings = 4;
 static constexpr uint32_t kRHIMaxVertexAttributes = 16;
 static constexpr uint32_t kRHIMaxVertexAttributeOffset = 2047u;
 static constexpr uint32_t kRHIMaxVertexBufferStride = 2048u;
+static constexpr uint32_t kRHIMaxFrameCommandBuffers = 32u;
 
 enum class RHIValidationMode : uint32_t
 {
@@ -33,8 +34,6 @@ enum class RHIQueueType : uint32_t
     Graphics,
     /// Can be used for dispatch or copy commands.
     Compute,
-    /// Can be used for copy commands.
-    Copy,
     Count
 };
 
@@ -89,6 +88,9 @@ public:
     RHICommandBuffer& operator=(const RHICommandBuffer&) = delete;
     RHICommandBuffer& operator=(RHICommandBuffer&&) = delete;
 
+    virtual void BeginRenderPass(const RHISwapChain* swapChain) = 0;
+    virtual void EndRenderPass() = 0;
+
 protected:
     RHICommandBuffer() = default;
 };
@@ -106,6 +108,7 @@ public:
     virtual bool Initialize(RHIValidationMode validationMode) = 0;
     virtual void Shutdown() = 0;
 
+    virtual void WaitForIdle() = 0;
     virtual bool BeginFrame() = 0;
     virtual void EndFrame() = 0;
 
@@ -113,8 +116,14 @@ public:
 
     virtual bool CreateSwapChain(void* window, const RHISwapChainDescriptor* descriptor, RHISwapChain* pSwapChain) const = 0;
 
+    constexpr uint64_t GetFrameCount() const { return frameCount; }
+    constexpr uint32_t GetFrameIndex() const { return frameIndex; }
+
 protected:
     RHIDevice() = default;
+
+    uint64_t frameCount = 0;
+    uint32_t frameIndex = 0;
 };
 
 extern ALIMER_API RHIDevice* GRHIDevice;

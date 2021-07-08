@@ -84,19 +84,147 @@ struct SwapChain_D3D12
     return static_cast<SwapChain_D3D12*>(resource->state.get());
 }
 
-RHICommandBufferD3D12::RHICommandBufferD3D12(_In_ ID3D12Device5* device, D3D12_COMMAND_LIST_TYPE type)
-    : type{ type }
+RHICommandBufferD3D12::RHICommandBufferD3D12(_In_ ID3D12Device5* device, RHIQueueType queueType)
+    : queueType{ queueType }
 {
-    for (uint32_t i = 0; i < kRHIMaxFramesInFlight; ++i)
+    D3D12_COMMAND_LIST_TYPE commandListType = D3D12_COMMAND_LIST_TYPE_DIRECT;
+    switch (queueType)
     {
-        ThrowIfFailed(device->CreateCommandAllocator(type, IID_PPV_ARGS(&commandAllocators[i])));
+        case RHIQueueType::Compute:
+            commandListType = D3D12_COMMAND_LIST_TYPE_COMPUTE;
+            break;
+
+        default:
+            commandListType = D3D12_COMMAND_LIST_TYPE_DIRECT;
+            break;
     }
 
-    ThrowIfFailed(device->CreateCommandList1(0, type, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&commandList)));
+    for (uint32_t i = 0; i < kRHIMaxFramesInFlight; ++i)
+    {
+        ThrowIfFailed(device->CreateCommandAllocator(commandListType, IID_PPV_ARGS(&commandAllocators[i])));
+    }
+
+    ThrowIfFailed(device->CreateCommandList1(0, commandListType, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&commandList)));
 }
 
 RHICommandBufferD3D12::~RHICommandBufferD3D12()
 {
+    for (uint32_t i = 0; i < kRHIMaxFramesInFlight; ++i)
+    {
+        SafeRelease(commandAllocators[i]);
+    }
+
+    SafeRelease(commandList);
+}
+
+void RHICommandBufferD3D12::Reset(uint32_t frameIndex)
+{
+    // Start the command list in a default state:
+    ThrowIfFailed(commandAllocators[frameIndex]->Reset());
+    ThrowIfFailed(commandList->Reset(commandAllocators[frameIndex], nullptr));
+
+    // Reset states
+    resourceBarriers.clear();
+    swapChains.clear();
+}
+
+void RHICommandBufferD3D12::PresentSwapChains()
+{
+    for (auto& swapChain : swapChains)
+    {
+        ToInternal(swapChain)->handle->Present(1, 0);
+    }
+}
+
+void RHICommandBufferD3D12::FlushQueries()
+{
+}
+
+void RHICommandBufferD3D12::FlushBarriers()
+{
+    if (resourceBarriers.empty())
+        return;
+
+    for (size_t i = 0; i < resourceBarriers.size(); ++i)
+    {
+        auto& barrier = resourceBarriers[i];
+        if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION
+            && queueType != RHIQueueType::Graphics)
+        {
+            // Only graphics queue can do pixel shader state:
+            barrier.Transition.StateBefore &= ~D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+            barrier.Transition.StateAfter &= ~D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        }
+        if (barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION &&
+            barrier.Transition.StateBefore == barrier.Transition.StateAfter)
+        {
+            // Remove NOP barriers:
+            barrier = resourceBarriers.back();
+            resourceBarriers.pop_back();
+            i--;
+        }
+    }
+
+    if (!resourceBarriers.empty())
+    {
+        commandList->ResourceBarrier((UINT)resourceBarriers.size(), resourceBarriers.data());
+        resourceBarriers.clear();
+    }
+}
+
+void RHICommandBufferD3D12::BeginRenderPass(const RHISwapChain* swapChain)
+{
+    swapChains.push_back(swapChain);
+    auto internalState = ToInternal(swapChain);
+
+    //D3D12_RESOURCE_BARRIER barrier = {};
+    //barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    //barrier.Transition.pResource = internalState->backBuffers[internalState->handle->GetCurrentBackBufferIndex()].Get();
+    //barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+    //barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    //barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    //barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    //resourceBarriers.push_back(barrier);
+    //FlushBarriers();
+
+    //D3D12_RENDER_PASS_RENDER_TARGET_DESC RTV = {};
+    //RTV.cpuDescriptor = internal_state->backbufferRTV[internal_state->swapChain->GetCurrentBackBufferIndex()];
+    //RTV.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+    //RTV.BeginningAccess.Clear.ClearValue.Color[0] = swapchain->desc.clearcolor[0];
+    //RTV.BeginningAccess.Clear.ClearValue.Color[1] = swapchain->desc.clearcolor[1];
+    //RTV.BeginningAccess.Clear.ClearValue.Color[2] = swapchain->desc.clearcolor[2];
+    //RTV.BeginningAccess.Clear.ClearValue.Color[3] = swapchain->desc.clearcolor[3];
+    //RTV.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+    //commandList->BeginRenderPass(1, &RTV, nullptr, D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES);
+}
+
+void RHICommandBufferD3D12::EndRenderPass()
+{
+    //commandList->EndRenderPass();
+}
+
+/* RHIDeviceD3D12 */
+void RHIDeviceD3D12::CopyAllocator::Initialize(RHIDeviceD3D12* device_)
+{
+    device = device_;
+
+    D3D12_COMMAND_QUEUE_DESC queueDesc;
+    queueDesc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
+    queueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
+    queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+    queueDesc.NodeMask = 0;
+
+    ThrowIfFailed(device->d3dDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&queue)));
+}
+
+void RHIDeviceD3D12::CopyAllocator::Shutdown()
+{
+    ComPtr<ID3D12Fence> fence;
+    ThrowIfFailed(device->d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
+    ThrowIfFailed(queue->Signal(fence.Get(), 1));
+    ThrowIfFailed(fence->SetEventOnCompletion(1, nullptr));
+
+    SafeRelease(queue);
 }
 
 bool RHIDeviceD3D12::IsAvailable()
@@ -286,9 +414,10 @@ bool RHIDeviceD3D12::Initialize(RHIValidationMode validationMode)
 
         if (validationMode != RHIValidationMode::Disabled)
         {
-            ComPtr<ID3D12DebugDevice> debugDevice;
+            ComPtr<ID3D12DebugDevice2> debugDevice;
             if (SUCCEEDED(d3dDevice.As(&debugDevice)))
             {
+                // TODO: Replace with SetDebugParameter as SetFeatureMask is deprecated
                 debugDevice->SetFeatureMask(D3D12_DEBUG_FEATURE_ALLOW_BEHAVIOR_CHANGING_DEBUG_AIDS | D3D12_DEBUG_FEATURE_CONSERVATIVE_RESOURCE_STATE_TRACKING);
             }
 
@@ -390,18 +519,27 @@ bool RHIDeviceD3D12::Initialize(RHIValidationMode validationMode)
         ThrowIfFailed(d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_SHARED, IID_PPV_ARGS(&queues[(uint32_t)RHIQueueType::Compute].fence)));
         queues[(uint32_t)RHIQueueType::Compute].handle->SetName(L"Compute Command Queue");
         queues[(uint32_t)RHIQueueType::Compute].handle->SetName(L"Compute Command Queue Fence");
-
-        // Copy (we use fence differently)
-        queueDesc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
-        ThrowIfFailed(d3dDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&queues[(uint32_t)RHIQueueType::Copy].handle)));
-        queues[(uint32_t)RHIQueueType::Copy].handle->SetName(L"Copy Command Queue");
     }
+
+    // Create frame-resident resources:
+    for (uint32_t i = 0; i < kRHIMaxFramesInFlight; ++i)
+    {
+        for (uint32_t queue = 0; queue < (uint32_t)RHIQueueType::Count; ++queue)
+        {
+            ThrowIfFailed(d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&frameFences[i][queue])));
+        }
+    }
+
+    copyAllocator.Initialize(this);
 
     return true;
 }
 
 void RHIDeviceD3D12::Shutdown()
 {
+    WaitForIdle();
+    copyAllocator.Shutdown();
+
     // Allocator.
     if (allocator != nullptr)
     {
@@ -417,19 +555,166 @@ void RHIDeviceD3D12::Shutdown()
     }
 }
 
+void RHIDeviceD3D12::WaitForIdle()
+{
+    ComPtr<ID3D12Fence> fence;
+    ThrowIfFailed(d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
+
+    for (auto& queue : queues)
+    {
+        ThrowIfFailed(queue.handle->Signal(fence.Get(), 1));
+        if (fence->GetCompletedValue() < 1)
+        {
+            ThrowIfFailed(fence->SetEventOnCompletion(1, nullptr));
+        }
+        fence->Signal(0);
+    }
+}
+
 bool RHIDeviceD3D12::BeginFrame()
 {
+    commandBuffersCount.store(0);
+
     return true;
 }
 
 void RHIDeviceD3D12::EndFrame()
 {
+    // Submit current command buffers
+    SubmitCommandBuffers();
+
+    // From here, we begin a new frame, this affects GetFrameResources()!
+    frameCount++;
+    frameIndex = frameCount % kRHIMaxFramesInFlight;
+
+    // Begin new frame.
+    // Initiate stalling CPU when GPU is not yet finished with next frame:
+    for (uint32_t queue = 0; queue < (uint32_t)RHIQueueType::Count; ++queue)
+    {
+        if (frameCount >= kRHIMaxFramesInFlight && frameFences[frameIndex][queue]->GetCompletedValue() < 1)
+        {
+            // NULL event handle will simply wait immediately:
+            //	https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12fence-seteventoncompletion#remarks
+            ThrowIfFailed(frameFences[frameIndex][queue]->SetEventOnCompletion(1, nullptr));
+        }
+
+        ThrowIfFailed(frameFences[frameIndex][queue]->Signal(0));
+    }
+
+#if TODO
+    // Descriptor heaps' progress is recorded by the GPU:
+    descriptorheap_res.fenceValue = descriptorheap_res.allocationOffset.load();
+    hr = queues[QUEUE_GRAPHICS].queue->Signal(descriptorheap_res.fence.Get(), descriptorheap_res.fenceValue);
+    assert(SUCCEEDED(hr));
+    descriptorheap_res.cached_completedValue = descriptorheap_res.fence->GetCompletedValue();
+    descriptorheap_sam.fenceValue = descriptorheap_sam.allocationOffset.load();
+    hr = queues[QUEUE_GRAPHICS].queue->Signal(descriptorheap_sam.fence.Get(), descriptorheap_sam.fenceValue);
+    assert(SUCCEEDED(hr));
+    descriptorheap_sam.cached_completedValue = descriptorheap_sam.fence->GetCompletedValue();
+    allocationhandler->Update(FRAMECOUNT, BUFFERCOUNT);
+#endif // TODO
+}
+
+void RHIDeviceD3D12::SubmitCommandBuffers()
+{
+    RHIQueueType submitQueueType = RHIQueueType::Count;
+
+    uint32_t cmd_last = commandBuffersCount.load();
+    commandBuffersCount.store(0);
+    for (uint32_t cmd = 0; cmd < cmd_last; ++cmd)
+    {
+        RHICommandBufferD3D12* commandBuffer = GetCommandBuffer(cmd);
+
+        commandBuffer->FlushQueries();
+        commandBuffer->FlushBarriers();
+
+        ThrowIfFailed(commandBuffer->GetHandle()->Close());
+
+        const CommandListMetadata& meta = commandBuffersMeta[cmd];
+        if (submitQueueType == RHIQueueType::Count)
+        {
+            submitQueueType = meta.queueType;
+        }
+
+        // new queue type or wait breaks submit batch
+        if (meta.queueType != submitQueueType
+            || !meta.waits.empty())
+        {
+            // submit previous cmd batch:
+            if (queues[(uint32_t)submitQueueType].submitCount > 0)
+            {
+                queues[(uint32_t)submitQueueType].handle->ExecuteCommandLists(
+                    queues[(uint32_t)submitQueueType].submitCount,
+                    queues[(uint32_t)submitQueueType].submitCommandLists
+                );
+
+                queues[(uint32_t)submitQueueType].submitCount = 0;
+            }
+
+            // Signal status in case any future waits needed.
+            HRESULT hr = queues[(uint32_t)submitQueueType].handle->Signal(
+                queues[(uint32_t)submitQueueType].fence.Get(),
+                frameCount * kRHIMaxFrameCommandBuffers + (uint64_t)cmd
+            );
+
+            ThrowIfFailed(hr);
+
+            submitQueueType = meta.queueType;
+
+            for (auto& wait : meta.waits)
+            {
+                // record wait for signal on a previous submit:
+                const CommandListMetadata& waitMeta = commandBuffersMeta[wait];
+                hr = queues[(uint32_t)submitQueueType].handle->Wait(
+                    queues[(uint32_t)waitMeta.queueType].fence.Get(),
+                    frameCount * kRHIMaxFrameCommandBuffers + (uint64_t)wait
+                );
+
+                ThrowIfFailed(hr);
+            }
+        }
+
+        ALIMER_ASSERT(submitQueueType < RHIQueueType::Count);
+        queues[(uint32_t)submitQueueType].submitCommandLists[queues[(uint32_t)submitQueueType].submitCount++] = commandBuffer->GetHandle();
+    }
+
+    // submit last cmd batch:
+    ALIMER_ASSERT(submitQueueType < RHIQueueType::Count);
+    ALIMER_ASSERT(queues[(uint32_t)submitQueueType].submitCount > 0);
+    queues[(uint32_t)submitQueueType].handle->ExecuteCommandLists(
+        queues[(uint32_t)submitQueueType].submitCount,
+        queues[(uint32_t)submitQueueType].submitCommandLists
+    );
+    queues[(uint32_t)submitQueueType].submitCount = 0;
+
+    // Mark the completion of queues for this frame:
+    for (uint32_t queue = 0; queue < (uint32_t)RHIQueueType::Count; ++queue)
+    {
+        ThrowIfFailed(queues[queue].handle->Signal(frameFences[GetFrameIndex()][queue].Get(), 1));
+    }
+
+    for (uint32_t cmd = 0; cmd < cmd_last; ++cmd)
+    {
+        GetCommandBuffer(cmd)->PresentSwapChains();
+    }
 }
 
 RHICommandBuffer* RHIDeviceD3D12::BeginCommandBuffer(RHIQueueType type)
 {
-    // Soon
-    return nullptr;
+    uint32_t index = commandBuffersCount.fetch_add(1);
+    ALIMER_ASSERT(index < kRHIMaxFrameCommandBuffers);
+    commandBuffersMeta[index].queueType = type;
+    commandBuffersMeta[index].waits.clear();
+
+    if (GetCommandBuffer(index) == nullptr)
+    {
+        // We need to create one more command buffer.
+        commandBuffers[index][(uint32_t)type].reset(new RHICommandBufferD3D12(d3dDevice.Get(), type));
+    }
+
+    GetCommandBuffer(index)->Reset(frameIndex);
+
+    return GetCommandBuffer(index);
 }
 
 bool RHIDeviceD3D12::CreateSwapChain(void* window, const RHISwapChainDescriptor* descriptor, RHISwapChain* pSwapChain) const
@@ -461,7 +746,7 @@ bool RHIDeviceD3D12::CreateSwapChain(void* window, const RHISwapChainDescriptor*
     fsSwapChainDesc.Windowed = !descriptor->fullscreen;
 
     hr = dxgiFactory->CreateSwapChainForHwnd(
-        nullptr,
+        queues[(uint32_t)RHIQueueType::Graphics].handle.Get(),
         (HWND)window,
         &swapChainDesc,
         &fsSwapChainDesc,
@@ -475,7 +760,7 @@ bool RHIDeviceD3D12::CreateSwapChain(void* window, const RHISwapChainDescriptor*
     swapChainDesc.Scaling = DXGI_SCALING_ASPECT_RATIO_STRETCH;
 
     hr = dxgiFactory->CreateSwapChainForCoreWindow(
-        queues[QUEUE_GRAPHICS].queue.Get(),
+        queues[(uint32_t)RHIQueueType::Graphics].handle.Get(),
         static_cast<IUnknown*>(winrt::get_abi(*window)),
         &swapChainDesc,
         nullptr,
