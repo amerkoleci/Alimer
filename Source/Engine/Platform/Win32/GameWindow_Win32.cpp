@@ -39,7 +39,7 @@ namespace Alimer
 
     void GameWindowWin32::Show()
     {
-        if (!rhiSwapChain.IsValid())
+        if (!rhiSwapChain)
         {
             CreateSwapChain(handle);
         }

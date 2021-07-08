@@ -12,45 +12,60 @@
 #   include "RHI_Vulkan.h"
 #endif
 
-RHIDevice* GRHIDevice = nullptr;
-
-bool RHInitialize(RHIValidationMode validationMode)
+namespace Alimer
 {
-    if (GRHIDevice != nullptr)
-        return true;
+    void RHIObject::SetName(const String& newName)
+    {
+        name = newName;
+        ApiSetName(name);
+    }
+
+    void RHIObject::SetName(const StringView& newName)
+    {
+        name = newName;
+        ApiSetName(newName);
+    }
+
+    RHIDevice* GRHIDevice = nullptr;
+
+    bool RHInitialize(RHIValidationMode validationMode)
+    {
+        if (GRHIDevice != nullptr)
+            return true;
 
 #if defined(ALIMER_RHI_D3D12)
-    GRHIDevice = new RHIDeviceD3D12(validationMode);
+        GRHIDevice = new RHIDeviceD3D12(validationMode);
 #endif
 
 #if defined(ALIMER_RHI_VULKAN)
-    //GRHIDevice = new RHIDeviceVulkan(validationMode);
+        //GRHIDevice = new RHIDeviceVulkan(validationMode);
 #endif
 
-    return GRHIDevice->Initialize(validationMode);
-}
-
-void RHIShutdown()
-{
-    if (GRHIDevice != nullptr)
-    {
-        GRHIDevice->Shutdown();
-        delete GRHIDevice;
-        GRHIDevice = nullptr;
+        return GRHIDevice->Initialize(validationMode);
     }
-}
 
-bool RHIBeginFrame()
-{
-    return GRHIDevice->BeginFrame();
-}
+    void RHIShutdown()
+    {
+        if (GRHIDevice != nullptr)
+        {
+            GRHIDevice->Shutdown();
+            delete GRHIDevice;
+            GRHIDevice = nullptr;
+        }
+    }
 
-void RHIEndFrame()
-{
-    GRHIDevice->EndFrame();
-}
+    bool RHIBeginFrame()
+    {
+        return GRHIDevice->BeginFrame();
+    }
 
-RHICommandBuffer* RHIBeginCommandBuffer(RHIQueueType type)
-{
-    return GRHIDevice->BeginCommandBuffer(type);
+    void RHIEndFrame()
+    {
+        GRHIDevice->EndFrame();
+    }
+
+    RHICommandBuffer* RHIBeginCommandBuffer(RHIQueueType type)
+    {
+        return GRHIDevice->BeginCommandBuffer(type);
+    }
 }
