@@ -6,39 +6,69 @@
 #if defined(ALIMER_RHI_VULKAN)
 #include "RHI_Vulkan.h"
 
-namespace Alimer
+/* RHICommandBufferVulkan */
+RHICommandBufferVulkan::RHICommandBufferVulkan()
 {
-    bool RHIDeviceVulkan::IsAvailable()
-    {
-        static bool available_initialized = false;
-        static bool available = false;
 
-        if (available_initialized) {
-            return available;
-        }
+}
 
-        available_initialized = true;
-        return true;
+RHICommandBufferVulkan::~RHICommandBufferVulkan()
+{
+
+}
+
+/* RHIDeviceVulkan */
+bool RHIDeviceVulkan::IsAvailable()
+{
+    static bool available_initialized = false;
+    static bool available = false;
+
+    if (available_initialized) {
+        return available;
     }
 
-    bool RHIDeviceVulkan::Initialize(RHIValidationMode validationMode)
+    available_initialized = true;
+    return true;
+}
+
+RHIDeviceVulkan::RHIDeviceVulkan(RHIValidationMode validationMode)
+{
+
+}
+
+RHIDeviceVulkan::~RHIDeviceVulkan()
+{
+
+}
+
+bool RHIDeviceVulkan::Initialize(RHIValidationMode validationMode)
+{
+    // Create command queue's
     {
-        return true;
+        //graphicsQueue.reset(new RHICommandQueueVulkan());
+        //computeQueue.reset(new RHICommandQueueVulkan());
     }
 
-    void RHIDeviceVulkan::Shutdown()
-    {
+    return true;
+}
 
-    }
+void RHIDeviceVulkan::Shutdown()
+{
 
-    bool RHIDeviceVulkan::BeginFrame()
-    {
-        return true;
-    }
+}
 
-    void RHIDeviceVulkan::EndFrame()
-    {
-    }
+bool RHIDeviceVulkan::BeginFrame()
+{
+    return true;
+}
+
+void RHIDeviceVulkan::EndFrame()
+{
+}
+
+RHICommandBuffer* RHIDeviceVulkan::BeginCommandBuffer(RHIQueueType type)
+{
+    return nullptr;
 }
 
 #endif /* defined(ALIMER_RHI_VULKAN) */

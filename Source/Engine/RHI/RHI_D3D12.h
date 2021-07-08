@@ -18,37 +18,54 @@
 #   include <dxgidebug.h>
 #endif
 
-namespace Alimer
+class RHICommandBufferD3D12 final : public RHICommandBuffer
 {
-    using ID3D12DeviceX = ID3D12Device5;
+private:
+    const D3D12_COMMAND_LIST_TYPE& type;
+    Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocators[kRHIMaxFramesInFlight];
+    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList6> commandList;
 
-    class RHIDeviceD3D12 final : public RHIDevice
+public:
+    RHICommandBufferD3D12(_In_ ID3D12Device5* device, D3D12_COMMAND_LIST_TYPE type);
+    ~RHICommandBufferD3D12() override;
+};
+
+class RHIDeviceD3D12 final : public RHIDevice
+{
+public:
+    [[nodiscard]] static bool IsAvailable();
+
+    RHIDeviceD3D12(RHIValidationMode validationMode);
+
+    bool Initialize(RHIValidationMode validationMode) override;
+    void Shutdown() override;
+    bool BeginFrame() override;
+    void EndFrame() override;
+
+    RHICommandBuffer* BeginCommandBuffer(RHIQueueType type = RHIQueueType::Graphics) override;
+    bool CreateSwapChain(void* window, const RHISwapChainDescriptor* descriptor, RHISwapChain* pSwapChain) const override;
+
+    auto GetDXGIFactory() const noexcept { return dxgiFactory.Get(); }
+    auto GetD3DDevice() const noexcept { return d3dDevice.Get(); }
+    auto GetAllocator() const noexcept { return allocator; }
+
+private:
+    DWORD dxgiFactoryFlags = 0;
+    Microsoft::WRL::ComPtr<IDXGIFactory4> dxgiFactory;
+    bool tearingSupported = false;
+
+    Microsoft::WRL::ComPtr<ID3D12Device5> d3dDevice;
+    D3D12MA::Allocator* allocator = nullptr;
+
+    struct CommandQueue
     {
-    public:
-        [[nodiscard]] static bool IsAvailable();
+        Microsoft::WRL::ComPtr<ID3D12CommandQueue> handle;
+        Microsoft::WRL::ComPtr<ID3D12Fence> fence;
+        //ID3D12CommandList* submit_cmds[COMMANDLIST_COUNT] = {};
+        //uint32_t submit_count = 0;
+    } queues[(uint32_t)RHIQueueType::Count];
 
-        RHIDeviceD3D12(RHIValidationMode validationMode);
-
-        bool Initialize(RHIValidationMode validationMode) override;
-        void Shutdown() override;
-        bool BeginFrame() override;
-        void EndFrame() override;
-        bool CreateSwapChain(void* window, const RHUSwapChainDescriptor* descriptor, RHISwapChain* swapChain) const override;
-
-        auto GetDXGIFactory() const noexcept { return dxgiFactory.Get(); }
-        auto GetD3DDevice() const noexcept { return d3dDevice.Get(); }
-        auto GetAllocator() const noexcept { return allocator; }
-
-    private:
-        DWORD dxgiFactoryFlags = 0;
-        Microsoft::WRL::ComPtr<IDXGIFactory4> dxgiFactory;
-        bool tearingSupported = false;
-
-        Microsoft::WRL::ComPtr<ID3D12DeviceX> d3dDevice;
-        D3D12MA::Allocator* allocator = nullptr;
-
-        D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_12_0;
-    };
-}
+    D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_12_0;
+};
 
 #endif /* defined(ALIMER_RHI_D3D12) */

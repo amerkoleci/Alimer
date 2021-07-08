@@ -4,6 +4,7 @@
 #pragma once
 
 #include "Core/Signal.h"
+#include "RHI/RHI.h"
 #include <memory>
 
 namespace Alimer
@@ -29,6 +30,9 @@ namespace Alimer
 
         virtual void ApiSetTitle(const StringView& title) = 0;
 
+        void CreateSwapChain(void* windowHandle);
+
         String title;
+        RHISwapChain swapChain;
 	};
 }

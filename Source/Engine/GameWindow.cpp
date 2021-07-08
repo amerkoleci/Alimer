@@ -22,4 +22,10 @@ namespace Alimer
         title = title_;
         ApiSetTitle(title_);
     }
+
+    void GameWindow::CreateSwapChain(void* windowHandle)
+    {
+        RHISwapChainDescriptor swapChainDesc{};
+        GRHIDevice->CreateSwapChain(windowHandle, &swapChainDesc, &swapChain);
+    }
 }
