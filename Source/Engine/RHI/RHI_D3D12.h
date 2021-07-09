@@ -53,6 +53,8 @@ namespace Alimer
         const D3D12_CPU_DESCRIPTOR_HANDLE& GetRTV() const { return rtvHandle; }
 
     private:
+        D3D12_CPU_DESCRIPTOR_HANDLE CreateRTV(const RHITextureD3D12* resource) const;
+
         RHIDeviceD3D12* device;
 
         D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle{};

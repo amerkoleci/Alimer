@@ -238,11 +238,12 @@ namespace Alimer
         {
             switch (dimension)
             {
-                case RHITextureDimension::Dimension1D:
+                case RHITextureDimension::Texture1D:
                     return D3D12_RESOURCE_DIMENSION_TEXTURE1D;
-                case RHITextureDimension::Dimension2D:
+                case RHITextureDimension::Texture2D:
+                case RHITextureDimension::TextureCube:
                     return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-                case RHITextureDimension::Dimension3D:
+                case RHITextureDimension::Texture3D:
                     return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
 
                 default:
@@ -263,25 +264,28 @@ namespace Alimer
             D3D12MA::ALLOCATION_DESC allocationDesc{};
             allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
 
-            const bool isDepthStencil = IsDepthStencilFormat(descriptor.format);
+            const bool isDepthStencil = IsDepthStencilFormat(format);
 
             D3D12_RESOURCE_DESC resourceDesc = {};
-            resourceDesc.Dimension = ToD3D12(descriptor.dimension);
+            resourceDesc.Dimension = ToD3D12(dimension);
             resourceDesc.Alignment = 0;
-            resourceDesc.Width = descriptor.size.width;
-            resourceDesc.Height = descriptor.size.height;
-            if (resourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D)
+            resourceDesc.Width = width;
+            resourceDesc.Height = height;
+            if (dimension == RHITextureDimension::Texture3D)
             {
-                resourceDesc.DepthOrArraySize = static_cast<uint16_t>(descriptor.size.depth);
+                resourceDesc.DepthOrArraySize = static_cast<UINT16>(depthOrArraySize);
+            }
+            else if (dimension == RHITextureDimension::TextureCube)
+            {
+                resourceDesc.DepthOrArraySize = static_cast<UINT16>(depthOrArraySize * kRHICubeMapSlices);
             }
             else
             {
-                resourceDesc.DepthOrArraySize = descriptor.arraySize;
+                resourceDesc.DepthOrArraySize = static_cast<UINT16>(depthOrArraySize);
             }
-
-            resourceDesc.MipLevels = descriptor.mipLevels;
-            resourceDesc.Format = ToDXGIFormat(descriptor.format);
-            resourceDesc.SampleDesc.Count = descriptor.sampleCount;
+            resourceDesc.MipLevels = static_cast<UINT16>(mipLevels);
+            resourceDesc.Format = ToDXGIFormat(format);
+            resourceDesc.SampleDesc.Count = sampleCount;
             resourceDesc.SampleDesc.Quality = 0;
             resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
             resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
@@ -318,11 +322,14 @@ namespace Alimer
 
             if (Any(usage, RHITextureUsage::ShaderWrite))
             {
+                // Remove unsupported flags.
+                resourceDesc.Flags &= ~D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+                resourceDesc.Flags &= ~D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+
                 // Remove unsupported states.
-                resourceDesc.Flags &= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-                resourceDesc.Flags &= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
-                state &= D3D12_RESOURCE_STATE_DEPTH_READ;
-                state &= D3D12_RESOURCE_STATE_DEPTH_WRITE;
+                state &= ~D3D12_RESOURCE_STATE_DEPTH_READ;
+                state &= ~D3D12_RESOURCE_STATE_DEPTH_WRITE;
+                state &= ~D3D12_RESOURCE_STATE_RENDER_TARGET;
 
                 state |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
                 resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
@@ -398,14 +405,7 @@ namespace Alimer
             }
             else
             {
-                rtvHandle = device->AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-
-                D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-                rtvDesc.Format = ToDXGIFormat(format);
-                rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-                rtvDesc.Texture2D.MipSlice = baseMipLevel;
-                rtvDesc.Texture2D.PlaneSlice = 0;
-                device->GetD3DDevice()->CreateRenderTargetView(resource->GetHandle(), &rtvDesc, rtvHandle);
+                rtvHandle = CreateRTV(resource);
             }
         }
     }
@@ -421,6 +421,80 @@ namespace Alimer
         {
             device->FreeDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, dsvHandle);
         }
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE RHITextureViewD3D12::CreateRTV(const RHITextureD3D12* resource) const
+    {
+        const uint32_t arrayMultiplier = (resource->GetDimension() == RHITextureDimension::TextureCube) ? kRHICubeMapSlices : 1;
+
+        D3D12_RENDER_TARGET_VIEW_DESC viewDesc = {};
+        viewDesc.Format = ToDXGIFormat(format);
+
+        switch (resource->GetDimension())
+        {
+            case RHITextureDimension::Texture1D:
+                if (resource->GetArraySize() > 1)
+                {
+                    viewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
+                    viewDesc.Texture1DArray.MipSlice = baseMipLevel;
+                    viewDesc.Texture1DArray.FirstArraySlice = firstArraySlice;
+                    viewDesc.Texture1DArray.ArraySize = arraySize;
+
+                }
+                else
+                {
+                    viewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1D;
+                    viewDesc.Texture1D.MipSlice = baseMipLevel;
+                }
+                break;
+            case RHITextureDimension::Texture2D:
+            case RHITextureDimension::TextureCube:
+                if (resource->GetSampleCount() > 1)
+                {
+                    if (resource->GetArraySize() > 1)
+                    {
+                        viewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
+                        viewDesc.Texture2DMSArray.FirstArraySlice = firstArraySlice;
+                        viewDesc.Texture2DMSArray.ArraySize = arraySize;
+                    }
+                    else
+                    {
+                        viewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
+                    }
+                }
+                else
+                {
+                    if (resource->GetArraySize() * arrayMultiplier > 1)
+                    {
+                        viewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+                        viewDesc.Texture2DArray.MipSlice = baseMipLevel;
+                        viewDesc.Texture2DArray.FirstArraySlice = firstArraySlice * arrayMultiplier;
+                        viewDesc.Texture2DArray.ArraySize = arraySize * arrayMultiplier;
+                        viewDesc.Texture2DArray.PlaneSlice = 0;
+                    }
+                    else
+                    {
+
+                        viewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+                        viewDesc.Texture2D.MipSlice = baseMipLevel;
+                        viewDesc.Texture2D.PlaneSlice = 0;
+                    }
+                }
+                break;
+            case RHITextureDimension::Texture3D:
+                viewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
+                viewDesc.Texture3D.MipSlice = baseMipLevel;
+                viewDesc.Texture3D.FirstWSlice = 0;
+                viewDesc.Texture3D.WSize = resource->GetDepth(baseMipLevel);
+                break;
+            default:
+                ALIMER_UNREACHABLE();
+                break;
+        }
+
+        D3D12_CPU_DESCRIPTOR_HANDLE handle = device->AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        device->GetD3DDevice()->CreateRenderTargetView(resource->GetHandle(), &viewDesc, handle);
+        return handle;
     }
 
     /* RHISwapChainD3D12 */

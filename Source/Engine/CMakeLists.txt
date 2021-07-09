@@ -43,6 +43,33 @@ target_include_directories(${TARGET_NAME} PUBLIC
   $<INSTALL_INTERFACE:${INSTALL_THIRDPARTY_DIR}>
 )
 
+if ( CMAKE_CXX_COMPILER_ID MATCHES "MSVC" )
+  # Warnings as Errors Enabled
+  target_compile_options(${TARGET_NAME} PRIVATE /W3 /WX)
+
+  # Multiprocessor compiler
+  target_compile_options(${TARGET_NAME} PRIVATE /MP)
+
+  target_compile_options(${TARGET_NAME} PRIVATE /fp:fast)
+  target_compile_options(${TARGET_NAME} PRIVATE /permissive- /JMC- /Zc:__cplusplus)
+
+  if(ALIMER_BUILD_ENABLE_CODE_ANALYSIS)
+    target_compile_options(${TARGET_NAME} PRIVATE /analyze)
+  endif()
+
+  if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 19.26)
+    target_compile_options(${TARGET_NAME} PRIVATE /Zc:preprocessor /wd5104 /wd5105)
+  endif()
+else()
+  target_compile_options(${TARGET_NAME} PUBLIC
+    -fno-exceptions
+	$<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
+  )
+
+  # Warnings as Errors Enabled
+  target_compile_options(${TARGET_NAME} PRIVATE -Werror)
+endif()
+
 target_link_libraries(${TARGET_NAME} PUBLIC
   #stb
   spdlog
