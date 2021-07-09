@@ -17,7 +17,6 @@ namespace Alimer
         using PFN_CREATE_DXGI_FACTORY2 = decltype(&CreateDXGIFactory2);
         using PFN_DXGI_GET_DEBUG_INTERFACE1 = decltype(&DXGIGetDebugInterface1);
 
-
         static PFN_CREATE_DXGI_FACTORY2 CreateDXGIFactory2 = nullptr;
         static PFN_DXGI_GET_DEBUG_INTERFACE1 DXGIGetDebugInterface1 = nullptr;
 
@@ -56,14 +55,28 @@ namespace Alimer
         }
     }
 
-    RHITextureD3D12::RHITextureD3D12(RHIDeviceD3D12* device, ID3D12Resource* handle)
-        : handle{ handle }
+    /* RHITextureD3D12 */
+    RHITextureD3D12::RHITextureD3D12(RHIDeviceD3D12* device_, const RHITextureDescriptor& descriptor, ID3D12Resource* externalResource)
+        : RHITexture(descriptor)
+        , device(device_)
+        , handle(externalResource)
     {
-        auto descriptor = device->AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        device->GetD3DDevice()->CreateRenderTargetView(handle, nullptr, descriptor);
+        if (externalResource == nullptr)
+        {
+        }
+
+        if (!descriptor.name.empty())
+        {
+            SetName(descriptor.name);
+        }
     }
 
     RHITextureD3D12::~RHITextureD3D12()
+    {
+        Destroy();
+    }
+
+    void RHITextureD3D12::Destroy()
     {
     }
 
@@ -73,26 +86,67 @@ namespace Alimer
         ThrowIfFailed(handle->SetName(wName.c_str()));
     }
 
-    /* RHITextureViewD3D12 */
-    RHITextureViewD3D12::RHITextureViewD3D12(RHIDeviceD3D12* device, ID3D12Resource* handle)
+    RHITextureView* RHITextureD3D12::CreateView(const RHITextureViewDescriptor& descriptor)
     {
+        return new RHITextureViewD3D12(device, this, descriptor);
+    }
+
+    /* RHITextureViewD3D12 */
+    RHITextureViewD3D12::RHITextureViewD3D12(RHIDeviceD3D12* device_, _In_ RHITextureD3D12* resource, const RHITextureViewDescriptor& descriptor)
+        : RHITextureView(resource, descriptor)
+        , device(device_)
+    {
+        const RHITextureUsage usage = resource->GetUsage();
+
+        if (Any(usage, RHITextureUsage::RenderTarget))
+        {
+            if (IsDepthStencilFormat(format))
+            {
+                dsvHandle = device->AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+                device->GetD3DDevice()->CreateDepthStencilView(resource->GetHandle(), nullptr, dsvHandle);
+            }
+            else
+            {
+                rtvHandle = device->AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+                device->GetD3DDevice()->CreateRenderTargetView(resource->GetHandle(), nullptr, rtvHandle);
+            }
+        }
     }
 
     RHITextureViewD3D12::~RHITextureViewD3D12()
     {
+        if (rtvHandle.ptr != 0)
+        {
+            device->FreeDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, rtvHandle);
+        }
+
+        if (dsvHandle.ptr != 0)
+        {
+            device->FreeDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, dsvHandle);
+        }
     }
 
     /* RHISwapChainD3D12 */
-    RHISwapChainD3D12::RHISwapChainD3D12(RHIDeviceD3D12* device, void* window, const RHISwapChainDescriptor* descriptor)
+    RHISwapChainD3D12::RHISwapChainD3D12(RHIDeviceD3D12* device_, void* window, const RHISwapChainDescriptor& descriptor)
+        : device(device_)
     {
+        if (!descriptor.verticalSync)
+        {
+            syncInterval = 0;
+            if (device->IsTearingSupported())
+            {
+                presentFlags = DXGI_PRESENT_ALLOW_TEARING;
+            }
+        }
+
         HRESULT hr;
 
         ComPtr<IDXGISwapChain1> tempSwapChain;
 
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-        swapChainDesc.Width = descriptor->width;
-        swapChainDesc.Height = descriptor->height;
-        swapChainDesc.Format = ToDXGISwapChainFormat(descriptor->format);
+        swapChainDesc.Width = descriptor.width;
+        swapChainDesc.Height = descriptor.height;
+        swapChainDesc.Format = ToDXGISwapChainFormat(descriptor.format);
         swapChainDesc.Stereo = false;
         swapChainDesc.SampleDesc.Count = 1;
         swapChainDesc.SampleDesc.Quality = 0;
@@ -105,7 +159,7 @@ namespace Alimer
 
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
         DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsSwapChainDesc = {};
-        fsSwapChainDesc.Windowed = !descriptor->fullscreen;
+        fsSwapChainDesc.Windowed = !descriptor.fullscreen;
 
         hr = device->GetDXGIFactory()->CreateSwapChainForHwnd(
             device->GetGraphicsQueue(),
@@ -141,37 +195,47 @@ namespace Alimer
             return;
         }
 
-        handle->GetDesc1(&swapChainDesc);
+        AfterReset();
+    }
+
+    RHISwapChainD3D12::~RHISwapChainD3D12()
+    {
+        Destroy();
+    }
+
+    void RHISwapChainD3D12::Destroy()
+    {
+        SafeRelease(handle);
+    }
+
+    void RHISwapChainD3D12::AfterReset()
+    {
+        DXGI_SWAP_CHAIN_DESC1 swapChainDesc;
+        ThrowIfFailed(handle->GetDesc1(&swapChainDesc));
 
         extent.width = swapChainDesc.Width;
         extent.height = swapChainDesc.Height;
 
-        if (!descriptor->verticalSync)
-        {
-            syncInterval = 0;
-            if (device->IsTearingSupported())
-            {
-                presentFlags = DXGI_PRESENT_ALLOW_TEARING;
-            }
-        }
-
         backBuffers.resize(swapChainDesc.BufferCount);
+        backBufferViews.resize(swapChainDesc.BufferCount);
+
+        RHITextureDescriptor textureDesc = RHITextureDescriptor::Create2D(
+            PixelFormat::BGRA8UNorm,
+            extent.width, extent.height,
+            1,
+            RHITextureUsage::RenderTarget);
+
+        RHITextureViewDescriptor textureViewDesc = {};
 
         for (uint32_t i = 0; i < swapChainDesc.BufferCount; ++i)
         {
             ComPtr<ID3D12Resource> backbuffer;
             ThrowIfFailed(handle->GetBuffer(i, IID_PPV_ARGS(&backbuffer)));
 
-            backBuffers[i] = std::make_shared< RHITextureD3D12>(device, backbuffer.Get());
+            backBuffers[i] = std::make_shared<RHITextureD3D12>(device, textureDesc, backbuffer.Get());
 
-            //internal_state->backbufferRTV[i] = allocationhandler->descriptors_rtv.allocate();
-            //device->CreateRenderTargetView(internal_state->backBuffers[i].Get(), nullptr, internal_state->backbufferRTV[i]);
+            backBufferViews[i] = new RHITextureViewD3D12(device, backBuffers[i].get(), textureViewDesc);
         }
-    }
-
-    RHISwapChainD3D12::~RHISwapChainD3D12()
-    {
-        SafeRelease(handle);
     }
 
     void RHISwapChainD3D12::Present()
@@ -198,9 +262,16 @@ namespace Alimer
         }
     }
 
+
     void RHISwapChainD3D12::ApiSetName(const StringView& name)
     {
 
+    }
+
+    RHITextureView* RHISwapChainD3D12::GetCurrentTextureView() const
+    {
+        uint32_t backbufferIndex = handle->GetCurrentBackBufferIndex();
+        return backBufferViews[backbufferIndex];
     }
 
     [[nodiscard]] inline RHISwapChainD3D12* ToInternal(RHISwapChain* resource)
@@ -251,6 +322,7 @@ namespace Alimer
         // Reset states
         resourceBarriers.clear();
         swapChains.clear();
+        swapChainTexture = nullptr;
     }
 
     void RHICommandBufferD3D12::PresentSwapChains()
@@ -300,32 +372,46 @@ namespace Alimer
     void RHICommandBufferD3D12::BeginRenderPass(RHISwapChain* swapChain, const RHIColor& clearColor)
     {
         swapChains.push_back(swapChain);
-        auto internalState = ToInternal(swapChain);
 
-        //D3D12_RESOURCE_BARRIER barrier = {};
-        //barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        //barrier.Transition.pResource = internalState->backBuffers[internalState->handle->GetCurrentBackBufferIndex()].Get();
-        //barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-        //barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        //barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        //barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        //resourceBarriers.push_back(barrier);
-        //FlushBarriers();
+        RHITextureViewD3D12* view = static_cast<RHITextureViewD3D12*>(swapChain->GetCurrentTextureView());
+        swapChainTexture = static_cast<RHITextureD3D12*>(view->GetResource());
 
-        //D3D12_RENDER_PASS_RENDER_TARGET_DESC RTV = {};
-        //RTV.cpuDescriptor = internal_state->backbufferRTV[internal_state->swapChain->GetCurrentBackBufferIndex()];
-        //RTV.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
-        //RTV.BeginningAccess.Clear.ClearValue.Color[0] = swapchain->desc.clearcolor[0];
-        //RTV.BeginningAccess.Clear.ClearValue.Color[1] = swapchain->desc.clearcolor[1];
-        //RTV.BeginningAccess.Clear.ClearValue.Color[2] = swapchain->desc.clearcolor[2];
-        //RTV.BeginningAccess.Clear.ClearValue.Color[3] = swapchain->desc.clearcolor[3];
-        //RTV.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
-        //commandList->BeginRenderPass(1, &RTV, nullptr, D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES);
+        D3D12_RESOURCE_BARRIER barrier = {};
+        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrier.Transition.pResource = swapChainTexture->GetHandle();
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        resourceBarriers.push_back(barrier);
+        FlushBarriers();
+
+        D3D12_RENDER_PASS_RENDER_TARGET_DESC RTV = {};
+        RTV.cpuDescriptor = view->GetRTV();
+        RTV.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+        RTV.BeginningAccess.Clear.ClearValue.Color[0] = clearColor.r;
+        RTV.BeginningAccess.Clear.ClearValue.Color[1] = clearColor.g;
+        RTV.BeginningAccess.Clear.ClearValue.Color[2] = clearColor.b;
+        RTV.BeginningAccess.Clear.ClearValue.Color[3] = clearColor.a;
+        RTV.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+        commandList->BeginRenderPass(1, &RTV, nullptr, D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES);
     }
 
     void RHICommandBufferD3D12::EndRenderPass()
     {
-        //commandList->EndRenderPass();
+        commandList->EndRenderPass();
+
+        if (swapChainTexture != nullptr)
+        {
+            D3D12_RESOURCE_BARRIER barrier = {};
+            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+            barrier.Transition.pResource = swapChainTexture->GetHandle();
+            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            resourceBarriers.push_back(barrier);
+        }
     }
 
     /* RHIDeviceD3D12 */
@@ -409,7 +495,7 @@ namespace Alimer
         }
 
         return false;
-    }
+        }
 
     RHIDeviceD3D12::RHIDeviceD3D12(RHIValidationMode validationMode)
     {
@@ -665,6 +751,44 @@ namespace Alimer
             dsvDescriptorAllocator.Initialize(this, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 256);
         }
 
+        // Shader visible descriptor resource heap and bindless.
+        {
+            D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+            heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+            heapDesc.NumDescriptors = 1000000; // tier 1 limit
+            heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+            ThrowIfFailed(d3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&resourceHeap.handle)));
+            resourceHeap.CPUStart = resourceHeap.handle->GetCPUDescriptorHandleForHeapStart();
+            resourceHeap.GPUStart = resourceHeap.handle->GetGPUDescriptorHandleForHeapStart();
+
+            ThrowIfFailed(d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_SHARED, IID_PPV_ARGS(&resourceHeap.fence)));
+            resourceHeap.fenceValue = resourceHeap.fence->GetCompletedValue();
+
+            for (uint32_t i = 0; i < kBindlessResourceCapacity; ++i)
+            {
+                freeBindlessResources.push_back(kBindlessResourceCapacity - i - 1);
+            }
+        }
+
+        // Shader visible descriptor sampler heap and bindless.
+        {
+            D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+            heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
+            heapDesc.NumDescriptors = 2048; // tier 1 limit
+            heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+            ThrowIfFailed(d3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&samplerHeap.handle)));
+            samplerHeap.CPUStart = samplerHeap.handle->GetCPUDescriptorHandleForHeapStart();
+            samplerHeap.GPUStart = samplerHeap.handle->GetGPUDescriptorHandleForHeapStart();
+
+            ThrowIfFailed(d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_SHARED, IID_PPV_ARGS(&samplerHeap.fence)));
+            samplerHeap.fenceValue = samplerHeap.fence->GetCompletedValue();
+
+            for (uint32_t i = 0; i < kBindlessSamplerCapacity; ++i)
+            {
+                freeBindlessSamplers.push_back(kBindlessSamplerCapacity - i - 1);
+            }
+        }
+
         return true;
     }
 
@@ -673,10 +797,23 @@ namespace Alimer
         WaitForIdle();
         copyAllocator.Shutdown();
 
+        shuttingDown = true;
+
+        // CPU Descriptor Heaps
         rtvDescriptorAllocator.Shutdown();
         dsvDescriptorAllocator.Shutdown();
         resourceDescriptorAllocator.Shutdown();
         samplerDescriptorAllocator.Shutdown();
+
+        // GPU Descriptor Heaps
+        SafeRelease(resourceHeap.handle);
+        SafeRelease(resourceHeap.fence);
+        SafeRelease(samplerHeap.handle);
+        SafeRelease(samplerHeap.fence);
+
+        frameCount = UINT64_MAX;
+        ProcessDeletionQueue();
+        frameCount = 0;
 
         // Allocator.
         if (allocator != nullptr)
@@ -739,18 +876,21 @@ namespace Alimer
             ThrowIfFailed(frameFences[frameIndex][queue]->Signal(0));
         }
 
-#if TODO
         // Descriptor heaps' progress is recorded by the GPU:
-        descriptorheap_res.fenceValue = descriptorheap_res.allocationOffset.load();
-        hr = queues[QUEUE_GRAPHICS].queue->Signal(descriptorheap_res.fence.Get(), descriptorheap_res.fenceValue);
-        assert(SUCCEEDED(hr));
-        descriptorheap_res.cached_completedValue = descriptorheap_res.fence->GetCompletedValue();
-        descriptorheap_sam.fenceValue = descriptorheap_sam.allocationOffset.load();
-        hr = queues[QUEUE_GRAPHICS].queue->Signal(descriptorheap_sam.fence.Get(), descriptorheap_sam.fenceValue);
-        assert(SUCCEEDED(hr));
-        descriptorheap_sam.cached_completedValue = descriptorheap_sam.fence->GetCompletedValue();
-        allocationhandler->Update(FRAMECOUNT, BUFFERCOUNT);
-#endif // TODO
+        resourceHeap.fenceValue = resourceHeap.allocationOffset.load();
+        ThrowIfFailed(
+            queues[(uint32_t)RHIQueueType::Graphics].handle->Signal(resourceHeap.fence, resourceHeap.fenceValue)
+        );
+        resourceHeap.cachedCompletedValue = resourceHeap.fence->GetCompletedValue();
+
+        samplerHeap.fenceValue = samplerHeap.allocationOffset.load();
+        ThrowIfFailed(
+            queues[(uint32_t)RHIQueueType::Graphics].handle->Signal(samplerHeap.fence, samplerHeap.fenceValue)
+        );
+        samplerHeap.cachedCompletedValue = samplerHeap.fence->GetCompletedValue();
+
+        // Delete pending resources.
+        ProcessDeletionQueue();
     }
 
     void RHIDeviceD3D12::SubmitCommandBuffers()
@@ -837,6 +977,67 @@ namespace Alimer
         }
     }
 
+    void RHIDeviceD3D12::ProcessDeletionQueue()
+    {
+        std::lock_guard<std::mutex> guard(destroyMutex);
+
+        while (!deferredAllocations.empty())
+        {
+            if (deferredAllocations.front().second + kRHIMaxFramesInFlight < frameCount)
+            {
+                auto item = deferredAllocations.front();
+                deferredAllocations.pop_front();
+                item.first->Release();
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        while (!deferredReleases.empty())
+        {
+            if (deferredReleases.front().second + kRHIMaxFramesInFlight < frameCount)
+            {
+                auto item = deferredReleases.front();
+                deferredReleases.pop_front();
+                item.first->Release();
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        while (!destroyerBindlessResource.empty())
+        {
+            if (destroyerBindlessResource.front().second + kRHIMaxFramesInFlight < frameCount)
+            {
+                int index = destroyerBindlessResource.front().first;
+                destroyerBindlessResource.pop_front();
+                freeBindlessResources.push_back(index);
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        while (!destroyerBindlessSampler.empty())
+        {
+            if (destroyerBindlessSampler.front().second + kRHIMaxFramesInFlight < frameCount)
+            {
+                int index = destroyerBindlessSampler.front().first;
+                destroyerBindlessSampler.pop_front();
+                freeBindlessSamplers.push_back(index);
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+
     RHICommandBuffer* RHIDeviceD3D12::BeginCommandBuffer(RHIQueueType type)
     {
         uint32_t index = commandBuffersCount.fetch_add(1);
@@ -855,12 +1056,26 @@ namespace Alimer
         return GetCommandBuffer(index);
     }
 
-    SharedPtr<RHISwapChain> RHIDeviceD3D12::CreateSwapChain(void* window, const RHISwapChainDescriptor* descriptor)
+    RHITextureRef RHIDeviceD3D12::CreateTexture(const RHITextureDescriptor& descriptor)
     {
-        ALIMER_ASSERT(descriptor);
+        auto result = new RHITextureD3D12(this, descriptor);
 
-        auto result = std::make_shared<RHISwapChainD3D12>(this, window, descriptor);
-        return result;
+        if (result->GetHandle())
+            return RHITextureRef(result);
+
+        delete result;
+        return nullptr;
+    }
+
+    RHISwapChainRef RHIDeviceD3D12::CreateSwapChain(void* window, const RHISwapChainDescriptor& descriptor)
+    {
+        auto result = new RHISwapChainD3D12(this, window, descriptor);
+
+        if (result->GetHandle())
+            return RHISwapChainRef(result);
+
+        delete result;
+        return nullptr;
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE RHIDeviceD3D12::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type)
@@ -919,6 +1134,24 @@ namespace Alimer
                 ALIMER_UNREACHABLE();
         }
     }
-}
+
+    void RHIDeviceD3D12::DeferDestroy(IUnknown* resource, D3D12MA::Allocation* allocation)
+    {
+        std::lock_guard<std::mutex> guard(destroyMutex);
+
+        if (shuttingDown)
+        {
+            resource->Release();
+            SafeRelease(allocation);
+            return;
+        }
+
+        deferredReleases.push_back(std::make_pair(resource, frameCount));
+        if (allocation != nullptr)
+        {
+            deferredAllocations.push_back(std::make_pair(allocation, frameCount));
+        }
+    }
+    }
 
 #endif /* defined(ALIMER_RHI_D3D12) */

@@ -15,6 +15,32 @@
 #include <array>
 #include <functional>
 
+#define ALIMER_DISABLE_COPY(_Class) \
+    _Class(const _Class&) = delete; _Class& operator=(const _Class&) = delete; \
+    _Class(_Class&&) = default; _Class& operator=(_Class&&) = default;
+
+#define ALIMER_DISABLE_MOVE(_Class) \
+    _Class(_Class&&) = delete; _Class& operator=(_Class&&) = delete;
+
+#define ALIMER_DISABLE_COPY_MOVE(_Class) \
+    _Class(const _Class&) = delete; _Class& operator=(const _Class&) = delete; ALIMER_DISABLE_MOVE(_Class)
+
+#define ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(EnumType) \
+inline constexpr EnumType operator | (EnumType a, EnumType b) \
+    { return EnumType(((std::underlying_type<EnumType>::type)a) | ((std::underlying_type<EnumType>::type)b)); } \
+inline constexpr EnumType& operator |= (EnumType &a, EnumType b) \
+    { return a = a | b; } \
+inline constexpr EnumType operator & (EnumType a, EnumType b) \
+    { return EnumType(((std::underlying_type<EnumType>::type)a) & ((std::underlying_type<EnumType>::type)b)); } \
+inline constexpr EnumType& operator &= (EnumType &a, EnumType b) \
+    { return a = a & b; } \
+inline constexpr EnumType operator ~ (EnumType a) \
+    { return EnumType(~((std::underlying_type<EnumType>::type)a)); } \
+inline constexpr EnumType operator ^ (EnumType a, EnumType b) \
+    { return EnumType(((std::underlying_type<EnumType>::type)a) ^ ((std::underlying_type<EnumType>::type)b)); } \
+inline constexpr EnumType& operator ^= (EnumType &a, EnumType b) \
+    { return a = a ^ b; }
+
 namespace Alimer
 {
     template<typename T>
@@ -112,5 +138,26 @@ namespace Alimer
         }
 
         return hash;
+    }
+
+    /// Returns the value of the bit at bitIndex (1 if the bit is 1, 0 if 0)
+    template <typename T>
+    inline T CheckBit(T v, uint8_t bitIndex)
+    {
+        return (v >> bitIndex) & 1;
+    }
+
+    /// Returns whether all the set bits in bits are set in v.
+    template <typename T>
+    inline bool CheckBitsAll(T v, T bits)
+    {
+        return (v & bits) == bits;
+    }
+
+    /// Returns whether any of the set bits in bits are set in v.
+    template <typename T>
+    inline bool Any(T v, T bits)
+    {
+        return (v & bits) != (T)0;
     }
 }

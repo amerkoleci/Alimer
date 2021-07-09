@@ -146,6 +146,8 @@ namespace Alimer
             // Custom application draw.
             RHICommandBuffer* commandBuffer = RHIBeginCommandBuffer();
 
+            auto view = host->GetMainWindow()->GetRHISwapChain()->GetCurrentTextureView();
+
             const RHIColor clearColor = { 0.392156899f, 0.584313750f, 0.929411829f, 1.0f };
             commandBuffer->BeginRenderPass(host->GetMainWindow()->GetRHISwapChain(), clearColor);
             OnDraw(commandBuffer);

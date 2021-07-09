@@ -52,6 +52,10 @@ if (ALIMER_RHI_D3D12)
   target_link_libraries(${TARGET_NAME} PRIVATE D3D12MemoryAllocator)
 endif ()
 
+if (ALIMER_RHI_VULKAN)
+  target_link_libraries(${TARGET_NAME} PRIVATE volk vma spirv-reflect)
+endif()
+
 if (WIN32)
   target_compile_definitions(${TARGET_NAME} PRIVATE _UNICODE UNICODE _CRT_SECURE_NO_WARNINGS)
 elseif (WINDOWS_STORE)

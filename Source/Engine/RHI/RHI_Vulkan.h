@@ -4,8 +4,13 @@
 #pragma once
 
 #include "AlimerConfig.h"
+
 #if defined(ALIMER_RHI_VULKAN)
 #include "RHI/RHI.h"
+
+#include "PlatformInclude.h"
+#include "volk.h"
+#include "vk_mem_alloc.h"
 
 namespace Alimer
 {
@@ -34,6 +39,9 @@ namespace Alimer
         RHICommandBuffer* BeginCommandBuffer(RHIQueueType type = RHIQueueType::Graphics) override;
 
     private:
+        bool debugUtils = false;
+        VkInstance instance{ VK_NULL_HANDLE };
+        VkDebugUtilsMessengerEXT debugUtilsMessenger = VK_NULL_HANDLE;
     };
 }
 
