@@ -2,6 +2,8 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repository root for more information.
 
 #include "AlimerConfig.h"
+#include "Core/Assert.h"
+#include "Core/Log.h"
 #include "RHI/RHI.h"
 
 #if defined(ALIMER_RHI_D3D12)
@@ -28,7 +30,32 @@ namespace Alimer
     }
 
     /* RHIResourceView */
-    RHIResourceView::RHIResourceView(_In_ RHIResource* resource_)
+    RHITextureView* RHIResource::GetView(const RHITextureViewDescriptor& descriptor) const
+    {
+        const size_t hash = Hash(descriptor);
+        std::lock_guard<std::mutex> guard(resourceViewCacheMutex);
+        auto it = resourceViewCache.find(hash);
+        if (it == resourceViewCache.end())
+        {
+            // View not found, create new.
+            RHITextureView* view = CreateView(descriptor);
+            if (view != nullptr)
+            {
+                resourceViewCache[hash].reset(view);
+                return view;
+            }
+            else
+            {
+                LOGE("RHI: Failed to create TextureView");
+                return nullptr;
+            }
+        }
+
+        return static_cast<RHITextureView*>(it->second.get());
+    }
+
+    /* RHIResourceView */
+    RHIResourceView::RHIResourceView(const RHIResource* resource_)
         : resource(resource_)
     {
         ALIMER_ASSERT(resource != nullptr);
@@ -39,17 +66,12 @@ namespace Alimer
         return resource;
     }
 
-    RHIResource* RHIResourceView::GetResource()
-    {
-        return resource;
-    }
-
     /* RHITexture */
     RHITextureDescriptor RHITextureDescriptor::Create1D(
         PixelFormat format,
         uint32_t width,
-        uint32_t mipLevels,
-        uint32_t arraySize,
+        uint16_t mipLevels,
+        uint16_t arraySize,
         RHITextureUsage usage)
     {
         RHITextureDescriptor descriptor;
@@ -62,73 +84,30 @@ namespace Alimer
         return descriptor;
     }
 
-    RHITextureDescriptor RHITextureDescriptor::Create2D(
+    RHITextureDescriptor RHITextureDescriptor::CreateCubemap(
         PixelFormat format,
         uint32_t width,
-        uint32_t height,
-        uint32_t mipLevels,
+        uint16_t arraySize,
+        uint16_t mipLevels,
         RHITextureUsage usage)
-    {
-        RHITextureDescriptor descriptor;
-        descriptor.usage = usage;
-        descriptor.size.width = width;
-        descriptor.size.height = height;
-        descriptor.format = format;
-        descriptor.mipLevels = mipLevels;
-        return descriptor;
-    }
-
-    RHITextureDescriptor RHITextureDescriptor::Create2DArray(
-        RHITextureUsage usage,
-        uint32_t width,
-        uint32_t height,
-        uint16_t arraySize,
-        PixelFormat format)
-    {
-        RHITextureDescriptor descriptor;
-        descriptor.usage = usage;
-        descriptor.size.width = width;
-        descriptor.size.height = height;
-        descriptor.arraySize = arraySize;
-        descriptor.format = format;
-        return descriptor;
-    }
-
-    RHITextureDescriptor RHITextureDescriptor::CreateCubemap(
-        RHITextureUsage usage,
-        uint32_t width,
-        PixelFormat format)
-    {
-        RHITextureDescriptor descriptor;
-        descriptor.usage = usage;
-        descriptor.size.width = width;
-        descriptor.size.height = width;
-        descriptor.arraySize = kRHICubeMapSlices;
-        descriptor.format = format;
-        return descriptor;
-    }
-
-    RHITextureDescriptor RHITextureDescriptor::CreateCubemapArray(
-        RHITextureUsage usage,
-        uint32_t width,
-        uint16_t arraySize,
-        PixelFormat format)
     {
         RHITextureDescriptor descriptor;
         descriptor.usage = usage;
         descriptor.size.width = width;
         descriptor.size.height = width;
         descriptor.arraySize = kRHICubeMapSlices * arraySize;
+        descriptor.mipLevels = mipLevels;
         descriptor.format = format;
         return descriptor;
     }
 
     RHITextureDescriptor RHITextureDescriptor::Create3D(
-        RHITextureUsage usage,
+        PixelFormat format,
         uint32_t width,
         uint32_t height,
         uint32_t depth,
-        PixelFormat format)
+        uint16_t mipLevels,
+        RHITextureUsage usage)
     {
         RHITextureDescriptor descriptor;
         descriptor.usage = usage;
@@ -136,6 +115,7 @@ namespace Alimer
         descriptor.size.width = width;
         descriptor.size.height = height;
         descriptor.size.depth = depth;
+        descriptor.mipLevels = mipLevels;
         descriptor.format = format;
         return descriptor;
     }
@@ -153,7 +133,7 @@ namespace Alimer
     }
 
     /* RHITextureView */
-    RHITextureView::RHITextureView(_In_ RHITexture* resource, const RHITextureViewDescriptor& descriptor)
+    RHITextureView::RHITextureView(const RHITexture* resource, const RHITextureViewDescriptor& descriptor)
         : RHIResourceView(resource)
     {
         if (descriptor.format == PixelFormat::Undefined)
@@ -206,6 +186,16 @@ namespace Alimer
         }
     }
 
+    /* RHISwapChain */
+    RHISwapChain::RHISwapChain(const RHISwapChainDescriptor& descriptor)
+        : size(descriptor.size)
+        , colorFormat(descriptor.format)
+        , verticalSync(descriptor.verticalSync)
+        , isFullscreen(descriptor.isFullscreen)
+    {
+
+    }
+
     /* RHIDevice */
     RHIDevice* GRHIDevice = nullptr;
 
@@ -233,6 +223,18 @@ namespace Alimer
             delete GRHIDevice;
             GRHIDevice = nullptr;
         }
+    }
+
+    RHITextureRef RHICreateTexture(const RHITextureDescriptor& descriptor)
+    {
+        return GRHIDevice->CreateTexture(descriptor);
+    }
+
+    RHISwapChainRef RHICreateSwapChain(void* window, const RHISwapChainDescriptor& descriptor)
+    {
+        ALIMER_ASSERT(window);
+
+        return GRHIDevice->CreateSwapChain(window, descriptor);
     }
 
     bool RHIBeginFrame()

@@ -140,16 +140,9 @@ namespace Alimer
         return hash;
     }
 
-    /// Returns the value of the bit at bitIndex (1 if the bit is 1, 0 if 0)
-    template <typename T>
-    inline T CheckBit(T v, uint8_t bitIndex)
-    {
-        return (v >> bitIndex) & 1;
-    }
-
     /// Returns whether all the set bits in bits are set in v.
     template <typename T>
-    inline bool CheckBitsAll(T v, T bits)
+    inline bool All(T v, T bits)
     {
         return (v & bits) == bits;
     }

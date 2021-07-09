@@ -31,6 +31,8 @@ namespace Alimer
 
     GameWindowWin32::~GameWindowWin32()
     {
+        swapChain.reset();
+
         if (handle)
         {
             DestroyWindow(handle);
@@ -39,7 +41,7 @@ namespace Alimer
 
     void GameWindowWin32::Show()
     {
-        if (!rhiSwapChain)
+        if (!swapChain)
         {
             CreateSwapChain(handle);
         }

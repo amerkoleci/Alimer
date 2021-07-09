@@ -118,10 +118,10 @@ namespace Alimer
         PixelFormat format = PixelFormat::RGBA8UNorm;
 
         /// Number of array elements (ignored for 3D textures).
-        uint32_t arraySize = 1;
+        uint16_t arraySize = 1;
 
         /// Number of mip levels.
-        uint32_t mipLevels = 1;
+        uint16_t mipLevels = 1;
 
         /// Number of samples.
         uint32_t sampleCount = 1;
@@ -129,43 +129,43 @@ namespace Alimer
         static RHITextureDescriptor Create1D(
             PixelFormat format,
             uint32_t width,
-            uint32_t mipLevels = 1,
-            uint32_t arraySize = 1,
+            uint16_t mipLevels = 1,
+            uint16_t arraySize = 1,
             RHITextureUsage usage = RHITextureUsage::ShaderRead
         );
 
-        static RHITextureDescriptor Create2D(
+        static inline RHITextureDescriptor Create2D(
             PixelFormat format,
             uint32_t width,
             uint32_t height,
-            uint32_t mipLevels = 1,
-            RHITextureUsage usage = RHITextureUsage::ShaderRead
-        );
-
-        static RHITextureDescriptor Create2DArray(
-            RHITextureUsage usage,
-            uint32_t width,
-            uint32_t height,
-            uint16_t arraySize,
-            PixelFormat format);
+            uint16_t mipLevels = 1,
+            uint16_t arraySize = 1,
+            RHITextureUsage usage = RHITextureUsage::ShaderRead) noexcept
+        {
+            RHITextureDescriptor descriptor;
+            descriptor.usage = usage;
+            descriptor.size.width = width;
+            descriptor.size.height = height;
+            descriptor.arraySize = arraySize;
+            descriptor.format = format;
+            descriptor.mipLevels = mipLevels;
+            return descriptor;
+        }
 
         static RHITextureDescriptor CreateCubemap(
-            RHITextureUsage usage,
+            PixelFormat format,
             uint32_t width,
-            PixelFormat format);
-
-        static RHITextureDescriptor CreateCubemapArray(
-            RHITextureUsage usage,
-            uint32_t width,
-            uint16_t arraySize,
-            PixelFormat format);
+            uint16_t arraySize = 1,
+            uint16_t mipLevels = 1,
+            RHITextureUsage usage = RHITextureUsage::ShaderRead);
 
         static RHITextureDescriptor Create3D(
-            RHITextureUsage usage,
+            PixelFormat format,
             uint32_t width,
             uint32_t height,
             uint32_t depth,
-            PixelFormat format);
+            uint16_t mipLevels = 1,
+            RHITextureUsage usage = RHITextureUsage::ShaderRead);
     };
 
     struct RHITextureViewDescriptor
@@ -180,11 +180,10 @@ namespace Alimer
 
     struct RHISwapChainDescriptor
     {
-        uint32_t width = 0;
-        uint32_t height = 0;
-        PixelFormat format = PixelFormat::BGRA8UNormSrgb;
-        bool fullscreen = false;
+        RHIExtent2D size = { 0, 0 };
+        PixelFormat format = PixelFormat::Undefined;
         bool verticalSync = true;
+        bool isFullscreen = false;
     };
 
     class ALIMER_API RHIObject
@@ -213,9 +212,11 @@ namespace Alimer
 
     class ALIMER_API RHIResource : public RHIObject
     {
-    protected:
-        virtual RHITextureView* CreateView(const RHITextureViewDescriptor& descriptor) = 0;
+    public:
+        [[nodiscard]] RHITextureView* GetView(const RHITextureViewDescriptor& descriptor) const;
 
+    private:
+        virtual RHITextureView* CreateView(const RHITextureViewDescriptor& descriptor) const = 0;
         mutable std::unordered_map<size_t, std::unique_ptr<RHIResourceView>> resourceViewCache;
         mutable std::mutex resourceViewCacheMutex;
     };
@@ -226,15 +227,14 @@ namespace Alimer
         virtual ~RHIResourceView() = default;
 
         const RHIResource* GetResource() const;
-        RHIResource* GetResource();
 
     protected:
-        RHIResourceView(_In_ RHIResource* resource);
+        RHIResourceView(const RHIResource* resource);
 
     private:
         ALIMER_DISABLE_COPY_MOVE(RHIResourceView);
 
-        RHIResource* resource;
+        const RHIResource* resource;
     };
 
     class ALIMER_API RHITexture : public RHIResource
@@ -247,8 +247,8 @@ namespace Alimer
         uint32_t GetHeight(uint32_t mipLevel = 0) const noexcept { return Max(1u, size.height >> mipLevel); }
         uint32_t GetDepth(uint32_t mipLevel = 0) const noexcept { return Max(1u, size.depth >> mipLevel); }
         PixelFormat GetFormat() const noexcept { return format; }
-        uint32_t GetArraySize() const noexcept { return arraySize; }
-        uint32_t GetMipLevels() const noexcept { return mipLevels; }
+        uint16_t GetArraySize() const noexcept { return arraySize; }
+        uint16_t GetMipLevels() const noexcept { return mipLevels; }
         uint32_t GetSampleCount() const noexcept { return sampleCount; }
 
     protected:
@@ -258,15 +258,15 @@ namespace Alimer
         RHITextureDimension dimension;
         RHIExtent3D size;
         PixelFormat format;
-        uint32_t arraySize{ 1 };
-        uint32_t mipLevels{ 1 };
-        uint32_t sampleCount{ 1 };
+        uint16_t arraySize;
+        uint16_t mipLevels;
+        uint32_t sampleCount;
     };
 
     class ALIMER_API RHITextureView : public RHIResourceView
     {
     protected:
-        RHITextureView(_In_ RHITexture* resource, const RHITextureViewDescriptor& descriptor);
+        RHITextureView(const RHITexture* resource, const RHITextureViewDescriptor& descriptor);
 
         PixelFormat format;
         RHITextureViewDimension dimension;
@@ -289,12 +289,19 @@ namespace Alimer
     class ALIMER_API RHISwapChain : public RHIObject
     {
     public:
+        RHISwapChain(const RHISwapChainDescriptor& descriptor);
+
         virtual RHITextureView* GetCurrentTextureView() const = 0;
 
-        const RHIExtent2D& GetExtent() const { return extent; }
+        const RHIExtent2D& GetSize() const noexcept { return size; }
+        uint32_t GetWidth() const noexcept { return size.width; }
+        uint32_t GetHeight() const noexcept { return size.height; }
 
     protected:
-        RHIExtent2D extent;
+        RHIExtent2D size;
+        PixelFormat colorFormat;
+        bool verticalSync;
+        bool isFullscreen;
     };
 
     class ALIMER_API RHICommandBuffer
@@ -344,12 +351,34 @@ namespace Alimer
 
     extern ALIMER_API RHIDevice* GRHIDevice;
 
-
     ALIMER_API bool RHInitialize(RHIValidationMode validationMode);
     ALIMER_API void RHIShutdown();
+
+    ALIMER_API RHITextureRef RHICreateTexture(const RHITextureDescriptor& descriptor);
+    ALIMER_API RHISwapChainRef RHICreateSwapChain(void* window, const RHISwapChainDescriptor& descriptor);
 
     ALIMER_API bool RHIBeginFrame();
     ALIMER_API void RHIEndFrame();
 
     ALIMER_API RHICommandBuffer* RHIBeginCommandBuffer(RHIQueueType type = RHIQueueType::Graphics);
+}
+
+namespace std
+{
+    /**	Hash value generator for RHITextureViewDescriptor. */
+    template<>
+    struct hash<Alimer::RHITextureViewDescriptor>
+    {
+        size_t operator()(const Alimer::RHITextureViewDescriptor& desc) const
+        {
+            size_t hash = 0;
+            Alimer::HashCombine(hash, (uint32_t)desc.format);
+            Alimer::HashCombine(hash, (uint32_t)desc.dimension);
+            Alimer::HashCombine(hash, desc.baseMipLevel);
+            Alimer::HashCombine(hash, desc.mipLevelCount);
+            Alimer::HashCombine(hash, desc.baseArrayLayer);
+            Alimer::HashCombine(hash, desc.arrayLayerCount);
+            return hash;
+        }
+    };
 }

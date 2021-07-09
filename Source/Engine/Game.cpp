@@ -39,8 +39,8 @@ namespace Alimer
     Game::~Game()
     {
         // Shutdown modules.
-        RHIShutdown();
         host.reset();
+        RHIShutdown();
         gLog().Shutdown();
         g_currentGame = nullptr;
     }
@@ -132,6 +132,9 @@ namespace Alimer
 
         }
 
+        Initialize();
+
+        // Show main window.
         host->GetMainWindow()->Show();
     }
 

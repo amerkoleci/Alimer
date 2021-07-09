@@ -27,7 +27,7 @@ namespace Alimer
         virtual void Show() = 0;
         virtual bool IsMinimized() const = 0;
 
-        RHISwapChain* GetRHISwapChain() const { return rhiSwapChain.get(); }
+        RHISwapChain* GetRHISwapChain() const { return swapChain.get(); }
 
 	protected:
 		/// Constructor.
@@ -38,6 +38,6 @@ namespace Alimer
         void CreateSwapChain(void* windowHandle);
 
         String title;
-        SharedPtr<RHISwapChain> rhiSwapChain;
+        SharedPtr<RHISwapChain> swapChain;
 	};
 }

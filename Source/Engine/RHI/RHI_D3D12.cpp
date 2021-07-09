@@ -32,6 +32,167 @@ namespace Alimer
         static constexpr IID RHI_DXGI_DEBUG_ALL = { 0xe48ae283, 0xda80, 0x490b, {0x87, 0xe6, 0x43, 0xe9, 0xa9, 0xcf, 0xda, 0x8} };
         static constexpr IID RHI_DXGI_DEBUG_DXGI = { 0x25cddaa4, 0xb1c6, 0x47e1, {0xac, 0x3e, 0x98, 0x87, 0x5b, 0x5a, 0x2e, 0x2a} };
 #endif
+    }
+
+    namespace
+    {
+        [[nodiscard]] constexpr DXGI_FORMAT ToDXGIFormat(PixelFormat format)
+        {
+            switch (format)
+            {
+                // 8-bit formats
+                case PixelFormat::R8Unorm:  return DXGI_FORMAT_R8_UNORM;
+                case PixelFormat::R8Snorm:  return DXGI_FORMAT_R8_SNORM;
+                case PixelFormat::R8Uint:   return DXGI_FORMAT_R8_UINT;
+                case PixelFormat::R8Sint:   return DXGI_FORMAT_R8_SINT;
+                    // 16-bit formats
+                case PixelFormat::R16Unorm:     return DXGI_FORMAT_R16_UNORM;
+                case PixelFormat::R16Snorm:     return DXGI_FORMAT_R16_SNORM;
+                case PixelFormat::R16Uint:      return DXGI_FORMAT_R16_UINT;
+                case PixelFormat::R16Sint:      return DXGI_FORMAT_R16_SINT;
+                case PixelFormat::R16Float:     return DXGI_FORMAT_R16_FLOAT;
+                case PixelFormat::RG8Unorm:     return DXGI_FORMAT_R8G8_UNORM;
+                case PixelFormat::RG8Snorm:     return DXGI_FORMAT_R8G8_SNORM;
+                case PixelFormat::RG8Uint:      return DXGI_FORMAT_R8G8_UINT;
+                case PixelFormat::RG8Sint:      return DXGI_FORMAT_R8G8_SINT;
+                    // 32-bit formats
+                case PixelFormat::R32Uint:          return DXGI_FORMAT_R32_UINT;
+                case PixelFormat::R32Sint:          return DXGI_FORMAT_R32_SINT;
+                case PixelFormat::R32Float:         return DXGI_FORMAT_R32_FLOAT;
+                case PixelFormat::RG16Unorm:        return DXGI_FORMAT_R16G16_UNORM;
+                case PixelFormat::RG16Snorm:        return DXGI_FORMAT_R16G16_SNORM;
+                case PixelFormat::RG16Uint:         return DXGI_FORMAT_R16G16_UINT;
+                case PixelFormat::RG16Sint:         return DXGI_FORMAT_R16G16_SINT;
+                case PixelFormat::RG16Float:        return DXGI_FORMAT_R16G16_FLOAT;
+                case PixelFormat::RGBA8UNorm:       return DXGI_FORMAT_R8G8B8A8_UNORM;
+                case PixelFormat::RGBA8UNormSrgb:   return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+                case PixelFormat::RGBA8SNorm:       return DXGI_FORMAT_R8G8B8A8_SNORM;
+                case PixelFormat::RGBA8Uint:        return DXGI_FORMAT_R8G8B8A8_UINT;
+                case PixelFormat::RGBA8Sint:        return DXGI_FORMAT_R8G8B8A8_SINT;
+                case PixelFormat::BGRA8UNorm:       return DXGI_FORMAT_B8G8R8A8_UNORM;
+                case PixelFormat::BGRA8UNormSrgb:   return DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+                    // Packed 32-Bit formats
+                case PixelFormat::RGB10A2Unorm:     return DXGI_FORMAT_R10G10B10A2_UNORM;
+                case PixelFormat::RG11B10Float:     return DXGI_FORMAT_R11G11B10_FLOAT;
+                case PixelFormat::RGB9E5Float:      return DXGI_FORMAT_R9G9B9E5_SHAREDEXP;
+                    // 64-Bit formats
+                case PixelFormat::RG32Uint:         return DXGI_FORMAT_R32G32_UINT;
+                case PixelFormat::RG32Sint:         return DXGI_FORMAT_R32G32_SINT;
+                case PixelFormat::RG32Float:        return DXGI_FORMAT_R32G32_FLOAT;
+                case PixelFormat::RGBA16Unorm:      return DXGI_FORMAT_R16G16B16A16_UNORM;
+                case PixelFormat::RGBA16Snorm:      return DXGI_FORMAT_R16G16B16A16_SNORM;
+                case PixelFormat::RGBA16Uint:       return DXGI_FORMAT_R16G16B16A16_UINT;
+                case PixelFormat::RGBA16Sint:       return DXGI_FORMAT_R16G16B16A16_SINT;
+                case PixelFormat::RGBA16Float:      return DXGI_FORMAT_R16G16B16A16_FLOAT;
+                    // 128-Bit formats
+                case PixelFormat::RGBA32Uint:       return DXGI_FORMAT_R32G32B32A32_UINT;
+                case PixelFormat::RGBA32Sint:       return DXGI_FORMAT_R32G32B32A32_SINT;
+                case PixelFormat::RGBA32Float:      return DXGI_FORMAT_R32G32B32A32_FLOAT;
+                    // Depth-stencil formats
+                case PixelFormat::Depth16Unorm:			return DXGI_FORMAT_D16_UNORM;
+                case PixelFormat::Depth32Float:			return DXGI_FORMAT_D32_FLOAT;
+                case PixelFormat::Depth24UnormStencil8: return DXGI_FORMAT_D24_UNORM_S8_UINT;
+                case PixelFormat::Depth32FloatStencil8: return DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+                    // Compressed BC formats
+                case PixelFormat::BC1RGBAUnorm:         return DXGI_FORMAT_BC1_UNORM;
+                case PixelFormat::BC1RGBAUnormSrgb:     return DXGI_FORMAT_BC1_UNORM_SRGB;
+                case PixelFormat::BC2RGBAUnorm:         return DXGI_FORMAT_BC2_UNORM;
+                case PixelFormat::BC2RGBAUnormSrgb:     return DXGI_FORMAT_BC2_UNORM_SRGB;
+                case PixelFormat::BC3RGBAUnorm:         return DXGI_FORMAT_BC3_UNORM;
+                case PixelFormat::BC3RGBAUnormSrgb:     return DXGI_FORMAT_BC3_UNORM_SRGB;
+                case PixelFormat::BC4RSnorm:            return DXGI_FORMAT_BC4_SNORM;
+                case PixelFormat::BC4RUnorm:            return DXGI_FORMAT_BC4_UNORM;
+                case PixelFormat::BC5RGSnorm:           return DXGI_FORMAT_BC5_SNORM;
+                case PixelFormat::BC5RGUnorm:           return DXGI_FORMAT_BC5_UNORM;
+                case PixelFormat::BC6HRGBFloat:         return DXGI_FORMAT_BC6H_SF16;
+                case PixelFormat::BC6HRGBUfloat:        return DXGI_FORMAT_BC6H_UF16;
+                case PixelFormat::BC7RGBAUnorm:         return DXGI_FORMAT_BC7_UNORM;
+                case PixelFormat::BC7RGBAUnormSrgb:     return DXGI_FORMAT_BC7_UNORM_SRGB;
+
+                default:
+                    ALIMER_UNREACHABLE();
+                    return DXGI_FORMAT_UNKNOWN;
+            }
+        }
+
+        [[nodiscard]] constexpr PixelFormat FromDXGIFormat(DXGI_FORMAT format)
+        {
+            switch (format)
+            {
+                // 8-bit formats
+                case DXGI_FORMAT_R8_UNORM:	return PixelFormat::R8Unorm;
+                case DXGI_FORMAT_R8_SNORM:	return PixelFormat::R8Snorm;
+                case DXGI_FORMAT_R8_UINT:	return PixelFormat::R8Uint;
+                case DXGI_FORMAT_R8_SINT:	return PixelFormat::R8Sint;
+                    // 16-bit formats
+                case DXGI_FORMAT_R16_UNORM:		return PixelFormat::R16Unorm;
+                case DXGI_FORMAT_R16_SNORM:		return PixelFormat::R16Snorm;
+                case DXGI_FORMAT_R16_UINT:		return PixelFormat::R16Uint;
+                case DXGI_FORMAT_R16_SINT:		return PixelFormat::R16Sint;
+                case DXGI_FORMAT_R16_FLOAT:		return PixelFormat::R16Float;
+                case DXGI_FORMAT_R8G8_UNORM:	return PixelFormat::RG8Unorm;
+                case DXGI_FORMAT_R8G8_SNORM:	return PixelFormat::RG8Snorm;
+                case DXGI_FORMAT_R8G8_UINT:		return PixelFormat::RG8Uint;
+                case DXGI_FORMAT_R8G8_SINT:		return PixelFormat::RG8Sint;
+                    // 32-bit formats
+                case DXGI_FORMAT_R32_UINT:				return PixelFormat::R32Uint;
+                case DXGI_FORMAT_R32_SINT:				return PixelFormat::R32Sint;
+                case DXGI_FORMAT_R32_FLOAT:				return PixelFormat::R32Float;
+                case DXGI_FORMAT_R16G16_UNORM:			return PixelFormat::RG16Unorm;
+                case DXGI_FORMAT_R16G16_SNORM:			return PixelFormat::RG16Snorm;
+                case DXGI_FORMAT_R16G16_UINT:			return PixelFormat::RG16Uint;
+                case DXGI_FORMAT_R16G16_SINT:			return PixelFormat::RG16Sint;
+                case DXGI_FORMAT_R16G16_FLOAT:			return PixelFormat::RG16Float;
+                case DXGI_FORMAT_R8G8B8A8_UNORM:		return PixelFormat::RGBA8UNorm;
+                case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:	return PixelFormat::RGBA8UNormSrgb;
+                case DXGI_FORMAT_R8G8B8A8_SNORM:		return PixelFormat::RGBA8SNorm;
+                case DXGI_FORMAT_R8G8B8A8_UINT:			return PixelFormat::RGBA8Uint;
+                case DXGI_FORMAT_R8G8B8A8_SINT:			return PixelFormat::RGBA8Sint;
+                case DXGI_FORMAT_B8G8R8A8_UNORM:		return PixelFormat::BGRA8UNorm;
+                case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:	return PixelFormat::BGRA8UNormSrgb;
+                    // Packed 32-Bit formats
+                case DXGI_FORMAT_R10G10B10A2_UNORM:		return PixelFormat::RGB10A2Unorm;
+                case DXGI_FORMAT_R11G11B10_FLOAT:		return PixelFormat::RG11B10Float;
+                case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:    return PixelFormat::RGB9E5Float;
+                    // 64-Bit formats
+                case DXGI_FORMAT_R32G32_UINT:			return PixelFormat::RG32Uint;
+                case DXGI_FORMAT_R32G32_SINT:			return PixelFormat::RG32Sint;
+                case DXGI_FORMAT_R32G32_FLOAT:			return PixelFormat::RG32Float;
+                case DXGI_FORMAT_R16G16B16A16_UNORM:	return PixelFormat::RGBA16Unorm;
+                case DXGI_FORMAT_R16G16B16A16_SNORM:	return PixelFormat::RGBA16Snorm;
+                case DXGI_FORMAT_R16G16B16A16_UINT:		return PixelFormat::RGBA16Uint;
+                case DXGI_FORMAT_R16G16B16A16_SINT:		return PixelFormat::RGBA16Sint;
+                case DXGI_FORMAT_R16G16B16A16_FLOAT:	return PixelFormat::RGBA16Float;
+                    // 128-Bit formats
+                case DXGI_FORMAT_R32G32B32A32_UINT:		return PixelFormat::RGBA32Uint;
+                case DXGI_FORMAT_R32G32B32A32_SINT:		return PixelFormat::RGBA32Sint;
+                case DXGI_FORMAT_R32G32B32A32_FLOAT:	return PixelFormat::RGBA32Float;
+                    // Depth-stencil formats
+                case DXGI_FORMAT_D16_UNORM:				return PixelFormat::Depth16Unorm;
+                case DXGI_FORMAT_D32_FLOAT:				return PixelFormat::Depth32Float;
+                case DXGI_FORMAT_D24_UNORM_S8_UINT:		return PixelFormat::Depth24UnormStencil8;
+                case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:	return PixelFormat::Depth32FloatStencil8;
+                    // Compressed BC formats
+                case DXGI_FORMAT_BC1_UNORM:			return PixelFormat::BC1RGBAUnorm;
+                case DXGI_FORMAT_BC1_UNORM_SRGB:	return PixelFormat::BC1RGBAUnormSrgb;
+                case DXGI_FORMAT_BC2_UNORM:			return PixelFormat::BC2RGBAUnorm;
+                case DXGI_FORMAT_BC2_UNORM_SRGB:	return PixelFormat::BC2RGBAUnormSrgb;
+                case DXGI_FORMAT_BC3_UNORM:			return PixelFormat::BC3RGBAUnorm;
+                case DXGI_FORMAT_BC3_UNORM_SRGB:	return PixelFormat::BC3RGBAUnormSrgb;
+                case DXGI_FORMAT_BC4_SNORM:			return PixelFormat::BC4RSnorm;
+                case DXGI_FORMAT_BC4_UNORM:			return PixelFormat::BC4RUnorm;
+                case DXGI_FORMAT_BC5_SNORM:			return PixelFormat::BC5RGSnorm;
+                case DXGI_FORMAT_BC5_UNORM:			return PixelFormat::BC5RGUnorm;
+                case DXGI_FORMAT_BC6H_SF16:			return PixelFormat::BC6HRGBFloat;
+                case DXGI_FORMAT_BC6H_UF16:			return PixelFormat::BC6HRGBUfloat;
+                case DXGI_FORMAT_BC7_UNORM:			return PixelFormat::BC7RGBAUnorm;
+                case DXGI_FORMAT_BC7_UNORM_SRGB:	return PixelFormat::BC7RGBAUnormSrgb;
+
+                default:
+                    ALIMER_UNREACHABLE();
+                    return PixelFormat::Undefined;
+            }
+        }
 
         [[nodiscard]] constexpr DXGI_FORMAT ToDXGISwapChainFormat(PixelFormat format)
         {
@@ -53,6 +214,42 @@ namespace Alimer
 
             return DXGI_FORMAT_B8G8R8A8_UNORM;
         }
+
+        [[nodiscard]] constexpr DXGI_FORMAT GetTypelessFormatFromDepthFormat(PixelFormat format)
+        {
+            switch (format)
+            {
+                case PixelFormat::Depth16Unorm:
+                    return DXGI_FORMAT_R16_TYPELESS;
+                case PixelFormat::Depth32Float:
+                    return DXGI_FORMAT_R32_TYPELESS;
+                case PixelFormat::Depth24UnormStencil8:
+                    return DXGI_FORMAT_R24G8_TYPELESS;
+                case PixelFormat::Depth32FloatStencil8:
+                    return DXGI_FORMAT_R32G8X24_TYPELESS;
+
+                default:
+                    ALIMER_ASSERT(IsDepthFormat(format) == false);
+                    return ToDXGIFormat(format);
+            }
+        }
+
+        D3D12_RESOURCE_DIMENSION ToD3D12(RHITextureDimension dimension)
+        {
+            switch (dimension)
+            {
+                case RHITextureDimension::Dimension1D:
+                    return D3D12_RESOURCE_DIMENSION_TEXTURE1D;
+                case RHITextureDimension::Dimension2D:
+                    return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+                case RHITextureDimension::Dimension3D:
+                    return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+
+                default:
+                    ALIMER_UNREACHABLE();
+                    return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+            }
+        }
     }
 
     /* RHITextureD3D12 */
@@ -63,6 +260,99 @@ namespace Alimer
     {
         if (externalResource == nullptr)
         {
+            D3D12MA::ALLOCATION_DESC allocationDesc{};
+            allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+
+            const bool isDepthStencil = IsDepthStencilFormat(descriptor.format);
+
+            D3D12_RESOURCE_DESC resourceDesc = {};
+            resourceDesc.Dimension = ToD3D12(descriptor.dimension);
+            resourceDesc.Alignment = 0;
+            resourceDesc.Width = descriptor.size.width;
+            resourceDesc.Height = descriptor.size.height;
+            if (resourceDesc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D)
+            {
+                resourceDesc.DepthOrArraySize = static_cast<uint16_t>(descriptor.size.depth);
+            }
+            else
+            {
+                resourceDesc.DepthOrArraySize = descriptor.arraySize;
+            }
+
+            resourceDesc.MipLevels = descriptor.mipLevels;
+            resourceDesc.Format = ToDXGIFormat(descriptor.format);
+            resourceDesc.SampleDesc.Count = descriptor.sampleCount;
+            resourceDesc.SampleDesc.Quality = 0;
+            resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+            resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+            D3D12_CLEAR_VALUE clearValue = {};
+            D3D12_CLEAR_VALUE* pClearValue = nullptr;
+
+            if (Any(usage, RHITextureUsage::RenderTarget))
+            {
+                // Render targets and Depth/Stencil targets are always committed resources
+                allocationDesc.Flags = D3D12MA::ALLOCATION_FLAG_COMMITTED;
+
+                clearValue.Format = resourceDesc.Format;
+
+                if (isDepthStencil)
+                {
+                    state |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
+                    resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+                    if (!Any(usage, RHITextureUsage::ShaderRead))
+                    {
+                        resourceDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+                    }
+
+                    clearValue.DepthStencil.Depth = 1.0f;
+                }
+                else
+                {
+                    state |= D3D12_RESOURCE_STATE_RENDER_TARGET;
+                    resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+                }
+
+                pClearValue = &clearValue;
+            }
+
+            if (Any(usage, RHITextureUsage::ShaderWrite))
+            {
+                // Remove unsupported states.
+                resourceDesc.Flags &= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+                resourceDesc.Flags &= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+                state &= D3D12_RESOURCE_STATE_DEPTH_READ;
+                state &= D3D12_RESOURCE_STATE_DEPTH_WRITE;
+
+                state |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+                resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+            }
+
+            // If depth and either ua or sr, set to typeless
+            if (IsDepthFormat(format)
+                && Any(usage, RHITextureUsage::ShaderReadWrite))
+            {
+                resourceDesc.Format = GetTypelessFormatFromDepthFormat(format);
+                pClearValue = nullptr;
+            }
+
+            HRESULT result = device->GetAllocator()->CreateResource(&allocationDesc,
+                &resourceDesc,
+                state,
+                pClearValue,
+                &allocation,
+                IID_PPV_ARGS(&handle)
+            );
+
+            if (FAILED(result))
+            {
+                LOGE("Direct3D12: Failed to create texture: {}", std::to_string(result));
+                return;
+            }
+        }
+        else
+        {
+            handle->AddRef();
         }
 
         if (!descriptor.name.empty())
@@ -78,6 +368,7 @@ namespace Alimer
 
     void RHITextureD3D12::Destroy()
     {
+        device->DeferDestroy(handle, allocation);
     }
 
     void RHITextureD3D12::ApiSetName(const StringView& name)
@@ -86,13 +377,13 @@ namespace Alimer
         ThrowIfFailed(handle->SetName(wName.c_str()));
     }
 
-    RHITextureView* RHITextureD3D12::CreateView(const RHITextureViewDescriptor& descriptor)
+    RHITextureView* RHITextureD3D12::CreateView(const RHITextureViewDescriptor& descriptor) const
     {
         return new RHITextureViewD3D12(device, this, descriptor);
     }
 
     /* RHITextureViewD3D12 */
-    RHITextureViewD3D12::RHITextureViewD3D12(RHIDeviceD3D12* device_, _In_ RHITextureD3D12* resource, const RHITextureViewDescriptor& descriptor)
+    RHITextureViewD3D12::RHITextureViewD3D12(RHIDeviceD3D12* device_, const RHITextureD3D12* resource, const RHITextureViewDescriptor& descriptor)
         : RHITextureView(resource, descriptor)
         , device(device_)
     {
@@ -108,7 +399,13 @@ namespace Alimer
             else
             {
                 rtvHandle = device->AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-                device->GetD3DDevice()->CreateRenderTargetView(resource->GetHandle(), nullptr, rtvHandle);
+
+                D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+                rtvDesc.Format = ToDXGIFormat(format);
+                rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+                rtvDesc.Texture2D.MipSlice = baseMipLevel;
+                rtvDesc.Texture2D.PlaneSlice = 0;
+                device->GetD3DDevice()->CreateRenderTargetView(resource->GetHandle(), &rtvDesc, rtvHandle);
             }
         }
     }
@@ -128,7 +425,8 @@ namespace Alimer
 
     /* RHISwapChainD3D12 */
     RHISwapChainD3D12::RHISwapChainD3D12(RHIDeviceD3D12* device_, void* window, const RHISwapChainDescriptor& descriptor)
-        : device(device_)
+        : RHISwapChain(descriptor)
+        , device(device_)
     {
         if (!descriptor.verticalSync)
         {
@@ -139,14 +437,20 @@ namespace Alimer
             }
         }
 
+        // We use DXGI_FORMAT_B8G8R8A8_UNORM as default on D3D12
+        if (descriptor.format == PixelFormat::Undefined)
+        {
+            colorFormat = PixelFormat::BGRA8UNorm;
+        }
+
         HRESULT hr;
 
         ComPtr<IDXGISwapChain1> tempSwapChain;
 
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-        swapChainDesc.Width = descriptor.width;
-        swapChainDesc.Height = descriptor.height;
-        swapChainDesc.Format = ToDXGISwapChainFormat(descriptor.format);
+        swapChainDesc.Width = size.width;
+        swapChainDesc.Height = size.height;
+        swapChainDesc.Format = ToDXGISwapChainFormat(colorFormat);
         swapChainDesc.Stereo = false;
         swapChainDesc.SampleDesc.Count = 1;
         swapChainDesc.SampleDesc.Quality = 0;
@@ -159,7 +463,7 @@ namespace Alimer
 
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
         DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsSwapChainDesc = {};
-        fsSwapChainDesc.Windowed = !descriptor.fullscreen;
+        fsSwapChainDesc.Windowed = !descriptor.isFullscreen;
 
         hr = device->GetDXGIFactory()->CreateSwapChainForHwnd(
             device->GetGraphicsQueue(),
@@ -213,19 +517,20 @@ namespace Alimer
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc;
         ThrowIfFailed(handle->GetDesc1(&swapChainDesc));
 
-        extent.width = swapChainDesc.Width;
-        extent.height = swapChainDesc.Height;
+        size.width = swapChainDesc.Width;
+        size.height = swapChainDesc.Height;
 
         backBuffers.resize(swapChainDesc.BufferCount);
         backBufferViews.resize(swapChainDesc.BufferCount);
 
         RHITextureDescriptor textureDesc = RHITextureDescriptor::Create2D(
             PixelFormat::BGRA8UNorm,
-            extent.width, extent.height,
-            1,
+            size.width, size.height,
+            1, 1,
             RHITextureUsage::RenderTarget);
 
         RHITextureViewDescriptor textureViewDesc = {};
+        textureViewDesc.format = colorFormat;
 
         for (uint32_t i = 0; i < swapChainDesc.BufferCount; ++i)
         {
@@ -233,8 +538,7 @@ namespace Alimer
             ThrowIfFailed(handle->GetBuffer(i, IID_PPV_ARGS(&backbuffer)));
 
             backBuffers[i] = std::make_shared<RHITextureD3D12>(device, textureDesc, backbuffer.Get());
-
-            backBufferViews[i] = new RHITextureViewD3D12(device, backBuffers[i].get(), textureViewDesc);
+            backBufferViews[i] = backBuffers[i]->GetView(textureViewDesc);
         }
     }
 
@@ -374,7 +678,7 @@ namespace Alimer
         swapChains.push_back(swapChain);
 
         RHITextureViewD3D12* view = static_cast<RHITextureViewD3D12*>(swapChain->GetCurrentTextureView());
-        swapChainTexture = static_cast<RHITextureD3D12*>(view->GetResource());
+        swapChainTexture = static_cast<const RHITextureD3D12*>(view->GetResource());
 
         D3D12_RESOURCE_BARRIER barrier = {};
         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -1137,6 +1441,9 @@ namespace Alimer
 
     void RHIDeviceD3D12::DeferDestroy(IUnknown* resource, D3D12MA::Allocation* allocation)
     {
+        if (!resource && !allocation)
+            return;
+
         std::lock_guard<std::mutex> guard(destroyMutex);
 
         if (shuttingDown)

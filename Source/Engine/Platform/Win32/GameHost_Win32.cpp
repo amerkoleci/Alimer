@@ -66,6 +66,8 @@ namespace Alimer
 
     GameHostWin32::~GameHostWin32()
     {
+        mainWindow.reset();
+
         CoUninitialize();
     }
 

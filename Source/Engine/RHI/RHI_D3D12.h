@@ -36,17 +36,18 @@ namespace Alimer
 
     private:
         void ApiSetName(const StringView& name) override;
-        RHITextureView* CreateView(const RHITextureViewDescriptor& descriptor) override;
+        RHITextureView* CreateView(const RHITextureViewDescriptor& descriptor) const override;
 
         RHIDeviceD3D12* device = nullptr;
         ID3D12Resource* handle = nullptr;
+        D3D12MA::Allocation* allocation = nullptr;
         D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
     };
 
     class RHITextureViewD3D12 final : public RHITextureView
     {
     public:
-        RHITextureViewD3D12(RHIDeviceD3D12* device, _In_ RHITextureD3D12* resource, const RHITextureViewDescriptor& descriptor);
+        RHITextureViewD3D12(RHIDeviceD3D12* device, const RHITextureD3D12* resource, const RHITextureViewDescriptor& descriptor);
         ~RHITextureViewD3D12() override;
 
         const D3D12_CPU_DESCRIPTOR_HANDLE& GetRTV() const { return rtvHandle; }
@@ -77,7 +78,7 @@ namespace Alimer
         RHIDeviceD3D12* device;
         IDXGISwapChain3* handle = nullptr;
         std::vector<SharedPtr<RHITextureD3D12>> backBuffers;
-        std::vector<RHITextureViewD3D12*> backBufferViews;
+        std::vector<RHITextureView*> backBufferViews;
         uint32_t syncInterval = 1;
         uint32_t presentFlags = 0;
     };
@@ -106,7 +107,7 @@ namespace Alimer
 
         std::vector<D3D12_RESOURCE_BARRIER> resourceBarriers;
         std::vector<RHISwapChain*> swapChains;
-        RHITextureD3D12* swapChainTexture = nullptr;
+        const RHITextureD3D12* swapChainTexture = nullptr;
     };
 
     class RHIDeviceD3D12 final : public RHIDevice

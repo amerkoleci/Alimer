@@ -15,7 +15,11 @@ public:
 
     void Initialize() override
     {
-        
+        auto usage = /*RHITextureUsage::ShaderReadWrite | */ RHITextureUsage::RenderTarget;
+        auto descriptor = RHITextureDescriptor::Create2D(PixelFormat::Depth32Float, 256, 256, 1, 1, usage);
+        descriptor.name = "CICCIO";
+        auto texture = RHICreateTexture(descriptor);
+        auto view = texture->GetView({});
     }
 
     void OnDraw([[maybe_unused]] RHICommandBuffer* commandBuffer) override
