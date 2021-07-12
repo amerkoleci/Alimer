@@ -7,6 +7,7 @@
 #include "RHI_D3D12.h"
 #include "Core/Assert.h"
 #include "Core/Log.h"
+#include "Math/MathHelper.h"
 
 using Microsoft::WRL::ComPtr;
 namespace Alimer
@@ -384,14 +385,14 @@ namespace Alimer
         ThrowIfFailed(handle->SetName(wName.c_str()));
     }
 
-    RHITextureView* RHITextureD3D12::CreateView(const RHITextureViewDescriptor& descriptor) const
+    RHITextureView* RHITextureD3D12::CreateView(const RHITextureViewDescription& description) const
     {
-        return new RHITextureViewD3D12(device, this, descriptor);
+        return new RHITextureViewD3D12(device, this, description);
     }
 
     /* RHITextureViewD3D12 */
-    RHITextureViewD3D12::RHITextureViewD3D12(RHIDeviceD3D12* device_, const RHITextureD3D12* resource, const RHITextureViewDescriptor& descriptor)
-        : RHITextureView(resource, descriptor)
+    RHITextureViewD3D12::RHITextureViewD3D12(RHIDeviceD3D12* device_, const RHITextureD3D12* resource, const RHITextureViewDescription& desc)
+        : RHITextureView(resource, desc)
         , device(device_)
     {
         const RHITextureUsage usage = resource->GetUsage();
@@ -433,12 +434,12 @@ namespace Alimer
         switch (resource->GetDimension())
         {
             case RHITextureDimension::Texture1D:
-                if (resource->GetArraySize() > 1)
+                if (resource->GetArrayLayers() > 1)
                 {
                     viewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE1DARRAY;
                     viewDesc.Texture1DArray.MipSlice = baseMipLevel;
-                    viewDesc.Texture1DArray.FirstArraySlice = firstArraySlice;
-                    viewDesc.Texture1DArray.ArraySize = arraySize;
+                    viewDesc.Texture1DArray.FirstArraySlice = baseArrayLayer;
+                    viewDesc.Texture1DArray.ArraySize = arrayLayers;
 
                 }
                 else
@@ -451,11 +452,11 @@ namespace Alimer
             case RHITextureDimension::TextureCube:
                 if (resource->GetSampleCount() > 1)
                 {
-                    if (resource->GetArraySize() > 1)
+                    if (resource->GetArrayLayers() > 1)
                     {
                         viewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
-                        viewDesc.Texture2DMSArray.FirstArraySlice = firstArraySlice;
-                        viewDesc.Texture2DMSArray.ArraySize = arraySize;
+                        viewDesc.Texture2DMSArray.FirstArraySlice = baseArrayLayer;
+                        viewDesc.Texture2DMSArray.ArraySize = arrayLayers;
                     }
                     else
                     {
@@ -464,12 +465,12 @@ namespace Alimer
                 }
                 else
                 {
-                    if (resource->GetArraySize() * arrayMultiplier > 1)
+                    if (resource->GetArrayLayers() * arrayMultiplier > 1)
                     {
                         viewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
                         viewDesc.Texture2DArray.MipSlice = baseMipLevel;
-                        viewDesc.Texture2DArray.FirstArraySlice = firstArraySlice * arrayMultiplier;
-                        viewDesc.Texture2DArray.ArraySize = arraySize * arrayMultiplier;
+                        viewDesc.Texture2DArray.FirstArraySlice = baseArrayLayer;
+                        viewDesc.Texture2DArray.ArraySize = arrayLayers;
                         viewDesc.Texture2DArray.PlaneSlice = 0;
                     }
                     else
@@ -495,6 +496,86 @@ namespace Alimer
         D3D12_CPU_DESCRIPTOR_HANDLE handle = device->AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
         device->GetD3DDevice()->CreateRenderTargetView(resource->GetHandle(), &viewDesc, handle);
         return handle;
+    }
+
+    /* RHIBufferD3D12 */
+    RHIBufferD3D12::RHIBufferD3D12(RHIDeviceD3D12* device, const RHIBufferDescription& desc, const void* initialData)
+        : RHIBuffer(desc)
+        , device{ device }
+    {
+        UINT64 alignedSize = desc.size;
+        if (Any(desc.usage, RHIBufferUsage::Uniform))
+        {
+            alignedSize = AlignTo(alignedSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+        }
+
+        D3D12_RESOURCE_DESC resourceDesc;
+        resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        resourceDesc.Alignment = 0;
+        resourceDesc.Width = alignedSize;
+        resourceDesc.Height = 1;
+        resourceDesc.DepthOrArraySize = 1;
+        resourceDesc.MipLevels = 1;
+        resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+        resourceDesc.SampleDesc.Count = 1;
+        resourceDesc.SampleDesc.Quality = 0;
+        resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+        if (!Any(desc.usage, RHIBufferUsage::ShaderRead))
+        {
+            resourceDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+        }
+
+        if (Any(desc.usage, RHIBufferUsage::ShaderWrite))
+        {
+            resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        }
+
+        D3D12MA::ALLOCATION_DESC allocationDesc = {};
+        if (Any(desc.usage, RHIBufferUsage::MapRead))
+        {
+            allocationDesc.HeapType = D3D12_HEAP_TYPE_READBACK;
+            state = D3D12_RESOURCE_STATE_COPY_DEST;
+        }
+        else if (Any(desc.usage, RHIBufferUsage::MapWrite))
+        {
+            allocationDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+            state = D3D12_RESOURCE_STATE_GENERIC_READ;
+        }
+        else
+        {
+            allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+            state = D3D12_RESOURCE_STATE_COMMON;
+        }
+
+        HRESULT result = device->GetAllocator()->CreateResource(
+            &allocationDesc, &resourceDesc,
+            state,
+            nullptr,
+            &allocation, IID_PPV_ARGS(&handle)
+        );
+
+        if (FAILED(result))
+        {
+            LOGE("Direct3D12: Failed to create buffer: {}", std::to_string(result));
+            return;
+        }
+    }
+
+    RHIBufferD3D12::~RHIBufferD3D12()
+    {
+        Destroy();
+    }
+
+    void RHIBufferD3D12::Destroy()
+    {
+        device->DeferDestroy(handle, allocation);
+    }
+
+    void RHIBufferD3D12::ApiSetName(const StringView& name)
+    {
+        auto wName = ToUtf16(name);
+        ThrowIfFailed(handle->SetName(wName.c_str()));
     }
 
     /* RHISwapChainD3D12 */
@@ -603,7 +684,7 @@ namespace Alimer
             1, 1,
             RHITextureUsage::RenderTarget);
 
-        RHITextureViewDescriptor textureViewDesc = {};
+        RHITextureViewDescription textureViewDesc = {};
         textureViewDesc.format = colorFormat;
 
         for (uint32_t i = 0; i < swapChainDesc.BufferCount; ++i)
@@ -873,7 +954,7 @@ namespace Alimer
         }
 
         return false;
-        }
+    }
 
     RHIDeviceD3D12::RHIDeviceD3D12(RHIValidationMode validationMode)
     {
@@ -1434,12 +1515,23 @@ namespace Alimer
         return GetCommandBuffer(index);
     }
 
-    RHITextureRef RHIDeviceD3D12::CreateTexture(const RHITextureDescriptor& descriptor)
+    RHITextureRef RHIDeviceD3D12::CreateTexture(const RHITextureDescriptor& desc)
     {
-        auto result = new RHITextureD3D12(this, descriptor);
+        auto result = new RHITextureD3D12(this, desc);
 
         if (result->GetHandle())
             return RHITextureRef(result);
+
+        delete result;
+        return nullptr;
+    }
+
+    RHIBufferRef RHIDeviceD3D12::CreateBufferCore(const RHIBufferDescription& desc, const void* initialData)
+    {
+        auto result = new RHIBufferD3D12(this, desc, initialData);
+
+        if (result->GetHandle())
+            return RHIBufferRef(result);
 
         delete result;
         return nullptr;
@@ -1533,6 +1625,6 @@ namespace Alimer
             deferredAllocations.push_back(std::make_pair(allocation, frameCount));
         }
     }
-    }
+}
 
 #endif /* defined(ALIMER_RHI_D3D12) */

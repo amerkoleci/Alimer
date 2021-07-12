@@ -30,31 +30,6 @@ namespace Alimer
     }
 
     /* RHIResourceView */
-    RHITextureView* RHIResource::GetView(const RHITextureViewDescriptor& descriptor) const
-    {
-        const size_t hash = Hash(descriptor);
-        std::lock_guard<std::mutex> guard(resourceViewCacheMutex);
-        auto it = resourceViewCache.find(hash);
-        if (it == resourceViewCache.end())
-        {
-            // View not found, create new.
-            RHITextureView* view = CreateView(descriptor);
-            if (view != nullptr)
-            {
-                resourceViewCache[hash].reset(view);
-                return view;
-            }
-            else
-            {
-                LOGE("RHI: Failed to create TextureView");
-                return nullptr;
-            }
-        }
-
-        return static_cast<RHITextureView*>(it->second.get());
-    }
-
-    /* RHIResourceView */
     RHIResourceView::RHIResourceView(const RHIResource* resource_)
         : resource(resource_)
     {
@@ -80,45 +55,92 @@ namespace Alimer
 
     }
 
+    RHITextureView* RHITexture::GetView(const RHITextureViewDescription& description) const
+    {
+        const size_t hash = Hash(description);
+        std::lock_guard<std::mutex> guard(resourceViewCacheMutex);
+        auto it = resourceViewCache.find(hash);
+        if (it == resourceViewCache.end())
+        {
+            // View not found, create new.
+            RHITextureView* view = CreateView(description);
+            if (view != nullptr)
+            {
+                resourceViewCache[hash].reset(view);
+                return view;
+            }
+            else
+            {
+                LOGE("RHI: Failed to create TextureView");
+                return nullptr;
+            }
+        }
+
+        return static_cast<RHITextureView*>(it->second.get());
+    }
+
     /* RHITextureView */
-    RHITextureView::RHITextureView(const RHITexture* resource, const RHITextureViewDescriptor& descriptor)
+    RHITextureView::RHITextureView(const RHITexture* resource, const RHITextureViewDescription& description)
         : RHIResourceView(resource)
     {
-        if (descriptor.format == PixelFormat::Undefined)
+        if (description.format == PixelFormat::Undefined)
         {
             format = resource->GetFormat();
         }
         else
         {
-            format = descriptor.format;
+            format = description.format;
         }
 
-        baseMipLevel = descriptor.baseMipLevel;
-        mipLevelCount = descriptor.mipLevelCount;
-        firstArraySlice = descriptor.firstArraySlice;
-        arraySize = descriptor.arraySize;
+        baseMipLevel = description.baseMipLevel;
+        mipLevels = description.mipLevels;
+        baseArrayLayer = description.baseArrayLayer;
+        arrayLayers = description.arrayLayers;
 
-        if (mipLevelCount == 0) {
-            mipLevelCount = resource->GetMipLevels() - baseMipLevel;
+        if (mipLevels == 0) {
+            mipLevels = resource->GetMipLevels() - baseMipLevel;
         }
 
-        if (arraySize == 0) {
-            arraySize = resource->GetArraySize() - firstArraySlice;
+        if (arrayLayers == 0) {
+            arrayLayers = resource->GetArrayLayers() - baseArrayLayer;
         }
     }
 
+    /* RHIBuffer */
+    RHIBuffer::RHIBuffer(const RHIBufferDescription& desc)
+        : size(desc.size)
+        , usage(desc.usage)
+    {
+
+    }
+
     /* RHISwapChain */
-    RHISwapChain::RHISwapChain(const RHISwapChainDescriptor& descriptor)
-        : size(descriptor.size)
-        , colorFormat(descriptor.format)
-        , verticalSync(descriptor.verticalSync)
-        , isFullscreen(descriptor.isFullscreen)
+    RHISwapChain::RHISwapChain(const RHISwapChainDescriptor& desc)
+        : size(desc.size)
+        , colorFormat(desc.format)
+        , verticalSync(desc.verticalSync)
+        , isFullscreen(desc.isFullscreen)
     {
 
     }
 
     /* RHIDevice */
     RHIDevice* GRHIDevice = nullptr;
+
+    RHIBufferRef RHIDevice::CreateBuffer(const RHIBufferDescription& desc, const void* initialData)
+    {
+        ALIMER_ASSERT(desc.size > 0);
+
+        static constexpr uint64_t kMaxBufferSize = 128u * 1024u * 1024u;
+
+        if (desc.size > kMaxBufferSize)
+        {
+            LOGE("Buffer size too large (size {})", desc.size);
+            return nullptr;
+        }
+
+        return CreateBufferCore(desc, initialData);
+    }
 
     bool RHInitialize(RHIValidationMode validationMode)
     {
@@ -146,16 +168,21 @@ namespace Alimer
         }
     }
 
-    RHITextureRef RHICreateTexture(const RHITextureDescriptor& descriptor)
+    RHITextureRef RHICreateTexture(const RHITextureDescriptor& desc)
     {
-        return GRHIDevice->CreateTexture(descriptor);
+        return GRHIDevice->CreateTexture(desc);
     }
 
-    RHISwapChainRef RHICreateSwapChain(void* window, const RHISwapChainDescriptor& descriptor)
+    RHIBufferRef RHICreateBuffer(const RHIBufferDescription& desc, const void* initialData)
+    {
+        return GRHIDevice->CreateBuffer(desc, initialData);
+    }
+
+    RHISwapChainRef RHICreateSwapChain(void* window, const RHISwapChainDescriptor& desc)
     {
         ALIMER_ASSERT(window);
 
-        return GRHIDevice->CreateSwapChain(window, descriptor);
+        return GRHIDevice->CreateSwapChain(window, desc);
     }
 
     bool RHIBeginFrame()

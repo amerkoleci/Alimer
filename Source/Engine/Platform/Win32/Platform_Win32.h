@@ -61,6 +61,6 @@ namespace Alimer
         }
     }
 
-    struct handle_closer { void operator()(HANDLE h) noexcept { if (h) CloseHandle(h); } };
-    using ScopedHandle = std::unique_ptr<void, handle_closer>;
+    struct HandleCloser { void operator()(HANDLE h) noexcept { if (h) CloseHandle(h); } };
+    using ScopedHandle = std::unique_ptr<void, HandleCloser>;
 }

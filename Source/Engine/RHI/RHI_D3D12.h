@@ -36,7 +36,7 @@ namespace Alimer
 
     private:
         void ApiSetName(const StringView& name) override;
-        RHITextureView* CreateView(const RHITextureViewDescriptor& descriptor) const override;
+        RHITextureView* CreateView(const RHITextureViewDescription& description) const override;
 
         RHIDeviceD3D12* device = nullptr;
         ID3D12Resource* handle = nullptr;
@@ -47,7 +47,7 @@ namespace Alimer
     class RHITextureViewD3D12 final : public RHITextureView
     {
     public:
-        RHITextureViewD3D12(RHIDeviceD3D12* device, const RHITextureD3D12* resource, const RHITextureViewDescriptor& descriptor);
+        RHITextureViewD3D12(RHIDeviceD3D12* device, const RHITextureD3D12* resource, const RHITextureViewDescription& description);
         ~RHITextureViewD3D12() override;
 
         const D3D12_CPU_DESCRIPTOR_HANDLE& GetRTV() const { return rtvHandle; }
@@ -59,6 +59,25 @@ namespace Alimer
 
         D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle{};
         D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle{};
+    };
+
+    class RHIBufferD3D12 final : public RHIBuffer
+    {
+    public:
+        RHIBufferD3D12(RHIDeviceD3D12* device, const RHIBufferDescription& desc, const void* initialData = nullptr);
+        ~RHIBufferD3D12() override;
+        void Destroy() override;
+
+        ID3D12Resource* GetHandle() const { return handle; }
+        D3D12_RESOURCE_STATES GetState() const { return state; }
+
+    private:
+        void ApiSetName(const StringView& name) override;
+
+        RHIDeviceD3D12* device = nullptr;
+        ID3D12Resource* handle = nullptr;
+        D3D12MA::Allocation* allocation = nullptr;
+        D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
     };
 
     class RHISwapChainD3D12 final : public RHISwapChain
@@ -129,6 +148,7 @@ namespace Alimer
 
         RHICommandBuffer* BeginCommandBuffer(RHIQueueType type = RHIQueueType::Graphics) override;
         RHITextureRef CreateTexture(const RHITextureDescriptor& descriptor) override;
+        RHIBufferRef CreateBufferCore(const RHIBufferDescription& desc, const void* initialData) override;
         RHISwapChainRef CreateSwapChain(void* window, const RHISwapChainDescriptor& descriptor) override;
 
         D3D12_CPU_DESCRIPTOR_HANDLE AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type);

@@ -20,6 +20,18 @@ public:
         descriptor.name = "CUBEMAP";
         auto texture = RHICreateTexture(descriptor);
         auto view = texture->GetView({});
+
+        float vertices[] = {
+            /* positions        colors */
+             0.0f, 0.5f, 0.5f,      1.0f, 0.0f, 0.0f, 1.0f,
+            0.5f, -0.5f, 0.5f,     0.0f, 1.0f, 0.0f, 1.0f,
+            -0.5f, -0.5f, 0.5f,     0.0f, 0.0f, 1.0f, 1.0f
+        };
+
+        RHIBufferDescription bufferDesc = {};
+        bufferDesc.size = sizeof(vertices);
+        bufferDesc.usage = RHIBufferUsage::Vertex;
+        auto vertexBuffer = RHICreateBuffer(bufferDesc, vertices);
     }
 
     void OnDraw([[maybe_unused]] RHICommandBuffer* commandBuffer) override
