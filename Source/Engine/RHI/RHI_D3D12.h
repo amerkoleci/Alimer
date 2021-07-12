@@ -20,6 +20,9 @@
 
 #include <deque>
 
+#define D3D12_GPU_VIRTUAL_ADDRESS_NULL      ((D3D12_GPU_VIRTUAL_ADDRESS)0)
+#define D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN   ((D3D12_GPU_VIRTUAL_ADDRESS)-1)
+
 namespace Alimer
 {
     class RHIDeviceD3D12;
@@ -27,7 +30,7 @@ namespace Alimer
     class RHITextureD3D12 final : public RHITexture
     {
     public:
-        RHITextureD3D12(RHIDeviceD3D12* device, const RHITextureDescriptor& descriptor, ID3D12Resource* externalResource = nullptr);
+        RHITextureD3D12(RHIDeviceD3D12* device, const RHITextureDescription& desc, ID3D12Resource* externalResource = nullptr);
         ~RHITextureD3D12() override;
         void Destroy() override;
 
@@ -70,6 +73,7 @@ namespace Alimer
 
         ID3D12Resource* GetHandle() const { return handle; }
         D3D12_RESOURCE_STATES GetState() const { return state; }
+        D3D12_GPU_VIRTUAL_ADDRESS GetGpuVirtualAddress() const { return gpuVirtualAddress; }
 
     private:
         void ApiSetName(const StringView& name) override;
@@ -78,12 +82,14 @@ namespace Alimer
         ID3D12Resource* handle = nullptr;
         D3D12MA::Allocation* allocation = nullptr;
         D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
+
+        D3D12_GPU_VIRTUAL_ADDRESS gpuVirtualAddress = D3D12_GPU_VIRTUAL_ADDRESS_NULL;
     };
 
     class RHISwapChainD3D12 final : public RHISwapChain
     {
     public:
-        RHISwapChainD3D12(RHIDeviceD3D12* device, void* window, const RHISwapChainDescriptor& descriptor);
+        RHISwapChainD3D12(RHIDeviceD3D12* device, void* window, const RHISwapChainDescription& desc);
         ~RHISwapChainD3D12() override;
         void Destroy() override;
 
@@ -115,8 +121,21 @@ namespace Alimer
         void FlushQueries();
         void FlushBarriers();
 
+        void PushDebugGroup(const StringView& name) override;
+        void PopDebugGroup() override;
+        void InsertDebugMarker(const StringView& name) override;
+
         void BeginRenderPass(RHISwapChain* swapChain, const RHIColor& clearColor) override;
         void EndRenderPass() override;
+
+        void SetViewport(const RHIViewport& viewport) override;
+        void SetViewports(const RHIViewport* viewports, uint32_t count) override;
+
+        void SetStencilReference(uint32_t value) override;
+        void SetBlendColor(const RHIColor& color) override;
+        void SetBlendColor(const float blendColor[4]) override;
+
+        void SetIndexBufferCore(const RHIBuffer* buffer, RHIIndexType indexType, uint32_t offset) override;
 
         auto GetHandle() const noexcept { return commandList; }
 
@@ -129,6 +148,17 @@ namespace Alimer
         std::vector<D3D12_RESOURCE_BARRIER> resourceBarriers;
         std::vector<RHISwapChain*> swapChains;
         const RHITextureD3D12* swapChainTexture = nullptr;
+    };
+
+    struct RHIUploadContextD3D12
+    {
+        ID3D12CommandAllocator* commandAllocator = nullptr;
+        ID3D12GraphicsCommandList* commandList = nullptr;
+        ID3D12Fence* fence = nullptr;
+
+        ID3D12Resource* uploadBuffer = nullptr;
+        D3D12MA::Allocation* uploadBufferAllocation = nullptr;
+        void* data = nullptr;
     };
 
     class RHIDeviceD3D12 final : public RHIDevice
@@ -147,13 +177,17 @@ namespace Alimer
         void SubmitCommandBuffers();
 
         RHICommandBuffer* BeginCommandBuffer(RHIQueueType type = RHIQueueType::Graphics) override;
-        RHITextureRef CreateTexture(const RHITextureDescriptor& descriptor) override;
+        RHITextureRef CreateTexture(const RHITextureDescription& desc) override;
         RHIBufferRef CreateBufferCore(const RHIBufferDescription& desc, const void* initialData) override;
-        RHISwapChainRef CreateSwapChain(void* window, const RHISwapChainDescriptor& descriptor) override;
+        RHISwapChainRef CreateSwapChain(void* window, const RHISwapChainDescription& desc) override;
 
         D3D12_CPU_DESCRIPTOR_HANDLE AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type);
         void FreeDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_CPU_DESCRIPTOR_HANDLE handle);
         uint32_t GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE type) const;
+
+        RHIUploadContextD3D12 Allocate(uint32_t size);
+        void Submit(RHIUploadContextD3D12 context);
+
         void DeferDestroy(IUnknown* resource, D3D12MA::Allocation* allocation = nullptr);
 
         auto GetDXGIFactory() const noexcept { return dxgiFactory.Get(); }
@@ -211,23 +245,13 @@ namespace Alimer
             RHIDeviceD3D12* device = nullptr;
             ID3D12CommandQueue* queue = nullptr;
             std::mutex locker;
-
-            struct CopyCMD
-            {
-                Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocator;
-                Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList;
-                Microsoft::WRL::ComPtr<ID3D12Fence> fence;
-                //GPUBuffer uploadbuffer;
-                //void* data = nullptr;
-                //ID3D12Resource* upload_resource = nullptr;
-            };
-            std::vector<CopyCMD> freelist;
+            std::vector<RHIUploadContextD3D12> freeList;
 
             void Initialize(RHIDeviceD3D12* device);
             void Shutdown();
 
-            CopyCMD Allocate(uint64_t size);
-            void Submit(CopyCMD cmd);
+            RHIUploadContextD3D12 Allocate(uint32_t size);
+            void Submit(RHIUploadContextD3D12 context);
         };
         mutable CopyAllocator copyAllocator;
 

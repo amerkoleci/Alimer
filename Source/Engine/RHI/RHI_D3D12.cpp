@@ -8,10 +8,13 @@
 #include "Core/Assert.h"
 #include "Core/Log.h"
 #include "Math/MathHelper.h"
+#include "directx/d3dx12.h"
+#include <pix.h>
 
-using Microsoft::WRL::ComPtr;
 namespace Alimer
 {
+    using Microsoft::WRL::ComPtr;
+
     namespace
     {
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
@@ -37,6 +40,14 @@ namespace Alimer
 
     namespace
     {
+        static_assert(sizeof(RHIViewport) == sizeof(D3D12_VIEWPORT), "Size mismatch");
+        static_assert(offsetof(RHIViewport, x) == offsetof(D3D12_VIEWPORT, TopLeftX), "Layout mismatch");
+        static_assert(offsetof(RHIViewport, y) == offsetof(D3D12_VIEWPORT, TopLeftY), "Layout mismatch");
+        static_assert(offsetof(RHIViewport, width) == offsetof(D3D12_VIEWPORT, Width), "Layout mismatch");
+        static_assert(offsetof(RHIViewport, height) == offsetof(D3D12_VIEWPORT, Height), "Layout mismatch");
+        static_assert(offsetof(RHIViewport, minDepth) == offsetof(D3D12_VIEWPORT, MinDepth), "Layout mismatch");
+        static_assert(offsetof(RHIViewport, maxDepth) == offsetof(D3D12_VIEWPORT, MaxDepth), "Layout mismatch");
+
         [[nodiscard]] constexpr DXGI_FORMAT ToDXGIFormat(PixelFormat format)
         {
             switch (format)
@@ -235,7 +246,7 @@ namespace Alimer
             }
         }
 
-        D3D12_RESOURCE_DIMENSION ToD3D12(RHITextureDimension dimension)
+        [[nodiscard]] constexpr D3D12_RESOURCE_DIMENSION ToD3D12(RHITextureDimension dimension)
         {
             switch (dimension)
             {
@@ -252,10 +263,33 @@ namespace Alimer
                     return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
             }
         }
+
+        [[nodiscard]] constexpr uint32_t D3D12SampleCount(RHITextureSampleCount count)
+        {
+            switch (count)
+            {
+                case RHITextureSampleCount::Count1:
+                    return 1;
+                case RHITextureSampleCount::Count2:
+                    return 2;
+                case RHITextureSampleCount::Count4:
+                    return 4;
+                case RHITextureSampleCount::Count8:
+                    return 8;
+                case RHITextureSampleCount::Count16:
+                    return 16;
+                case RHITextureSampleCount::Count32:
+                    return 32;
+
+                default:
+                    ALIMER_UNREACHABLE();
+                    return 1;
+            }
+        }
     }
 
     /* RHITextureD3D12 */
-    RHITextureD3D12::RHITextureD3D12(RHIDeviceD3D12* device_, const RHITextureDescriptor& descriptor, ID3D12Resource* externalResource)
+    RHITextureD3D12::RHITextureD3D12(RHIDeviceD3D12* device_, const RHITextureDescription& descriptor, ID3D12Resource* externalResource)
         : RHITexture(descriptor)
         , device(device_)
         , handle(externalResource)
@@ -267,7 +301,7 @@ namespace Alimer
 
             const bool isDepthStencil = IsDepthStencilFormat(format);
 
-            D3D12_RESOURCE_DESC resourceDesc = {};
+            D3D12_RESOURCE_DESC resourceDesc;
             resourceDesc.Dimension = ToD3D12(dimension);
             resourceDesc.Alignment = 0;
             resourceDesc.Width = width;
@@ -286,8 +320,12 @@ namespace Alimer
             }
             resourceDesc.MipLevels = static_cast<UINT16>(mipLevels);
             resourceDesc.Format = ToDXGIFormat(format);
-            resourceDesc.SampleDesc.Count = sampleCount;
+            resourceDesc.SampleDesc.Count = D3D12SampleCount(sampleCount);
             resourceDesc.SampleDesc.Quality = 0;
+            if (sampleCount > RHITextureSampleCount::Count1)
+            {
+                resourceDesc.SampleDesc.Quality = 0xFFFFFFFF;
+            }
             resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
             resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
@@ -450,7 +488,7 @@ namespace Alimer
                 break;
             case RHITextureDimension::Texture2D:
             case RHITextureDimension::TextureCube:
-                if (resource->GetSampleCount() > 1)
+                if (resource->GetSampleCount() > RHITextureSampleCount::Count1)
                 {
                     if (resource->GetArrayLayers() > 1)
                     {
@@ -521,12 +559,7 @@ namespace Alimer
         resourceDesc.SampleDesc.Quality = 0;
         resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
         resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-        if (!Any(desc.usage, RHIBufferUsage::ShaderRead))
-        {
-            resourceDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
-        }
-
-        if (Any(desc.usage, RHIBufferUsage::ShaderWrite))
+        if (Any(desc.usage, RHIBufferUsage::Storage))
         {
             resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
         }
@@ -560,6 +593,32 @@ namespace Alimer
             LOGE("Direct3D12: Failed to create buffer: {}", std::to_string(result));
             return;
         }
+
+        if (!desc.name.empty())
+        {
+            SetName(desc.name);
+        }
+
+
+        gpuVirtualAddress = handle->GetGPUVirtualAddress();
+        device->GetD3DDevice()->GetCopyableFootprints(&resourceDesc, 0, 1, 0, nullptr, nullptr, nullptr, &allocatedSize);
+
+        // Issue data copy on request:
+        if (initialData != nullptr)
+        {
+            RHIUploadContextD3D12 context = device->Allocate(desc.size);
+            memcpy(context.data, initialData, desc.size);
+
+            context.commandList->CopyBufferRegion(
+                handle,
+                0,
+                context.uploadBuffer,
+                0,
+                desc.size
+            );
+
+            device->Submit(context);
+        }
     }
 
     RHIBufferD3D12::~RHIBufferD3D12()
@@ -579,11 +638,11 @@ namespace Alimer
     }
 
     /* RHISwapChainD3D12 */
-    RHISwapChainD3D12::RHISwapChainD3D12(RHIDeviceD3D12* device_, void* window, const RHISwapChainDescriptor& descriptor)
-        : RHISwapChain(descriptor)
+    RHISwapChainD3D12::RHISwapChainD3D12(RHIDeviceD3D12* device_, void* window, const RHISwapChainDescription& desc)
+        : RHISwapChain(desc)
         , device(device_)
     {
-        if (!descriptor.verticalSync)
+        if (!desc.verticalSync)
         {
             syncInterval = 0;
             if (device->IsTearingSupported())
@@ -593,7 +652,7 @@ namespace Alimer
         }
 
         // We use DXGI_FORMAT_B8G8R8A8_UNORM as default on D3D12
-        if (descriptor.format == PixelFormat::Undefined)
+        if (desc.format == PixelFormat::Undefined)
         {
             colorFormat = PixelFormat::BGRA8UNorm;
         }
@@ -618,7 +677,7 @@ namespace Alimer
 
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
         DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsSwapChainDesc = {};
-        fsSwapChainDesc.Windowed = !descriptor.isFullscreen;
+        fsSwapChainDesc.Windowed = !isFullscreen;
 
         hr = device->GetDXGIFactory()->CreateSwapChainForHwnd(
             device->GetGraphicsQueue(),
@@ -678,7 +737,7 @@ namespace Alimer
         backBuffers.resize(swapChainDesc.BufferCount);
         backBufferViews.resize(swapChainDesc.BufferCount);
 
-        RHITextureDescriptor textureDesc = RHITextureDescriptor::Create2D(
+        RHITextureDescription textureDesc = RHITextureDescription::Texture2D(
             PixelFormat::BGRA8UNorm,
             size.width, size.height,
             1, 1,
@@ -731,6 +790,11 @@ namespace Alimer
     {
         uint32_t backbufferIndex = handle->GetCurrentBackBufferIndex();
         return backBufferViews[backbufferIndex];
+    }
+
+    [[nodiscard]] inline const RHIBufferD3D12* ToInternal(const RHIBuffer* resource)
+    {
+        return static_cast<const RHIBufferD3D12*>(resource);
     }
 
     [[nodiscard]] inline RHISwapChainD3D12* ToInternal(RHISwapChain* resource)
@@ -828,6 +892,23 @@ namespace Alimer
         }
     }
 
+    void RHICommandBufferD3D12::PushDebugGroup(const StringView& name)
+    {
+        auto wideName = ToUtf16(name);
+        PIXBeginEvent(commandList, PIX_COLOR_DEFAULT, wideName.c_str());
+    }
+
+    void RHICommandBufferD3D12::PopDebugGroup()
+    {
+        PIXEndEvent(commandList);
+    }
+
+    void RHICommandBufferD3D12::InsertDebugMarker(const StringView& name)
+    {
+        auto wideName = ToUtf16(name);
+        PIXSetMarker(commandList, PIX_COLOR_DEFAULT, wideName.c_str());
+    }
+
     void RHICommandBufferD3D12::BeginRenderPass(RHISwapChain* swapChain, const RHIColor& clearColor)
     {
         swapChains.push_back(swapChain);
@@ -873,6 +954,40 @@ namespace Alimer
         }
     }
 
+    void RHICommandBufferD3D12::SetViewport(const RHIViewport& viewport)
+    {
+        commandList->RSSetViewports(1, (D3D12_VIEWPORT*)&viewport);
+    }
+
+    void RHICommandBufferD3D12::SetViewports(const RHIViewport* viewports, uint32_t count)
+    {
+        commandList->RSSetViewports(count, (D3D12_VIEWPORT*)viewports);
+    }
+
+    void RHICommandBufferD3D12::SetStencilReference(uint32_t value)
+    {
+        commandList->OMSetStencilRef(value);
+    }
+
+    void RHICommandBufferD3D12::SetBlendColor(const RHIColor& color)
+    {
+        commandList->OMSetBlendFactor(&color.r);
+    }
+
+    void RHICommandBufferD3D12::SetBlendColor(const float blendColor[4])
+    {
+        commandList->OMSetBlendFactor(blendColor);
+    }
+
+    void RHICommandBufferD3D12::SetIndexBufferCore(const RHIBuffer* buffer, RHIIndexType indexType, uint32_t offset)
+    {
+        D3D12_INDEX_BUFFER_VIEW view = {};
+        view.BufferLocation = ToInternal(buffer)->GetGpuVirtualAddress() + (D3D12_GPU_VIRTUAL_ADDRESS)offset;
+        view.SizeInBytes = (UINT)(buffer->GetSize() - offset);
+        view.Format = (indexType == RHIIndexType::UInt16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT);
+        commandList->IASetIndexBuffer(&view);
+    }
+
     /* RHIDeviceD3D12 */
     void RHIDeviceD3D12::CopyAllocator::Initialize(RHIDeviceD3D12* device_)
     {
@@ -894,9 +1009,106 @@ namespace Alimer
         ThrowIfFailed(queue->Signal(fence.Get(), 1));
         ThrowIfFailed(fence->SetEventOnCompletion(1, nullptr));
 
+        locker.lock();
+        for (size_t i = 0, count = freeList.size(); i < count; ++i)
+        {
+            SafeRelease(freeList[i].commandAllocator);
+            SafeRelease(freeList[i].commandList);
+            SafeRelease(freeList[i].fence);
+            SafeRelease(freeList[i].uploadBufferAllocation);
+            SafeRelease(freeList[i].uploadBuffer);
+        }
+        freeList.clear();
+        locker.unlock();
         SafeRelease(queue);
     }
 
+    RHIUploadContextD3D12 RHIDeviceD3D12::CopyAllocator::Allocate(uint32_t size)
+    {
+        locker.lock();
+
+        // Create a new command list if there are none free.
+        if (freeList.empty())
+        {
+            RHIUploadContextD3D12 context;
+
+            ThrowIfFailed(
+                device->d3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(&context.commandAllocator))
+            );
+            ThrowIfFailed(
+                device->d3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_COPY, context.commandAllocator, nullptr, IID_PPV_ARGS(&context.commandList))
+            );
+
+            ThrowIfFailed(context.commandList->Close());
+            ThrowIfFailed(device->d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&context.fence)));
+
+            freeList.push_back(context);
+        }
+
+        RHIUploadContextD3D12 context = freeList.back();
+        if (context.uploadBuffer == nullptr
+            || context.uploadBuffer->GetDesc().Width < size)
+        {
+            // Try to search for a staging buffer that can fit the request:
+            for (size_t i = 0; i < freeList.size(); ++i)
+            {
+                if (freeList[i].uploadBuffer != nullptr
+                    && freeList[i].uploadBuffer->GetDesc().Width >= size)
+                {
+                    context = freeList[i];
+                    std::swap(freeList[i], freeList.back());
+                    break;
+                }
+            }
+        }
+        freeList.pop_back();
+        locker.unlock();
+
+        // If no buffer was found that fits the data, create one:
+        if (context.uploadBuffer == nullptr
+            || context.uploadBuffer->GetDesc().Width < size)
+        {
+            D3D12MA::ALLOCATION_DESC allocationDesc = {};
+            allocationDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+
+            auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(NextPowerOfTwo(size));
+
+            HRESULT hr = device->GetAllocator()->CreateResource(
+                &allocationDesc, &bufferDesc,
+                D3D12_RESOURCE_STATE_GENERIC_READ,
+                nullptr,
+                &context.uploadBufferAllocation, IID_PPV_ARGS(&context.uploadBuffer)
+            );
+
+            ThrowIfFailed(hr);
+            ThrowIfFailed(context.uploadBuffer->Map(0, nullptr, &context.data));
+        }
+
+        // begin command list in valid state:
+        ThrowIfFailed(context.commandAllocator->Reset());
+        ThrowIfFailed(context.commandList->Reset(context.commandAllocator, nullptr));
+
+        return context;
+    }
+
+    void RHIDeviceD3D12::CopyAllocator::Submit(RHIUploadContextD3D12 context)
+    {
+        ThrowIfFailed(context.commandList->Close());
+
+        ID3D12CommandList* commandlists[] = {
+            context.commandList
+        };
+        queue->ExecuteCommandLists(1, commandlists);
+        ThrowIfFailed(queue->Signal(context.fence, 1));
+        ThrowIfFailed(context.fence->SetEventOnCompletion(1, nullptr));
+        ThrowIfFailed(context.fence->Signal(0));
+
+        locker.lock();
+        freeList.push_back(context);
+        locker.unlock();
+    }
+
+    /* RHIDeviceD3D12 */
     bool RHIDeviceD3D12::IsAvailable()
     {
         static bool available_initialized = false;
@@ -1515,7 +1727,7 @@ namespace Alimer
         return GetCommandBuffer(index);
     }
 
-    RHITextureRef RHIDeviceD3D12::CreateTexture(const RHITextureDescriptor& desc)
+    RHITextureRef RHIDeviceD3D12::CreateTexture(const RHITextureDescription& desc)
     {
         auto result = new RHITextureD3D12(this, desc);
 
@@ -1537,9 +1749,9 @@ namespace Alimer
         return nullptr;
     }
 
-    RHISwapChainRef RHIDeviceD3D12::CreateSwapChain(void* window, const RHISwapChainDescriptor& descriptor)
+    RHISwapChainRef RHIDeviceD3D12::CreateSwapChain(void* window, const RHISwapChainDescription& desc)
     {
-        auto result = new RHISwapChainD3D12(this, window, descriptor);
+        auto result = new RHISwapChainD3D12(this, window, desc);
 
         if (result->GetHandle())
             return RHISwapChainRef(result);
@@ -1603,6 +1815,17 @@ namespace Alimer
             default:
                 ALIMER_UNREACHABLE();
         }
+    }
+
+
+    RHIUploadContextD3D12 RHIDeviceD3D12::Allocate(uint32_t size)
+    {
+        return copyAllocator.Allocate(size);
+    }
+
+    void RHIDeviceD3D12::Submit(RHIUploadContextD3D12 context)
+    {
+        copyAllocator.Submit(context);
     }
 
     void RHIDeviceD3D12::DeferDestroy(IUnknown* resource, D3D12MA::Allocation* allocation)

@@ -141,6 +141,17 @@ namespace Alimer
         }
     }
 
+    namespace
+    {
+        static_assert(sizeof(RHIViewport) == sizeof(VkViewport), "Size mismatch");
+        static_assert(offsetof(RHIViewport, x) == offsetof(VkViewport, x), "Layout mismatch");
+        static_assert(offsetof(RHIViewport, y) == offsetof(VkViewport, y), "Layout mismatch");
+        static_assert(offsetof(RHIViewport, width) == offsetof(VkViewport, width), "Layout mismatch");
+        static_assert(offsetof(RHIViewport, height) == offsetof(VkViewport, height), "Layout mismatch");
+        static_assert(offsetof(RHIViewport, minDepth) == offsetof(VkViewport, minDepth), "Layout mismatch");
+        static_assert(offsetof(RHIViewport, maxDepth) == offsetof(VkViewport, maxDepth), "Layout mismatch");
+    }
+
     /// Helper macro to test the result of Vulkan calls which can return an error.
 #define VK_CHECK(x) \
 	do \
@@ -155,14 +166,124 @@ namespace Alimer
 #define VK_LOG_ERROR(result, message) LOGE("Vulkan: {}, error: {}", message, ToString(result));
 
     /* RHICommandBufferVulkan */
-    RHICommandBufferVulkan::RHICommandBufferVulkan()
+    RHICommandBufferVulkan::RHICommandBufferVulkan(_In_ RHIDeviceVulkan* device, VkCommandPool commandPool)
+        : device{ device }
+        , commandPool{ commandPool }
     {
+        VkCommandBufferAllocateInfo allocateInfo{};
+        allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocateInfo.commandPool = commandPool;
+        allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocateInfo.commandBufferCount = 1;
 
+        VkResult result = vkAllocateCommandBuffers(device->GetHandle(), &allocateInfo, &handle);
+
+        if (result != VK_SUCCESS)
+        {
+            VK_LOG_ERROR(result, "Failed to allocate command buffer");
+        }
     }
 
     RHICommandBufferVulkan::~RHICommandBufferVulkan()
     {
+        if (handle != VK_NULL_HANDLE)
+        {
+            vkFreeCommandBuffers(device->GetHandle(), commandPool, 1, &handle);
+            handle = VK_NULL_HANDLE;
+        }
+    }
 
+    void RHICommandBufferVulkan::PushDebugGroup(const StringView& name)
+    {
+        if (!debugUtilsSupported)
+            return;
+
+        VkDebugUtilsLabelEXT label = { VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT };
+        label.pLabelName = name.data();
+        label.color[0] = 0.0f;
+        label.color[1] = 0.0f;
+        label.color[2] = 0.0f;
+        label.color[3] = 1.0f;
+        vkCmdBeginDebugUtilsLabelEXT(handle, &label);
+    }
+
+    void RHICommandBufferVulkan::PopDebugGroup()
+    {
+        if (!debugUtilsSupported)
+            return;
+
+        vkCmdEndDebugUtilsLabelEXT(handle);
+    }
+
+    void RHICommandBufferVulkan::InsertDebugMarker(const StringView& name)
+    {
+        if (!debugUtilsSupported)
+            return;
+
+        VkDebugUtilsLabelEXT label = { VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT };
+        label.pLabelName = name.data();
+        label.color[0] = 0.0f;
+        label.color[1] = 0.0f;
+        label.color[2] = 0.0f;
+        label.color[3] = 1.0f;
+        vkCmdInsertDebugUtilsLabelEXT(handle, &label);
+    }
+
+    void RHICommandBufferVulkan::BeginRenderPass(RHISwapChain* swapChain, const RHIColor& clearColor)
+    {
+        
+    }
+
+    void RHICommandBufferVulkan::EndRenderPass()
+    {
+        
+    }
+
+    void RHICommandBufferVulkan::SetViewport(const RHIViewport& viewport)
+    {
+        // Flip viewport to match DirectX coordinate system
+        VkViewport vkViewport;
+        vkViewport.x = viewport.x;
+        vkViewport.y = viewport.y + viewport.height;
+        vkViewport.width = viewport.width;
+        vkViewport.height = -viewport.height;
+        vkViewport.minDepth = viewport.minDepth;
+        vkViewport.maxDepth = viewport.maxDepth;
+
+        vkCmdSetViewport(handle, 0, 1, &vkViewport);
+    }
+
+    void RHICommandBufferVulkan::SetViewports(const RHIViewport* viewports, uint32_t count)
+    {
+        // Flip viewport to match DirectX coordinate system
+        VkViewport vkViewports[kRHIMaxViewportsAndScissors];
+
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            vkViewports[i].x = viewports[i].x;
+            vkViewports[i].y = viewports[i].y + viewports[i].height;
+            vkViewports[i].width = viewports[i].width;
+            vkViewports[i].height = -viewports[i].height;
+            vkViewports[i].minDepth = viewports[i].minDepth;
+            vkViewports[i].maxDepth = viewports[i].maxDepth;
+        }
+
+        vkCmdSetViewport(handle, 0, count, vkViewports);
+    }
+
+    void RHICommandBufferVulkan::SetStencilReference(uint32_t value)
+    {
+        vkCmdSetStencilReference(handle, VK_STENCIL_FRONT_AND_BACK, value);
+    }
+
+    void RHICommandBufferVulkan::SetBlendColor(const RHIColor& color)
+    {
+        vkCmdSetBlendConstants(handle, &color.r);
+    }
+
+    void RHICommandBufferVulkan::SetBlendColor(const float blendColor[4])
+    {
+        vkCmdSetBlendConstants(handle, blendColor);
     }
 
     /* RHIDeviceVulkan */
@@ -273,6 +394,7 @@ namespace Alimer
     RHICommandBuffer* RHIDeviceVulkan::BeginCommandBuffer(RHIQueueType type)
     {
         return nullptr;
+        //return new RHICommandBufferVulkan(this, VK_NULL_HANDLE);
     }
 }
 

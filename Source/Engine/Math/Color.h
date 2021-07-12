@@ -4,6 +4,7 @@
 #pragma once
 
 #include "Math/Vector4.h"
+#include "RHI/RHI.h"
 
 #if defined(__GNUC__) && !defined(__MINGW32__)
 #define ALIMER_SELECT_ANY __attribute__((weak))
@@ -17,22 +18,14 @@ namespace Alimer
     struct ALIMER_API Color
     {
     public:
-        union
-        {
-            struct
-            {
-                /// Specifies the red component of the color.
-                float r;
-                /// Specifies the green component of the color.
-                float g;
-                /// Specifies the blue component of the color.
-                float b;
-                /// Specifies the alpha component of the color.
-                float a;
-            };
-
-            float data[4];
-        };
+        /// Specifies the red component of the color.
+        float r;
+        /// Specifies the green component of the color.
+        float g;
+        /// Specifies the blue component of the color.
+        float b;
+        /// Specifies the alpha component of the color.
+        float a;
 
         /// Constructor.
         Color() noexcept
@@ -74,6 +67,11 @@ namespace Alimer
         {
         }
 
+        explicit Color(const RHIColor& rhiColor) noexcept
+            : r(rhiColor.r), g(rhiColor.g), b(rhiColor.b), a(rhiColor.a)
+        {
+        }
+
         Color(const Color&) = default;
         Color& operator=(const Color&) = default;
         Color(Color&&) = default;
@@ -104,6 +102,21 @@ namespace Alimer
             a += rhs.a;
             return *this;
         }
+
+        operator RHIColor() const noexcept
+        {
+            RHIColor result;
+            result.r = r;
+            result.g = g;
+            result.b = b;
+            result.a = a;
+            return result;
+        }
+
+        operator const float* () const noexcept { return &r; }
+
+        /// Return float data.
+        const float* Data() const { return &r; }
 
         /// Return RGB as a three-dimensional vector.
         Vector3 ToVector3() const { return Vector3(r, g, b); }

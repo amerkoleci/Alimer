@@ -42,15 +42,15 @@ namespace Alimer
     }
 
     /* RHITexture */
-    RHITexture::RHITexture(const RHITextureDescriptor& descriptor)
-        : dimension(descriptor.dimension)
-        , format(descriptor.format)
-        , usage(descriptor.usage)
-        , width(descriptor.width)
-        , height(descriptor.height)
-        , depthOrArraySize(descriptor.depthOrArraySize)
-        , mipLevels(descriptor.mipLevels)
-        , sampleCount(descriptor.sampleCount)
+    RHITexture::RHITexture(const RHITextureDescription& desc)
+        : dimension(desc.dimension)
+        , format(desc.format)
+        , usage(desc.usage)
+        , width(desc.width)
+        , height(desc.height)
+        , depthOrArraySize(desc.depthOrArraySize)
+        , mipLevels(desc.mipLevels)
+        , sampleCount(desc.sampleCount)
     {
 
     }
@@ -115,13 +115,22 @@ namespace Alimer
     }
 
     /* RHISwapChain */
-    RHISwapChain::RHISwapChain(const RHISwapChainDescriptor& desc)
+    RHISwapChain::RHISwapChain(const RHISwapChainDescription& desc)
         : size(desc.size)
         , colorFormat(desc.format)
         , verticalSync(desc.verticalSync)
         , isFullscreen(desc.isFullscreen)
     {
 
+    }
+
+    /* RHICommandBuffer */
+    void RHICommandBuffer::SetIndexBuffer(const RHIBuffer* buffer, RHIIndexType indexType, uint32_t offset)
+    {
+        ALIMER_ASSERT(buffer != nullptr);
+        ALIMER_ASSERT_MSG(Any(buffer->GetUsage(), RHIBufferUsage::Index), "Buffer created without Index usage");
+
+        SetIndexBufferCore(buffer, indexType, offset);
     }
 
     /* RHIDevice */
@@ -168,7 +177,7 @@ namespace Alimer
         }
     }
 
-    RHITextureRef RHICreateTexture(const RHITextureDescriptor& desc)
+    RHITextureRef RHICreateTexture(const RHITextureDescription& desc)
     {
         return GRHIDevice->CreateTexture(desc);
     }
@@ -178,7 +187,7 @@ namespace Alimer
         return GRHIDevice->CreateBuffer(desc, initialData);
     }
 
-    RHISwapChainRef RHICreateSwapChain(void* window, const RHISwapChainDescriptor& desc)
+    RHISwapChainRef RHICreateSwapChain(void* window, const RHISwapChainDescription& desc)
     {
         ALIMER_ASSERT(window);
 

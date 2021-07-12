@@ -59,7 +59,7 @@ namespace Alimer
         Texture1D = 1,
         Texture2D = 2,
         Texture3D = 3,
-        TextureCube = 4,
+        TextureCube = 4
     };
 
     enum class RHITextureUsage : uint32_t
@@ -69,6 +69,17 @@ namespace Alimer
         ShaderWrite = 1 << 1,
         ShaderReadWrite = ShaderRead | ShaderWrite,
         RenderTarget = 1 << 2,
+    };
+
+    /// Number of MSAA samples to use. 1xMSAA and 4xMSAA are most broadly supported
+    enum class RHITextureSampleCount : uint32_t
+    {
+        Count1,
+        Count2,
+        Count4,
+        Count8,
+        Count16,
+        Count32,
     };
 
     enum class RHIBufferUsage : uint32_t
@@ -81,9 +92,36 @@ namespace Alimer
         Index = 1 << 4,
         Vertex = 1 << 5,
         Uniform = 1 << 6,
-        ShaderRead = 1 << 7,
-        ShaderWrite = 1 << 8,
-        Indirect = 1 << 9,
+        Storage = 1 << 7,
+        Indirect = 1 << 8,
+    };
+
+    enum class RHICompareFunction : uint32_t
+    {
+        Never,
+        Less,
+        Equal,
+        LessEqual,
+        Greater,
+        NotEqual,
+        GreaterEqual,
+        Always,
+    };
+
+    enum class RHIPrimitiveTopology : uint32_t
+    {
+        PointList,
+        LineList,
+        LineStrip,
+        TriangleList,
+        TriangleStrip,
+        Count
+    };
+
+    enum class RHIIndexType : uint32_t
+    {
+        UInt16 = 0,
+        UInt32 = 1
     };
 
     struct RHIExtent2D
@@ -107,7 +145,17 @@ namespace Alimer
         float a;
     };
 
-    struct RHITextureDescriptor
+    struct RHIViewport
+    {
+        float x;
+        float y;
+        float width;
+        float height;
+        float minDepth;
+        float maxDepth;
+    };
+
+    struct RHITextureDescription
     {
         StringView name;
 
@@ -133,26 +181,26 @@ namespace Alimer
         uint32_t mipLevels = 1;
 
         /// Number of samples.
-        uint32_t sampleCount = 1;
+        RHITextureSampleCount sampleCount = RHITextureSampleCount::Count1;
 
-        static inline RHITextureDescriptor Create1D(
+        static inline RHITextureDescription Texture1D(
             PixelFormat format,
             uint32_t width,
             uint32_t mipLevels = 1,
             uint32_t arraySize = 1,
             RHITextureUsage usage = RHITextureUsage::ShaderRead) noexcept
         {
-            RHITextureDescriptor descriptor;
-            descriptor.dimension = RHITextureDimension::Texture1D;
-            descriptor.format = format;
-            descriptor.usage = usage;
-            descriptor.width = width;
-            descriptor.depthOrArraySize = arraySize;
-            descriptor.mipLevels = mipLevels;
-            return descriptor;
+            RHITextureDescription desc;
+            desc.dimension = RHITextureDimension::Texture1D;
+            desc.format = format;
+            desc.usage = usage;
+            desc.width = width;
+            desc.depthOrArraySize = arraySize;
+            desc.mipLevels = mipLevels;
+            return desc;
         }
 
-        static inline RHITextureDescriptor Create2D(
+        static inline RHITextureDescription Texture2D(
             PixelFormat format,
             uint32_t width,
             uint32_t height,
@@ -160,35 +208,17 @@ namespace Alimer
             uint32_t arraySize = 1,
             RHITextureUsage usage = RHITextureUsage::ShaderRead) noexcept
         {
-            RHITextureDescriptor descriptor;
-            descriptor.format = format;
-            descriptor.usage = usage;
-            descriptor.width = width;
-            descriptor.height = height;
-            descriptor.depthOrArraySize = arraySize;
-            descriptor.mipLevels = mipLevels;
-            return descriptor;
+            RHITextureDescription desc;
+            desc.format = format;
+            desc.usage = usage;
+            desc.width = width;
+            desc.height = height;
+            desc.depthOrArraySize = arraySize;
+            desc.mipLevels = mipLevels;
+            return desc;
         }
 
-        static RHITextureDescriptor CreateCube(
-            PixelFormat format,
-            uint32_t width,
-            uint32_t arraySize = 1,
-            uint32_t mipLevels = 1,
-            RHITextureUsage usage = RHITextureUsage::ShaderRead) noexcept
-        {
-            RHITextureDescriptor descriptor;
-            descriptor.dimension = RHITextureDimension::TextureCube;
-            descriptor.format = format;
-            descriptor.usage = usage;
-            descriptor.width = width;
-            descriptor.height = width;
-            descriptor.depthOrArraySize = arraySize;
-            descriptor.mipLevels = mipLevels;
-            return descriptor;
-        }
-
-        static inline RHITextureDescriptor Create3D(
+        static inline RHITextureDescription Texture3D(
             PixelFormat format,
             uint32_t width,
             uint32_t height,
@@ -196,15 +226,33 @@ namespace Alimer
             uint16_t mipLevels = 1,
             RHITextureUsage usage = RHITextureUsage::ShaderRead) noexcept
         {
-            RHITextureDescriptor descriptor;
-            descriptor.dimension = RHITextureDimension::Texture3D;
-            descriptor.format = format;
-            descriptor.usage = usage;
-            descriptor.width = width;
-            descriptor.height = height;
-            descriptor.depthOrArraySize = depth;
-            descriptor.mipLevels = mipLevels;
-            return descriptor;
+            RHITextureDescription desc;
+            desc.dimension = RHITextureDimension::Texture3D;
+            desc.format = format;
+            desc.usage = usage;
+            desc.width = width;
+            desc.height = height;
+            desc.depthOrArraySize = depth;
+            desc.mipLevels = mipLevels;
+            return desc;
+        }
+
+        static RHITextureDescription TextureCube(
+            PixelFormat format,
+            uint32_t width,
+            uint32_t arraySize = 1,
+            uint32_t mipLevels = 1,
+            RHITextureUsage usage = RHITextureUsage::ShaderRead) noexcept
+        {
+            RHITextureDescription desc;
+            desc.dimension = RHITextureDimension::TextureCube;
+            desc.format = format;
+            desc.usage = usage;
+            desc.width = width;
+            desc.height = width;
+            desc.depthOrArraySize = arraySize;
+            desc.mipLevels = mipLevels;
+            return desc;
         }
     };
 
@@ -228,10 +276,10 @@ namespace Alimer
         RHIBufferUsage usage = RHIBufferUsage::None;
     };
 
-    struct RHISwapChainDescriptor
+    struct RHISwapChainDescription
     {
         RHIExtent2D size = { 0, 0 };
-        PixelFormat format = PixelFormat::Undefined;
+        PixelFormat format = PixelFormat::BGRA8UNorm;
         bool verticalSync = true;
         bool isFullscreen = false;
     };
@@ -263,7 +311,10 @@ namespace Alimer
     class ALIMER_API RHIResource : public RHIObject
     {
     public:
+
     protected:
+        uint64_t allocatedSize = 0;
+
         mutable std::unordered_map<size_t, std::unique_ptr<RHIResourceView>> resourceViewCache;
         mutable std::mutex resourceViewCacheMutex;
     };
@@ -298,10 +349,10 @@ namespace Alimer
         uint32_t GetDepth(uint32_t mipLevel = 0) const noexcept { return (dimension == RHITextureDimension::Texture3D) ? Max(1u, depthOrArraySize >> mipLevel) : 1; }
         uint32_t GetArrayLayers() const noexcept { return (dimension == RHITextureDimension::Texture3D) ? 1 : depthOrArraySize; }
         uint32_t GetMipLevels() const noexcept { return mipLevels; }
-        uint32_t GetSampleCount() const noexcept { return sampleCount; }
+        RHITextureSampleCount GetSampleCount() const noexcept { return sampleCount; }
 
     protected:
-        RHITexture(const RHITextureDescriptor& descriptor);
+        RHITexture(const RHITextureDescription& desc);
 
         virtual RHITextureView* CreateView(const RHITextureViewDescription& description) const = 0;
 
@@ -312,7 +363,7 @@ namespace Alimer
         uint32_t height;
         uint32_t depthOrArraySize;
         uint32_t mipLevels;
-        uint32_t sampleCount;
+        RHITextureSampleCount sampleCount;
     };
 
     class ALIMER_API RHITextureView : public RHIResourceView
@@ -348,7 +399,7 @@ namespace Alimer
     class ALIMER_API RHISwapChain : public RHIObject
     {
     public:
-        RHISwapChain(const RHISwapChainDescriptor& desc);
+        RHISwapChain(const RHISwapChainDescription& desc);
 
         virtual RHITextureView* GetCurrentTextureView() const = 0;
 
@@ -368,8 +419,27 @@ namespace Alimer
     public:
         virtual ~RHICommandBuffer() = default;
 
+        virtual void PushDebugGroup(const StringView& name) = 0;
+        virtual void PopDebugGroup() = 0;
+        virtual void InsertDebugMarker(const StringView& name) = 0;
+
         virtual void BeginRenderPass(RHISwapChain* swapChain, const RHIColor& clearColor) = 0;
         virtual void EndRenderPass() = 0;
+
+        virtual void SetViewport(const RHIViewport& viewport) = 0;
+        virtual void SetViewports(const RHIViewport* viewports, uint32_t count) = 0;
+
+        //virtual void SetScissorRect(const Rect& rect) = 0;
+        //virtual void SetScissorRects(const Rect* rects, uint32_t count) = 0;
+
+        virtual void SetStencilReference(uint32_t value) = 0;
+        virtual void SetBlendColor(const RHIColor& color) = 0;
+        virtual void SetBlendColor(const float blendColor[4]) = 0;
+
+        void SetIndexBuffer(const RHIBuffer* buffer, RHIIndexType indexType, uint32_t offset = 0);
+
+    private:
+        virtual void SetIndexBufferCore(const RHIBuffer* buffer, RHIIndexType indexType, uint32_t offset) = 0;
 
     protected:
         RHICommandBuffer() = default;
@@ -392,9 +462,9 @@ namespace Alimer
 
         [[nodiscard]] virtual RHICommandBuffer* BeginCommandBuffer(RHIQueueType type = RHIQueueType::Graphics) = 0;
 
-        [[nodiscard]] virtual RHITextureRef CreateTexture(const RHITextureDescriptor& desc) = 0;
+        [[nodiscard]] virtual RHITextureRef CreateTexture(const RHITextureDescription& desc) = 0;
         [[nodiscard]] RHIBufferRef CreateBuffer(const RHIBufferDescription& desc, const void* initialData = nullptr);
-        [[nodiscard]] virtual RHISwapChainRef CreateSwapChain(void* window, const RHISwapChainDescriptor& desc) = 0;
+        [[nodiscard]] virtual RHISwapChainRef CreateSwapChain(void* window, const RHISwapChainDescription& desc) = 0;
 
         constexpr uint64_t GetFrameCount() const { return frameCount; }
         constexpr uint32_t GetFrameIndex() const { return frameIndex; }
@@ -417,9 +487,9 @@ namespace Alimer
     ALIMER_API bool RHInitialize(RHIValidationMode validationMode);
     ALIMER_API void RHIShutdown();
 
-    ALIMER_API RHITextureRef RHICreateTexture(const RHITextureDescriptor& desc);
+    ALIMER_API RHITextureRef RHICreateTexture(const RHITextureDescription& desc);
     ALIMER_API RHIBufferRef RHICreateBuffer(const RHIBufferDescription& desc, const void* initialData = nullptr);
-    ALIMER_API RHISwapChainRef RHICreateSwapChain(void* window, const RHISwapChainDescriptor& desc);
+    ALIMER_API RHISwapChainRef RHICreateSwapChain(void* window, const RHISwapChainDescription& desc);
 
     ALIMER_API bool RHIBeginFrame();
     ALIMER_API void RHIEndFrame();
@@ -429,7 +499,6 @@ namespace Alimer
 
 namespace std
 {
-    /**	Hash value generator for RHITextureViewDescriptor. */
     template<>
     struct hash<Alimer::RHITextureViewDescription>
     {

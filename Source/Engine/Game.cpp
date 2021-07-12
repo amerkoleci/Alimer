@@ -5,6 +5,7 @@
 #include "RHI/RHI.h"
 #include "Core/Assert.h"
 #include "Core/Log.h"
+#include "Math/Color.h"
 #include "Platform/Private/GameHost.h"
 
 namespace Alimer
@@ -149,10 +150,9 @@ namespace Alimer
             // Custom application draw.
             RHICommandBuffer* commandBuffer = RHIBeginCommandBuffer();
 
-            auto view = host->GetMainWindow()->GetRHISwapChain()->GetCurrentTextureView();
+            //auto view = host->GetMainWindow()->GetRHISwapChain()->GetCurrentTextureView();
 
-            const RHIColor clearColor = { 0.392156899f, 0.584313750f, 0.929411829f, 1.0f };
-            commandBuffer->BeginRenderPass(host->GetMainWindow()->GetRHISwapChain(), clearColor);
+            commandBuffer->BeginRenderPass(host->GetMainWindow()->GetRHISwapChain(), Colors::CornflowerBlue);
             OnDraw(commandBuffer);
             commandBuffer->EndRenderPass();
             EndDraw();
