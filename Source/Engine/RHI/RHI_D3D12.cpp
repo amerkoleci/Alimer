@@ -264,6 +264,33 @@ namespace Alimer
             }
         }
 
+        [[nodiscard]] constexpr D3D12_COMPARISON_FUNC ToD3D12ComparisonFunc(RHICompareFunction function)
+        {
+            switch (function)
+            {
+                case RHICompareFunction::Never:
+                    return D3D12_COMPARISON_FUNC_NEVER;
+                case RHICompareFunction::Less:
+                    return D3D12_COMPARISON_FUNC_LESS;
+                case RHICompareFunction::Equal:
+                    return D3D12_COMPARISON_FUNC_EQUAL;
+                case RHICompareFunction::LessEqual:
+                    return D3D12_COMPARISON_FUNC_LESS_EQUAL;
+                case RHICompareFunction::Greater:
+                    return D3D12_COMPARISON_FUNC_GREATER;
+                case RHICompareFunction::NotEqual:
+                    return D3D12_COMPARISON_FUNC_NOT_EQUAL;
+                case RHICompareFunction::GreaterEqual:
+                    return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+                case RHICompareFunction::Always:
+                    return D3D12_COMPARISON_FUNC_ALWAYS;
+
+                default:
+                    ALIMER_UNREACHABLE();
+                    return static_cast<D3D12_COMPARISON_FUNC>(0);
+            }
+        }
+
         [[nodiscard]] constexpr uint32_t D3D12SampleCount(RHITextureSampleCount count)
         {
             switch (count)
@@ -286,7 +313,55 @@ namespace Alimer
                     return 1;
             }
         }
+
+        [[nodiscard]] constexpr D3D12_FILTER_TYPE ToD3D12FilterType(RHISamplerFilter value)
+        {
+            switch (value)
+            {
+                case RHISamplerFilter::Nearest:
+                    return D3D12_FILTER_TYPE_POINT;
+                case RHISamplerFilter::Linear:
+                    return D3D12_FILTER_TYPE_LINEAR;
+                default:
+                    ALIMER_UNREACHABLE();
+                    return D3D12_FILTER_TYPE_POINT;
+            }
+        }
+
+        [[nodiscard]] constexpr D3D12_TEXTURE_ADDRESS_MODE ToD3D12AddressMode(RHISamplerAddressMode mode)
+        {
+            switch (mode) {
+                case RHISamplerAddressMode::Wrap:
+                    return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+                case RHISamplerAddressMode::Mirror:
+                    return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+                case RHISamplerAddressMode::Clamp:
+                    return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+                case RHISamplerAddressMode::Border:
+                    return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+                case RHISamplerAddressMode::MirrorOnce:
+                    return D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
+                default:
+                    ALIMER_UNREACHABLE();
+                    return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+            }
+        }
     }
+
+    struct SamplerD3D12
+    {
+        const RHIDeviceD3D12* device;
+        D3D12_CPU_DESCRIPTOR_HANDLE handle;
+        uint32_t bindlessIndex = kRHIInvalidBindlessIndex;
+
+        ~SamplerD3D12()
+        {
+            device->FreeDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, handle);
+
+            // bindless Free
+            device->FreeBindlessSampler(bindlessIndex);
+        }
+    };
 
     /* RHITextureD3D12 */
     RHITextureD3D12::RHITextureD3D12(RHIDeviceD3D12* device_, const RHITextureDescription& descriptor, ID3D12Resource* externalResource)
@@ -999,13 +1074,13 @@ namespace Alimer
         queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
         queueDesc.NodeMask = 0;
 
-        ThrowIfFailed(device->d3dDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&queue)));
+        ThrowIfFailed(device->handle->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&queue)));
     }
 
     void RHIDeviceD3D12::CopyAllocator::Shutdown()
     {
         ComPtr<ID3D12Fence> fence;
-        ThrowIfFailed(device->d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
+        ThrowIfFailed(device->handle->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
         ThrowIfFailed(queue->Signal(fence.Get(), 1));
         ThrowIfFailed(fence->SetEventOnCompletion(1, nullptr));
 
@@ -1033,14 +1108,14 @@ namespace Alimer
             RHIUploadContextD3D12 context;
 
             ThrowIfFailed(
-                device->d3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(&context.commandAllocator))
+                device->handle->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS(&context.commandAllocator))
             );
             ThrowIfFailed(
-                device->d3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_COPY, context.commandAllocator, nullptr, IID_PPV_ARGS(&context.commandList))
+                device->handle->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_COPY, context.commandAllocator, nullptr, IID_PPV_ARGS(&context.commandList))
             );
 
             ThrowIfFailed(context.commandList->Close());
-            ThrowIfFailed(device->d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&context.fence)));
+            ThrowIfFailed(device->handle->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&context.fence)));
 
             freeList.push_back(context);
         }
@@ -1281,7 +1356,7 @@ namespace Alimer
                 if (SUCCEEDED(D3D12CreateDevice(
                     adapter.Get(),
                     D3D_FEATURE_LEVEL_12_0,
-                    IID_PPV_ARGS(d3dDevice.ReleaseAndGetAddressOf()))))
+                    IID_PPV_ARGS(handle.ReleaseAndGetAddressOf()))))
                 {
 #ifdef _DEBUG
                     wchar_t buff[256] = {};
@@ -1292,19 +1367,19 @@ namespace Alimer
                 }
             }
 
-            d3dDevice->SetName(L"AlimerDevice");
+            handle->SetName(L"AlimerDevice");
 
             if (validationMode != RHIValidationMode::Disabled)
             {
                 ComPtr<ID3D12DebugDevice2> debugDevice;
-                if (SUCCEEDED(d3dDevice.As(&debugDevice)))
+                if (SUCCEEDED(handle.As(&debugDevice)))
                 {
                     // TODO: Replace with SetDebugParameter as SetFeatureMask is deprecated
                     debugDevice->SetFeatureMask(D3D12_DEBUG_FEATURE_ALLOW_BEHAVIOR_CHANGING_DEBUG_AIDS | D3D12_DEBUG_FEATURE_CONSERVATIVE_RESOURCE_STATE_TRACKING);
                 }
 
                 ComPtr<ID3D12InfoQueue> d3d12InfoQueue;
-                if (SUCCEEDED(d3dDevice.As(&d3d12InfoQueue)))
+                if (SUCCEEDED(handle.As(&d3d12InfoQueue)))
                 {
                     d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
                     d3d12InfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
@@ -1345,7 +1420,7 @@ namespace Alimer
 
             // Create memory allocator
             D3D12MA::ALLOCATOR_DESC allocatorDesc = {};
-            allocatorDesc.pDevice = d3dDevice.Get();
+            allocatorDesc.pDevice = handle.Get();
             allocatorDesc.pAdapter = adapter.Get();
 
             if (FAILED(D3D12MA::CreateAllocator(&allocatorDesc, &allocator)))
@@ -1372,7 +1447,7 @@ namespace Alimer
                 static_cast<UINT>(std::size(s_featureLevels)), s_featureLevels, D3D_FEATURE_LEVEL_11_0
             };
 
-            HRESULT hr = d3dDevice->CheckFeatureSupport(D3D12_FEATURE_FEATURE_LEVELS, &featLevels, sizeof(featLevels));
+            HRESULT hr = handle->CheckFeatureSupport(D3D12_FEATURE_FEATURE_LEVELS, &featLevels, sizeof(featLevels));
             if (SUCCEEDED(hr))
             {
                 featureLevel = featLevels.MaxSupportedFeatureLevel;
@@ -1390,15 +1465,15 @@ namespace Alimer
             queueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
             queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
             queueDesc.NodeMask = 0;
-            ThrowIfFailed(d3dDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&queues[(uint32_t)RHIQueueType::Graphics].handle)));
-            ThrowIfFailed(d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_SHARED, IID_PPV_ARGS(&queues[(uint32_t)RHIQueueType::Graphics].fence)));
+            ThrowIfFailed(handle->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&queues[(uint32_t)RHIQueueType::Graphics].handle)));
+            ThrowIfFailed(handle->CreateFence(0, D3D12_FENCE_FLAG_SHARED, IID_PPV_ARGS(&queues[(uint32_t)RHIQueueType::Graphics].fence)));
             queues[(uint32_t)RHIQueueType::Graphics].handle->SetName(L"Graphics Command Queue");
             queues[(uint32_t)RHIQueueType::Graphics].handle->SetName(L"Graphics Command Queue Fence");
 
             // Compute
             queueDesc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
-            ThrowIfFailed(d3dDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&queues[(uint32_t)RHIQueueType::Compute].handle)));
-            ThrowIfFailed(d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_SHARED, IID_PPV_ARGS(&queues[(uint32_t)RHIQueueType::Compute].fence)));
+            ThrowIfFailed(handle->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&queues[(uint32_t)RHIQueueType::Compute].handle)));
+            ThrowIfFailed(handle->CreateFence(0, D3D12_FENCE_FLAG_SHARED, IID_PPV_ARGS(&queues[(uint32_t)RHIQueueType::Compute].fence)));
             queues[(uint32_t)RHIQueueType::Compute].handle->SetName(L"Compute Command Queue");
             queues[(uint32_t)RHIQueueType::Compute].handle->SetName(L"Compute Command Queue Fence");
         }
@@ -1408,7 +1483,7 @@ namespace Alimer
         {
             for (uint32_t queue = 0; queue < (uint32_t)RHIQueueType::Count; ++queue)
             {
-                ThrowIfFailed(d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&frameFences[i][queue])));
+                ThrowIfFailed(handle->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&frameFences[i][queue])));
             }
         }
 
@@ -1428,11 +1503,11 @@ namespace Alimer
             heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
             heapDesc.NumDescriptors = 1000000; // tier 1 limit
             heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-            ThrowIfFailed(d3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&resourceHeap.handle)));
+            ThrowIfFailed(handle->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&resourceHeap.handle)));
             resourceHeap.CPUStart = resourceHeap.handle->GetCPUDescriptorHandleForHeapStart();
             resourceHeap.GPUStart = resourceHeap.handle->GetGPUDescriptorHandleForHeapStart();
 
-            ThrowIfFailed(d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_SHARED, IID_PPV_ARGS(&resourceHeap.fence)));
+            ThrowIfFailed(handle->CreateFence(0, D3D12_FENCE_FLAG_SHARED, IID_PPV_ARGS(&resourceHeap.fence)));
             resourceHeap.fenceValue = resourceHeap.fence->GetCompletedValue();
 
             for (uint32_t i = 0; i < kBindlessResourceCapacity; ++i)
@@ -1447,11 +1522,11 @@ namespace Alimer
             heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
             heapDesc.NumDescriptors = 2048; // tier 1 limit
             heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-            ThrowIfFailed(d3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&samplerHeap.handle)));
+            ThrowIfFailed(handle->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&samplerHeap.handle)));
             samplerHeap.CPUStart = samplerHeap.handle->GetCPUDescriptorHandleForHeapStart();
             samplerHeap.GPUStart = samplerHeap.handle->GetGPUDescriptorHandleForHeapStart();
 
-            ThrowIfFailed(d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_SHARED, IID_PPV_ARGS(&samplerHeap.fence)));
+            ThrowIfFailed(handle->CreateFence(0, D3D12_FENCE_FLAG_SHARED, IID_PPV_ARGS(&samplerHeap.fence)));
             samplerHeap.fenceValue = samplerHeap.fence->GetCompletedValue();
 
             for (uint32_t i = 0; i < kBindlessSamplerCapacity; ++i)
@@ -1504,7 +1579,7 @@ namespace Alimer
     void RHIDeviceD3D12::WaitForIdle()
     {
         ComPtr<ID3D12Fence> fence;
-        ThrowIfFailed(d3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
+        ThrowIfFailed(handle->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
 
         for (auto& queue : queues)
         {
@@ -1719,7 +1794,7 @@ namespace Alimer
         if (GetCommandBuffer(index) == nullptr)
         {
             // We need to create one more command buffer.
-            commandBuffers[index][(uint32_t)type].reset(new RHICommandBufferD3D12(d3dDevice.Get(), type));
+            commandBuffers[index][(uint32_t)type].reset(new RHICommandBufferD3D12(handle.Get(), type));
         }
 
         GetCommandBuffer(index)->Reset(frameIndex);
@@ -1760,7 +1835,89 @@ namespace Alimer
         return nullptr;
     }
 
-    D3D12_CPU_DESCRIPTOR_HANDLE RHIDeviceD3D12::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type)
+    bool RHIDeviceD3D12::CreateSampler(const RHISamplerDescription* desc, RHISampler* pSampler) const
+    {
+        auto internalState = std::make_shared<SamplerD3D12>();
+        internalState->device = this;
+
+        const D3D12_FILTER_TYPE minFilter = ToD3D12FilterType(desc->minFilter);
+        const D3D12_FILTER_TYPE magFilter = ToD3D12FilterType(desc->magFilter);
+        const D3D12_FILTER_TYPE mipFilter = ToD3D12FilterType(desc->mipFilter);
+
+        D3D12_FILTER_REDUCTION_TYPE reduction = desc->compareFunction == RHICompareFunction::Never
+            ? D3D12_FILTER_REDUCTION_TYPE_STANDARD
+            : D3D12_FILTER_REDUCTION_TYPE_COMPARISON;
+
+
+        D3D12_SAMPLER_DESC samplerDesc;
+        // https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_sampler_desc
+        if (desc->maxAnisotropy > 1)
+        {
+            samplerDesc.Filter = D3D12_ENCODE_ANISOTROPIC_FILTER(reduction);
+        }
+        else
+        {
+            samplerDesc.Filter = D3D12_ENCODE_BASIC_FILTER(minFilter, magFilter, mipFilter, reduction);
+        }
+
+        samplerDesc.AddressU = ToD3D12AddressMode(desc->addressModeU);
+        samplerDesc.AddressV = ToD3D12AddressMode(desc->addressModeV);
+        samplerDesc.AddressW = ToD3D12AddressMode(desc->addressModeW);
+        samplerDesc.MipLODBias = 0.0f;
+        samplerDesc.MaxAnisotropy = Min<UINT>(desc->maxAnisotropy, 16u);
+        if (desc->compareFunction != RHICompareFunction::Never)
+        {
+            samplerDesc.ComparisonFunc = ToD3D12ComparisonFunc(desc->compareFunction);
+        }
+        else
+        {
+            samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+        }
+
+        switch (desc->borderColor)
+        {
+            case RHISamplerBorderColor::OpaqueBlack:
+                samplerDesc.BorderColor[0] = 0.0f;
+                samplerDesc.BorderColor[1] = 0.0f;
+                samplerDesc.BorderColor[2] = 0.0f;
+                samplerDesc.BorderColor[3] = 1.0f;
+                break;
+
+            case RHISamplerBorderColor::OpaqueWhite:
+                samplerDesc.BorderColor[0] = 1.0f;
+                samplerDesc.BorderColor[1] = 1.0f;
+                samplerDesc.BorderColor[2] = 1.0f;
+                samplerDesc.BorderColor[3] = 1.0f;
+                break;
+
+            default:
+                samplerDesc.BorderColor[0] = 0.0f;
+                samplerDesc.BorderColor[1] = 0.0f;
+                samplerDesc.BorderColor[2] = 0.0f;
+                samplerDesc.BorderColor[3] = 0.0f;
+                break;
+        }
+
+        samplerDesc.MinLOD = desc->lodMinClamp;
+        samplerDesc.MaxLOD = desc->lodMaxClamp;
+
+        internalState->handle = AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+        handle->CreateSampler(&samplerDesc, internalState->handle);
+
+        internalState->bindlessIndex = AllocateBindlessSampler();
+        if (internalState->bindlessIndex != kRHIInvalidBindlessIndex)
+        {
+            D3D12_CPU_DESCRIPTOR_HANDLE dst_bindless = samplerHeap.CPUStart;
+            dst_bindless.ptr += internalState->bindlessIndex * samplerDescriptorAllocator.descriptorSize;
+            handle->CopyDescriptorsSimple(1, dst_bindless, internalState->handle, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+        }
+
+        pSampler->state = internalState;
+
+        return true;
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE RHIDeviceD3D12::AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type) const
     {
         switch (type)
         {
@@ -1778,8 +1935,11 @@ namespace Alimer
         }
     }
 
-    void RHIDeviceD3D12::FreeDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_CPU_DESCRIPTOR_HANDLE handle)
+    void RHIDeviceD3D12::FreeDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_CPU_DESCRIPTOR_HANDLE handle) const
     {
+        if (handle.ptr == 0)
+            return;
+
         switch (type)
         {
             case D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV:
@@ -1817,6 +1977,29 @@ namespace Alimer
         }
     }
 
+    uint32_t RHIDeviceD3D12::AllocateBindlessSampler() const
+    {
+        uint32_t index = kRHIInvalidBindlessIndex;
+        destroyMutex.lock();
+        if (!freeBindlessSamplers.empty())
+        {
+            index = freeBindlessSamplers.back();
+            freeBindlessSamplers.pop_back();
+        }
+        destroyMutex.unlock();
+
+        return index;
+    }
+
+    void RHIDeviceD3D12::FreeBindlessSampler(uint32_t index) const
+    {
+        if (index != kRHIInvalidBindlessIndex)
+        {
+            destroyMutex.lock();
+            destroyerBindlessSampler.push_back(std::make_pair(index, frameCount));
+            destroyMutex.unlock();
+        }
+    }
 
     RHIUploadContextD3D12 RHIDeviceD3D12::Allocate(uint32_t size)
     {

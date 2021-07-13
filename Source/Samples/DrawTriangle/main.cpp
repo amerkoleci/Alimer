@@ -15,6 +15,18 @@ public:
 
     void Initialize() override
     {
+        {
+            RHISamplerDescription samplerDesc{};
+            RHISampler sampler;
+            GRHIDevice->CreateSampler(&samplerDesc, &sampler);
+        }
+
+        {
+            RHISamplerDescription samplerDesc{};
+            RHISampler sampler;
+            GRHIDevice->CreateSampler(&samplerDesc, &sampler);
+        }
+
         auto usage = RHITextureUsage::ShaderReadWrite | RHITextureUsage::RenderTarget;
         auto descriptor = RHITextureDescription::TextureCube(PixelFormat::RGBA8UNorm, 256, 1, 1, usage);
         descriptor.name = "CUBEMAP";

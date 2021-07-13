@@ -180,10 +180,14 @@ namespace Alimer
         RHITextureRef CreateTexture(const RHITextureDescription& desc) override;
         RHIBufferRef CreateBufferCore(const RHIBufferDescription& desc, const void* initialData) override;
         RHISwapChainRef CreateSwapChain(void* window, const RHISwapChainDescription& desc) override;
+        bool CreateSampler(const RHISamplerDescription* desc, RHISampler* pSampler) const override;
 
-        D3D12_CPU_DESCRIPTOR_HANDLE AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type);
-        void FreeDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_CPU_DESCRIPTOR_HANDLE handle);
+        D3D12_CPU_DESCRIPTOR_HANDLE AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type) const;
+        void FreeDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_CPU_DESCRIPTOR_HANDLE handle) const;
         uint32_t GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE type) const;
+
+        uint32_t AllocateBindlessSampler() const;
+        void FreeBindlessSampler(uint32_t index) const;
 
         RHIUploadContextD3D12 Allocate(uint32_t size);
         void Submit(RHIUploadContextD3D12 context);
@@ -192,7 +196,7 @@ namespace Alimer
 
         auto GetDXGIFactory() const noexcept { return dxgiFactory.Get(); }
         bool IsTearingSupported() const noexcept { return tearingSupported; }
-        auto GetD3DDevice() const noexcept { return d3dDevice.Get(); }
+        auto GetD3DDevice() const noexcept { return handle.Get(); }
         auto GetAllocator() const noexcept { return allocator; }
         auto GetGraphicsQueue() const noexcept { return queues[(uint32_t)RHIQueueType::Graphics].handle.Get(); }
         auto GetComputeQueue() const noexcept { return queues[(uint32_t)RHIQueueType::Compute].handle.Get(); }
@@ -204,18 +208,18 @@ namespace Alimer
         Microsoft::WRL::ComPtr<IDXGIFactory4> dxgiFactory;
         bool tearingSupported = false;
 
-        Microsoft::WRL::ComPtr<ID3D12Device5> d3dDevice;
+        Microsoft::WRL::ComPtr<ID3D12Device5> handle;
         D3D12MA::Allocator* allocator = nullptr;
 
         /* Caps */
         D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_12_0;
 
         bool shuttingDown{ false };
-        std::mutex destroyMutex;
+        mutable std::mutex destroyMutex;
         std::deque<std::pair<D3D12MA::Allocation*, uint64_t>> deferredAllocations;
         std::deque<std::pair<IUnknown*, uint64_t>> deferredReleases;
         std::deque<std::pair<int, uint64_t>> destroyerBindlessResource;
-        std::deque<std::pair<int, uint64_t>> destroyerBindlessSampler;
+        mutable std::deque<std::pair<int, uint64_t>> destroyerBindlessSampler;
 
         struct CommandQueue
         {
@@ -260,15 +264,15 @@ namespace Alimer
             RHIDeviceD3D12* device = nullptr;
             uint32_t descriptorSize = 0;
 
-            std::mutex locker;
             D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-            std::vector<ID3D12DescriptorHeap*> heaps;
-            std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> freeList;
+            mutable SRWLOCK locker = SRWLOCK_INIT;
+            mutable std::vector<ID3D12DescriptorHeap*> heaps;
+            mutable std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> freeList;
 
             void Initialize(RHIDeviceD3D12* device_, D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t numDescriptors)
             {
                 device = device_;
-                descriptorSize = device->d3dDevice->GetDescriptorHandleIncrementSize(type);
+                descriptorSize = device->handle->GetDescriptorHandleIncrementSize(type);
 
                 desc.Type = type;
                 desc.NumDescriptors = numDescriptors;
@@ -283,10 +287,10 @@ namespace Alimer
                 heaps.clear();
             }
 
-            void BlockAllocate()
+            void BlockAllocate() const
             {
                 heaps.emplace_back();
-                ThrowIfFailed(device->d3dDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heaps.back())));
+                ThrowIfFailed(device->handle->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heaps.back())));
 
                 D3D12_CPU_DESCRIPTOR_HANDLE heap_start = heaps.back()->GetCPUDescriptorHandleForHeapStart();
                 for (UINT i = 0; i < desc.NumDescriptors; ++i)
@@ -297,9 +301,9 @@ namespace Alimer
                 }
             }
 
-            D3D12_CPU_DESCRIPTOR_HANDLE Allocate()
+            D3D12_CPU_DESCRIPTOR_HANDLE Allocate() const
             {
-                locker.lock();
+                AcquireSRWLockExclusive(&locker);
                 if (freeList.empty())
                 {
                     BlockAllocate();
@@ -308,15 +312,15 @@ namespace Alimer
                 ALIMER_ASSERT(!freeList.empty());
                 D3D12_CPU_DESCRIPTOR_HANDLE handle = freeList.back();
                 freeList.pop_back();
-                locker.unlock();
+                ReleaseSRWLockExclusive(&locker);
                 return handle;
             }
 
-            void Free(D3D12_CPU_DESCRIPTOR_HANDLE index)
+            void Free(D3D12_CPU_DESCRIPTOR_HANDLE index) const
             {
-                locker.lock();
+                AcquireSRWLockExclusive(&locker);
                 freeList.push_back(index);
-                locker.unlock();
+                ReleaseSRWLockExclusive(&locker);
             }
         };
         DescriptorAllocator resourceDescriptorAllocator;
@@ -346,7 +350,7 @@ namespace Alimer
         static constexpr uint32_t kBindlessSamplerCapacity = 256;
 
         std::vector<uint32_t> freeBindlessResources;
-        std::vector<uint32_t> freeBindlessSamplers;
+        mutable std::vector<uint32_t> freeBindlessSamplers;
     };
 }
 

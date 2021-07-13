@@ -21,6 +21,8 @@ namespace Alimer
     static constexpr uint32_t kRHIMaxFrameCommandBuffers = 32u;
     static constexpr uint32_t kRHICubeMapSlices = 6;
 
+    static constexpr uint32_t kRHIInvalidBindlessIndex = static_cast<uint32_t>(-1);
+
     /* Forward declarations */
     class RHIResource;
     class RHIResourceView;
@@ -96,6 +98,17 @@ namespace Alimer
         Indirect = 1 << 8,
     };
 
+    enum class RHIShaderStage : uint32_t
+    {
+        Vertex,
+        Hull,
+        Domain,
+        Geometry,
+        Pixel,
+        Compute,
+        Count,
+    };
+
     enum class RHICompareFunction : uint32_t
     {
         Never,
@@ -122,6 +135,28 @@ namespace Alimer
     {
         UInt16 = 0,
         UInt32 = 1
+    };
+
+    enum class RHISamplerFilter : uint32_t
+    {
+        Nearest,
+        Linear
+    };
+
+    enum class RHISamplerAddressMode : uint32_t
+    {
+        Wrap,
+        Mirror,
+        Clamp,
+        Border,
+        MirrorOnce,
+    };
+
+    enum class RHISamplerBorderColor : uint32_t
+    {
+        TransparentBlack,
+        OpaqueBlack,
+        OpaqueWhite,
     };
 
     struct RHIExtent2D
@@ -276,6 +311,21 @@ namespace Alimer
         RHIBufferUsage usage = RHIBufferUsage::None;
     };
 
+    struct RHISamplerDescription
+    {
+        RHISamplerFilter minFilter = RHISamplerFilter::Nearest;
+        RHISamplerFilter magFilter = RHISamplerFilter::Nearest;
+        RHISamplerFilter mipFilter = RHISamplerFilter::Nearest;
+        RHISamplerAddressMode addressModeU = RHISamplerAddressMode::Clamp;
+        RHISamplerAddressMode addressModeV = RHISamplerAddressMode::Clamp;
+        RHISamplerAddressMode addressModeW = RHISamplerAddressMode::Clamp;
+        uint16_t maxAnisotropy = 1;
+        RHICompareFunction compareFunction = RHICompareFunction::Never;
+        RHISamplerBorderColor borderColor = RHISamplerBorderColor::TransparentBlack;
+        float lodMinClamp = 0.0f;
+        float lodMaxClamp = FLT_MAX;
+    };
+
     struct RHISwapChainDescription
     {
         RHIExtent2D size = { 0, 0 };
@@ -391,9 +441,19 @@ namespace Alimer
         RHIBufferUsage usage;
     };
 
-    class ALIMER_API RHISampler : public RHIObject
+    struct RHIObject2
     {
+        std::shared_ptr<void> state;
+        inline bool IsValid() const { return state.get() != nullptr; }
+    };
 
+    struct RHIShader : public RHIObject2
+    {
+        RHIShaderStage stage = RHIShaderStage::Count;
+    };
+
+    struct RHISampler : public RHIObject2
+    {
     };
 
     class ALIMER_API RHISwapChain : public RHIObject
@@ -465,6 +525,8 @@ namespace Alimer
         [[nodiscard]] virtual RHITextureRef CreateTexture(const RHITextureDescription& desc) = 0;
         [[nodiscard]] RHIBufferRef CreateBuffer(const RHIBufferDescription& desc, const void* initialData = nullptr);
         [[nodiscard]] virtual RHISwapChainRef CreateSwapChain(void* window, const RHISwapChainDescription& desc) = 0;
+
+        virtual bool CreateSampler(const RHISamplerDescription* desc, RHISampler* pSampler) const = 0;
 
         constexpr uint64_t GetFrameCount() const { return frameCount; }
         constexpr uint32_t GetFrameIndex() const { return frameIndex; }
