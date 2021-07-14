@@ -42,3 +42,9 @@ jobs:
           cd build
           cmake -G "Ninja" -DCMAKE_INSTALL_PREFIX="SDK" -DCMAKE_BUILD_TYPE:STRING="Release" ..
           cmake --build . --target install --config Release
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: 'Windows SDK ${{ matrix.build-type }}'
+          path: build/SDK          

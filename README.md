@@ -27,3 +27,13 @@ Uses the following open-source and third-party libraries:
 - [volk](https://github.com/zeux/volk): Meta loader for Vulkan API
 - [vma](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator): Vulkan Memory Allocator
 - [SPIRV-Reflect](https://github.com/KhronosGroup/SPIRV-Reflect): SPIRV-Reflect
+
+Additional inspiration, research or code used:
+
+- Wicked Engine (https://github.com/turanszkij/WickedEngine)
+- Vulkan examples from Sascha Willems (https://github.com/SaschaWillems/Vulkan)
+- Vulkan Samples (https://github.com/KhronosGroup/Vulkan-Samples)
+- Granite (https://github.com/Themaister/Granite)
+- DirectX Graphics samples (https://github.com/Microsoft/DirectX-Graphics-Samples)
+- DXRPathTracer (https://github.com/TheRealMJP/DXRPathTracer)
+- sokol (https://github.com/floooh/sokol)

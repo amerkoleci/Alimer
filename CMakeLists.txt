@@ -105,3 +105,26 @@ install (DIRECTORY ${CMAKE_SOURCE_DIR}/cmake/Modules/ DESTINATION ${DEST_SHARE_D
 
 # Install data files
 file (MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+if (NOT ANDROID)
+	#foreach(dir Assets)
+	#	install (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${dir} DESTINATION bin/)
+	#endforeach()
+
+	# dxil and dxcompiler
+	if(WIN32 AND NOT (WINDOWS_STORE))
+		set(DXIL_LIBRARY "${ALIMER_THIRD_PARTY_DIR}/dxc/bin/win-x64/dxil.dll")
+		set(DXCOMPILER_LIBRARY "${ALIMER_THIRD_PARTY_DIR}/dxc/bin/win-x64/dxcompiler.dll")
+
+		foreach(config ${CMAKE_CONFIGURATION_TYPES})
+			file (COPY ${DXIL_LIBRARY} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${config})
+			file (COPY ${DXCOMPILER_LIBRARY} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${config})
+		endforeach()
+
+		install (FILES
+			${DXIL_LIBRARY}
+			${DXCOMPILER_LIBRARY}
+			DESTINATION ${DEST_BIN_DIR_CONFIG}
+		)
+	endif ()
+endif ()

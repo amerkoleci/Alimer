@@ -15,17 +15,18 @@ public:
 
     void Initialize() override
     {
-        {
-            RHISamplerDescription samplerDesc{};
-            RHISampler sampler;
-            GRHIDevice->CreateSampler(&samplerDesc, &sampler);
-        }
-
-        {
-            RHISamplerDescription samplerDesc{};
-            RHISampler sampler;
-            GRHIDevice->CreateSampler(&samplerDesc, &sampler);
-        }
+#if TODO
+        //{
+//    RHISamplerDescription samplerDesc{};
+//    RHISampler sampler;
+//    GRHIDevice->CreateSampler(&samplerDesc, &sampler);
+//}
+//
+//{
+//    RHISamplerDescription samplerDesc{};
+//    RHISampler sampler;
+//    GRHIDevice->CreateSampler(&samplerDesc, &sampler);
+//}
 
         auto usage = RHITextureUsage::ShaderReadWrite | RHITextureUsage::RenderTarget;
         auto descriptor = RHITextureDescription::TextureCube(PixelFormat::RGBA8UNorm, 256, 1, 1, usage);
@@ -44,6 +45,8 @@ public:
         bufferDesc.size = sizeof(vertices);
         bufferDesc.usage = RHIBufferUsage::Vertex;
         auto vertexBuffer = RHICreateBuffer(bufferDesc, vertices);
+#endif // TODO
+
     }
 
     void OnDraw([[maybe_unused]] RHICommandBuffer* commandBuffer) override

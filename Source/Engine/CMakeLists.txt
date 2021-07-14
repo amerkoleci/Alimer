@@ -84,8 +84,20 @@ if (ALIMER_RHI_VULKAN)
   target_link_libraries(${TARGET_NAME} PRIVATE volk vma spirv-reflect)
 endif()
 
+if (WIN32 AND NOT WINDOWS_STORE)
+  target_link_libraries(${TARGET_NAME} PRIVATE dxc)
+endif ()
+
 if (WIN32)
   target_compile_definitions(${TARGET_NAME} PRIVATE _UNICODE UNICODE _CRT_SECURE_NO_WARNINGS)
 elseif (WINDOWS_STORE)
   target_link_libraries(${TARGET_NAME} PRIVATE d3d12 dxgi)
 endif ()
+
+# SDK installation
+install(TARGETS ${TARGET_NAME}
+    EXPORT ${TARGET_NAME}
+    LIBRARY DESTINATION ${DEST_LIBRARY_DIR_CONFIG}
+    RUNTIME DESTINATION ${DEST_BIN_DIR_CONFIG}
+    ARCHIVE DESTINATION ${DEST_ARCHIVE_DIR_CONFIG}
+)

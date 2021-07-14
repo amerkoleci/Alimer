@@ -3,7 +3,7 @@
 
 #include "AlimerConfig.h"
 
-#if defined(ALIMER_RHI_VULKAN)
+#if defined(ALIMER_RHI_VULKAN) && defined(TODO)
 #include "RHI_Vulkan.h"
 #include "Core/Assert.h"
 #include "Core/Log.h"

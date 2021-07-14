@@ -148,25 +148,28 @@ namespace Alimer
             BeginDraw())
         {
             // Custom application draw.
-            RHICommandBuffer* commandBuffer = RHIBeginCommandBuffer();
+            CommandList commandBuffer = GRHIDevice->BeginCommandList();
 
             //auto view = host->GetMainWindow()->GetRHISwapChain()->GetCurrentTextureView();
 
-            commandBuffer->BeginRenderPass(host->GetMainWindow()->GetRHISwapChain(), Colors::CornflowerBlue);
-            OnDraw(commandBuffer);
-            commandBuffer->EndRenderPass();
+            GRHIDevice->RenderPassBegin(host->GetMainWindow()->GetRHISwapChain(), commandBuffer);
+            //commandBuffer->BeginRenderPass(host->GetMainWindow()->GetRHISwapChain(), Colors::CornflowerBlue);
+            //OnDraw(commandBuffer);
+            GRHIDevice->RenderPassEnd(commandBuffer);
+            //commandBuffer->EndRenderPass();
             EndDraw();
         }
     }
 
     bool Game::BeginDraw()
     {
-        return RHIBeginFrame();
+        return true; // RHIBeginFrame();
     }
 
     void Game::EndDraw()
     {
-        RHIEndFrame();
+        GRHIDevice->SubmitCommandLists();
+        //RHIEndFrame();
     }
 
     void Game::OnDraw(_In_ RHICommandBuffer* commandBuffer)
