@@ -4,7 +4,6 @@
 #pragma once
 
 #include "Math/Vector4.h"
-#include "RHI/RHI.h"
 
 #if defined(__GNUC__) && !defined(__MINGW32__)
 #define ALIMER_SELECT_ANY __attribute__((weak))
@@ -67,11 +66,6 @@ namespace Alimer
         {
         }
 
-        explicit Color(const RHIColor& rhiColor) noexcept
-            : r(rhiColor.r), g(rhiColor.g), b(rhiColor.b), a(rhiColor.a)
-        {
-        }
-
         Color(const Color&) = default;
         Color& operator=(const Color&) = default;
         Color(Color&&) = default;
@@ -101,16 +95,6 @@ namespace Alimer
             b += rhs.b;
             a += rhs.a;
             return *this;
-        }
-
-        operator RHIColor() const noexcept
-        {
-            RHIColor result;
-            result.r = r;
-            result.g = g;
-            result.b = b;
-            result.a = a;
-            return result;
         }
 
         operator const float* () const noexcept { return &r; }

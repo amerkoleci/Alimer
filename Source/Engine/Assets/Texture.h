@@ -14,12 +14,12 @@ namespace Alimer
         ALIMER_OBJECT(Texture, Asset);
 
 	public:
-        const RHITexture* GetRHITexture() const { return &rhiTexture; }
+        const RHI::RHITexture* GetRHITexture() const { return &rhiTexture; }
 
     protected:
         /// Constructor.
         Texture() = default;
 
-        RHITexture rhiTexture;
+        RHI::RHITexture rhiTexture;
 	};
 }

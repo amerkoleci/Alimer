@@ -16,7 +16,7 @@
 
 #include <deque>
 
-namespace Alimer
+namespace Alimer::RHI
 {
     constexpr const char* ToString(VkResult result)
     {
@@ -335,9 +335,9 @@ namespace Alimer
     public:
         [[nodiscard]] static bool IsAvailable();
 
-        RHIDeviceVulkan(RHIValidationMode validationMode);
+        RHIDeviceVulkan(ValidationMode validationMode);
 
-        bool Initialize(RHIValidationMode validationMode) override;
+        bool Initialize() override;
         void Shutdown() override;
 
         bool CreateSwapChain(const RHISwapChainDescription* desc, void* window, SwapChain* swapChain) const override;
@@ -375,14 +375,14 @@ namespace Alimer
         void WaitForGPU() const override;
         void ClearPipelineStateCache() override;
 
-        RHIShaderFormat GetShaderFormat() const override { return RHIShaderFormat::SPIRV; }
+        ShaderFormat GetShaderFormat() const override { return ShaderFormat::SPIRV; }
 
         RHITexture GetBackBuffer(const SwapChain* swapchain) const override;
 
         ///////////////Thread-sensitive////////////////////////
 
         void WaitCommandList(CommandList cmd, CommandList wait_for) override;
-        void BeginRenderPass(CommandList commandList, const SwapChain* swapchain, const RHIColor& clearColor) override;
+        void BeginRenderPass(CommandList commandList, const SwapChain* swapchain, const float clearColor[4]) override;
         void BeginRenderPass(CommandList commandList, const RenderPass* renderpass) override;
         void EndRenderPass(CommandList commandList) override;
         void BindScissorRects(uint32_t numRects, const Rect* rects, CommandList cmd) override;

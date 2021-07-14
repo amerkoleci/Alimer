@@ -49,7 +49,7 @@ public:
 
     }
 
-    void OnDraw([[maybe_unused]] RHICommandBuffer* commandBuffer) override
+    void OnDraw([[maybe_unused]] RHI::RHICommandBuffer* commandBuffer) override
     {
     }
 };

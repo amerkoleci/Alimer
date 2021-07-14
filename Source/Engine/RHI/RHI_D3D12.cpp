@@ -31,7 +31,7 @@
 #define CONSTANT_BUFFER_AUTO_PLACEMENT_IN_ROOT 4
 static_assert(GPU_RESOURCE_HEAP_CBV_COUNT < 32, "cbv root mask must fit into uint32_t!");
 
-namespace Alimer
+namespace Alimer::RHI
 {
     using Microsoft::WRL::ComPtr;
 
@@ -655,25 +655,25 @@ namespace Alimer
         {
             switch (value)
             {
-                case Alimer::IMAGE_LAYOUT_UNDEFINED:
+                case Alimer::RHI::IMAGE_LAYOUT_UNDEFINED:
                     return D3D12_RESOURCE_STATE_COMMON;
-                case Alimer::IMAGE_LAYOUT_RENDERTARGET:
+                case Alimer::RHI::IMAGE_LAYOUT_RENDERTARGET:
                     return D3D12_RESOURCE_STATE_RENDER_TARGET;
-                case Alimer::IMAGE_LAYOUT_DEPTHSTENCIL:
+                case Alimer::RHI::IMAGE_LAYOUT_DEPTHSTENCIL:
                     return D3D12_RESOURCE_STATE_DEPTH_WRITE;
-                case Alimer::IMAGE_LAYOUT_DEPTHSTENCIL_READONLY:
+                case Alimer::RHI::IMAGE_LAYOUT_DEPTHSTENCIL_READONLY:
                     return D3D12_RESOURCE_STATE_DEPTH_READ;
-                case Alimer::IMAGE_LAYOUT_SHADER_RESOURCE:
+                case Alimer::RHI::IMAGE_LAYOUT_SHADER_RESOURCE:
                     return D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-                case Alimer::IMAGE_LAYOUT_SHADER_RESOURCE_COMPUTE:
+                case Alimer::RHI::IMAGE_LAYOUT_SHADER_RESOURCE_COMPUTE:
                     return D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-                case Alimer::IMAGE_LAYOUT_UNORDERED_ACCESS:
+                case Alimer::RHI::IMAGE_LAYOUT_UNORDERED_ACCESS:
                     return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-                case Alimer::IMAGE_LAYOUT_COPY_SRC:
+                case Alimer::RHI::IMAGE_LAYOUT_COPY_SRC:
                     return D3D12_RESOURCE_STATE_COPY_SOURCE;
-                case Alimer::IMAGE_LAYOUT_COPY_DST:
+                case Alimer::RHI::IMAGE_LAYOUT_COPY_DST:
                     return D3D12_RESOURCE_STATE_COPY_DEST;
-                case Alimer::IMAGE_LAYOUT_SHADING_RATE_SOURCE:
+                case Alimer::RHI::IMAGE_LAYOUT_SHADING_RATE_SOURCE:
                     return D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE;
             }
 
@@ -683,27 +683,27 @@ namespace Alimer
         {
             switch (value)
             {
-                case Alimer::BUFFER_STATE_UNDEFINED:
+                case Alimer::RHI::BUFFER_STATE_UNDEFINED:
                     return D3D12_RESOURCE_STATE_COMMON;
-                case Alimer::BUFFER_STATE_VERTEX_BUFFER:
+                case Alimer::RHI::BUFFER_STATE_VERTEX_BUFFER:
                     return D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-                case Alimer::BUFFER_STATE_INDEX_BUFFER:
+                case Alimer::RHI::BUFFER_STATE_INDEX_BUFFER:
                     return D3D12_RESOURCE_STATE_INDEX_BUFFER;
-                case Alimer::BUFFER_STATE_CONSTANT_BUFFER:
+                case Alimer::RHI::BUFFER_STATE_CONSTANT_BUFFER:
                     return D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-                case Alimer::BUFFER_STATE_INDIRECT_ARGUMENT:
+                case Alimer::RHI::BUFFER_STATE_INDIRECT_ARGUMENT:
                     return D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
-                case Alimer::BUFFER_STATE_SHADER_RESOURCE:
+                case Alimer::RHI::BUFFER_STATE_SHADER_RESOURCE:
                     return D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-                case Alimer::BUFFER_STATE_SHADER_RESOURCE_COMPUTE:
+                case Alimer::RHI::BUFFER_STATE_SHADER_RESOURCE_COMPUTE:
                     return D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-                case Alimer::BUFFER_STATE_UNORDERED_ACCESS:
+                case Alimer::RHI::BUFFER_STATE_UNORDERED_ACCESS:
                     return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-                case Alimer::BUFFER_STATE_COPY_SRC:
+                case Alimer::RHI::BUFFER_STATE_COPY_SRC:
                     return D3D12_RESOURCE_STATE_COPY_SOURCE;
-                case Alimer::BUFFER_STATE_COPY_DST:
+                case Alimer::RHI::BUFFER_STATE_COPY_DST:
                     return D3D12_RESOURCE_STATE_COPY_DEST;
-                case Alimer::BUFFER_STATE_RAYTRACING_ACCELERATION_STRUCTURE:
+                case Alimer::RHI::BUFFER_STATE_RAYTRACING_ACCELERATION_STRUCTURE:
                     return D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
             }
 
@@ -736,19 +736,19 @@ namespace Alimer
         {
             switch (value)
             {
-                case Alimer::SHADING_RATE_1X1:
+                case Alimer::RHI::SHADING_RATE_1X1:
                     return D3D12_SHADING_RATE_1X1;
-                case Alimer::SHADING_RATE_1X2:
+                case Alimer::RHI::SHADING_RATE_1X2:
                     return D3D12_SHADING_RATE_1X2;
-                case Alimer::SHADING_RATE_2X1:
+                case Alimer::RHI::SHADING_RATE_2X1:
                     return D3D12_SHADING_RATE_2X1;
-                case Alimer::SHADING_RATE_2X2:
+                case Alimer::RHI::SHADING_RATE_2X2:
                     return D3D12_SHADING_RATE_2X2;
-                case Alimer::SHADING_RATE_2X4:
+                case Alimer::RHI::SHADING_RATE_2X4:
                     return D3D12_SHADING_RATE_2X4;
-                case Alimer::SHADING_RATE_4X2:
+                case Alimer::RHI::SHADING_RATE_4X2:
                     return D3D12_SHADING_RATE_4X2;
-                case Alimer::SHADING_RATE_4X4:
+                case Alimer::RHI::SHADING_RATE_4X4:
                     return D3D12_SHADING_RATE_4X4;
                 default:
                     return D3D12_SHADING_RATE_1X1;
@@ -2587,15 +2587,15 @@ namespace Alimer
         return false;
     }
 
-    RHIDeviceD3D12::RHIDeviceD3D12(RHIValidationMode validationMode)
+    RHIDeviceD3D12::RHIDeviceD3D12(ValidationMode validationMode_)
     {
         ALIMER_VERIFY(IsAvailable());
 
+        validationMode = validationMode_;
         capabilities |= GRAPHICSDEVICE_CAPABILITY_BINDLESS_DESCRIPTORS;
         SHADER_IDENTIFIER_SIZE = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
         TOPLEVEL_ACCELERATION_STRUCTURE_INSTANCE_SIZE = sizeof(D3D12_RAYTRACING_INSTANCE_DESC);
 
-        DEBUGDEVICE = validationMode != RHIValidationMode::Disabled;
 
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
         HMODULE dxcompiler = LoadLibraryW(L"dxcompiler.dll");
@@ -2610,14 +2610,16 @@ namespace Alimer
 
         ThrowIfFailed(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils)));
 
-        if (validationMode != RHIValidationMode::Disabled)
+        if (validationMode != ValidationMode::Disabled)
         {
+            dxgiFactoryFlags = DXGI_CREATE_FACTORY_DEBUG;
+
             ComPtr<ID3D12Debug> debugController;
             if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(debugController.GetAddressOf()))))
             {
                 debugController->EnableDebugLayer();
 
-                if (validationMode == RHIValidationMode::GPU)
+                if (validationMode == ValidationMode::GPU)
                 {
                     ComPtr<ID3D12Debug1> debugController1;
                     if (SUCCEEDED(debugController.As(&debugController1)))
@@ -2637,13 +2639,11 @@ namespace Alimer
             {
                 OutputDebugStringA("WARNING: Direct3D Debug Device is not available\n");
             }
-
+                
 #if defined(_DEBUG)
             ComPtr<IDXGIInfoQueue> dxgiInfoQueue;
             if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(dxgiInfoQueue.GetAddressOf()))))
             {
-                dxgiFactoryFlags = DXGI_CREATE_FACTORY_DEBUG;
-
                 dxgiInfoQueue->SetBreakOnSeverity(RHI_DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, true);
                 dxgiInfoQueue->SetBreakOnSeverity(RHI_DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, true);
 
@@ -2691,46 +2691,73 @@ namespace Alimer
         }
     }
 
-    bool RHIDeviceD3D12::Initialize(RHIValidationMode validationMode)
+    bool RHIDeviceD3D12::Initialize()
     {
-        // pick the highest performance adapter that is able to create the device
-        Microsoft::WRL::ComPtr<IDXGIAdapter1> candidateAdapter;
-        for (uint32_t i = 0; dxgiFactory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&candidateAdapter)) != DXGI_ERROR_NOT_FOUND; ++i)
+        // Pick the highest performance adapter that is able to create the device
+        ComPtr<IDXGIFactory6> dxgiFactory6;
+        const bool queryByPreference = SUCCEEDED(dxgiFactory.As(&dxgiFactory6));
+        auto NextAdapter = [&](uint32_t index, IDXGIAdapter1** ppAdapter)
+        {
+            if (queryByPreference)
+                return dxgiFactory6->EnumAdapterByGpuPreference(index, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(ppAdapter));
+            else
+                return dxgiFactory->EnumAdapters1(index, ppAdapter);
+        };
+
+        ComPtr<IDXGIAdapter1> dxgiAdapter1;
+        for (uint32_t adapterIndex = 0;
+            NextAdapter(adapterIndex, dxgiAdapter1.ReleaseAndGetAddressOf()) != DXGI_ERROR_NOT_FOUND;
+            ++adapterIndex)
         {
             DXGI_ADAPTER_DESC1 adapterDesc;
-            candidateAdapter->GetDesc1(&adapterDesc);
+            ThrowIfFailed(dxgiAdapter1->GetDesc1(&adapterDesc));
 
-            // ignore software adapter and check device creation succeeds
-            if (!(adapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) &&
-                SUCCEEDED(D3D12CreateDevice(candidateAdapter.Get(), D3D_FEATURE_LEVEL_12_1, __uuidof(ID3D12Device), nullptr)))
+            if (adapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
             {
-                candidateAdapter.As(&adapter);
+                // Don't select the Basic Render Driver adapter.
+                continue;
+            }
+
+            if (SUCCEEDED(D3D12CreateDevice(dxgiAdapter1.Get(), D3D_FEATURE_LEVEL_12_1, __uuidof(ID3D12Device), nullptr)))
+            {
+#ifdef _DEBUG
+                wchar_t buff[256] = {};
+                swprintf_s(buff, L"Direct3D Adapter (%u): VID:%04X, PID:%04X - %ls\n",
+                    adapterIndex, adapterDesc.VendorId, adapterDesc.DeviceId, adapterDesc.Description);
+                OutputDebugStringW(buff);
+#endif
                 break;
             }
         }
-        if (candidateAdapter == nullptr)
+
+        if (dxgiAdapter1 == nullptr)
         {
             LOGF("No capable adapter found!", "Error!");
             std::exit(1);
         }
 
-        HRESULT hr = D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&device));
+        HRESULT hr = D3D12CreateDevice(dxgiAdapter1.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&device));
         if (FAILED(hr))
         {
             LOGF("Failed to create the graphics device!");
             std::exit(1);
         }
 
-        if (validationMode != RHIValidationMode::Disabled)
+        if (validationMode != ValidationMode::Disabled)
         {
-            ID3D12InfoQueue* d3dInfoQueue = nullptr;
-            if (SUCCEEDED(device->QueryInterface(__uuidof(ID3D12InfoQueue), (void**)&d3dInfoQueue)))
+            ComPtr<ID3D12InfoQueue> d3dInfoQueue;
+            if (SUCCEEDED(device.As(&d3dInfoQueue)))
             {
+#ifdef _DEBUG
                 d3dInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
                 d3dInfoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
+#endif
 
                 D3D12_MESSAGE_ID hide[] =
                 {
+                    D3D12_MESSAGE_ID_MAP_INVALID_NULLRANGE,
+                    D3D12_MESSAGE_ID_UNMAP_INVALID_NULLRANGE,
+                    D3D12_MESSAGE_ID_EXECUTECOMMANDLISTS_WRONGSWAPCHAINBUFFERREFERENCE,
                     D3D12_MESSAGE_ID_SETPRIVATEDATA_CHANGINGPARAMS,
                     // Add more message IDs here as needed
                 };
@@ -2739,13 +2766,12 @@ namespace Alimer
                 filter.DenyList.NumIDs = _countof(hide);
                 filter.DenyList.pIDList = hide;
                 d3dInfoQueue->AddStorageFilterEntries(&filter);
-                d3dInfoQueue->Release();
             }
         }
 
         D3D12MA::ALLOCATOR_DESC allocatorDesc = {};
         allocatorDesc.pDevice = device.Get();
-        allocatorDesc.pAdapter = adapter.Get();
+        allocatorDesc.pAdapter = dxgiAdapter1.Get();
 
         allocationhandler = std::make_shared<AllocationHandler>();
         allocationhandler->device = device;
@@ -3081,7 +3107,7 @@ namespace Alimer
 
 
         ThrowIfFailed(
-            queues[(uint32_t)RHIQueueType::Graphics].queue->GetTimestampFrequency(&TIMESTAMP_FREQUENCY)
+            queues[(uint32_t)RHIQueueType::Graphics].queue->GetTimestampFrequency(&timestampFrequency)
         );
 
         LOGI("Direct3D12 RHI initialized with success");
@@ -3097,6 +3123,8 @@ namespace Alimer
 
     bool RHIDeviceD3D12::CreateSwapChain(const RHISwapChainDescription* pDesc, void* window, SwapChain* swapChain) const
     {
+        HRESULT hr = S_OK;
+
         auto internal_state = std::static_pointer_cast<SwapChain_DX12>(swapChain->internal_state);
         if (swapChain->internal_state == nullptr)
         {
@@ -3105,8 +3133,6 @@ namespace Alimer
         internal_state->allocationhandler = allocationhandler;
         swapChain->internal_state = internal_state;
         swapChain->desc = *pDesc;
-        HRESULT hr;
-
 
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
         if (internal_state->swapChain == nullptr)
@@ -3116,7 +3142,7 @@ namespace Alimer
 
             swapChainDesc.Width = pDesc->width;
             swapChainDesc.Height = pDesc->height;
-            swapChainDesc.Format = _ConvertFormat(pDesc->format);
+            swapChainDesc.Format = ToDXGISwapChainFormat(pDesc->format);
             swapChainDesc.Stereo = FALSE;
             swapChainDesc.SampleDesc.Count = 1;
             swapChainDesc.SampleDesc.Quality = 0;
@@ -3125,7 +3151,11 @@ namespace Alimer
             swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
             swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
             swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
-            swapChainDesc.Flags = (tearingSupported) ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0u;
+            swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+            if (tearingSupported)
+            {
+                swapChainDesc.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+            }
 
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
             ALIMER_ASSERT(IsWindow((HWND)window));
@@ -3163,7 +3193,7 @@ namespace Alimer
             {
                 return false;
             }
-        }
+            }
         else
         {
             // Resize swapchain:
@@ -3181,7 +3211,7 @@ namespace Alimer
                 swapChainDesc.BufferCount,
                 pDesc->width,
                 pDesc->height,
-                _ConvertFormat(pDesc->format),
+                ToDXGISwapChainFormat(pDesc->format),
                 0
             );
             assert(SUCCEEDED(hr));
@@ -3190,22 +3220,27 @@ namespace Alimer
         internal_state->backBuffers.resize(swapChainDesc.BufferCount);
         internal_state->backbufferRTV.resize(swapChainDesc.BufferCount);
 
+        D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+        rtvDesc.Format = ToDXGIFormat(pDesc->format);
+        rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+
         for (uint32_t i = 0; i < swapChainDesc.BufferCount; ++i)
         {
             hr = internal_state->swapChain->GetBuffer(i, IID_PPV_ARGS(&internal_state->backBuffers[i]));
             assert(SUCCEEDED(hr));
 
             internal_state->backbufferRTV[i] = allocationhandler->descriptors_rtv.allocate();
-            device->CreateRenderTargetView(internal_state->backBuffers[i].Get(), nullptr, internal_state->backbufferRTV[i]);
+            device->CreateRenderTargetView(internal_state->backBuffers[i].Get(), &rtvDesc, internal_state->backbufferRTV[i]);
         }
 
-        internal_state->dummyTexture.desc.Format = pDesc->format;
+        // TODO
+        //internal_state->dummyTexture.desc.Format = pDesc->format;
         internal_state->renderpass = RenderPass();
         HashCombine(internal_state->renderpass.hash, pDesc->format);
         internal_state->renderpass.desc.attachments.push_back(RenderPassAttachment::RenderTarget(&internal_state->dummyTexture));
 
         return true;
-    }
+        }
 
     bool RHIDeviceD3D12::CreateBuffer(const GPUBufferDesc* pDesc, const void* initialData, GPUBuffer* pBuffer) const
     {
@@ -5134,7 +5169,7 @@ namespace Alimer
 
         switch (type)
         {
-            case Alimer::SRV:
+            case Alimer::RHI::SRV:
             {
                 D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
                 srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -5248,7 +5283,7 @@ namespace Alimer
                 return int(internal_state->subresources_srv.size() - 1);
             }
             break;
-            case Alimer::UAV:
+            case Alimer::RHI::UAV:
             {
                 D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc = {};
 
@@ -5322,7 +5357,7 @@ namespace Alimer
                 return int(internal_state->subresources_uav.size() - 1);
             }
             break;
-            case Alimer::RTV:
+            case Alimer::RHI::RTV:
             {
                 D3D12_RENDER_TARGET_VIEW_DESC rtv_desc = {};
 
@@ -5412,7 +5447,7 @@ namespace Alimer
                 return int(internal_state->subresources_rtv.size() - 1);
             }
             break;
-            case Alimer::DSV:
+            case Alimer::RHI::DSV:
             {
                 D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc = {};
 
@@ -5507,7 +5542,7 @@ namespace Alimer
 
         switch (type)
         {
-            case Alimer::CBV:
+            case Alimer::RHI::CBV:
             {
                 size = std::min(size, (uint64_t)buffer->desc.ByteWidth);
                 D3D12_CONSTANT_BUFFER_VIEW_DESC cbv_desc = {};
@@ -5518,7 +5553,7 @@ namespace Alimer
             }
             break;
 
-            case Alimer::SRV:
+            case Alimer::RHI::SRV:
             {
                 D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
                 srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -5563,7 +5598,7 @@ namespace Alimer
                 return int(internal_state->subresources_srv.size() - 1);
             }
             break;
-            case Alimer::UAV:
+            case Alimer::RHI::UAV:
             {
 
                 D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc = {};
@@ -5625,10 +5660,10 @@ namespace Alimer
         switch (type)
         {
             default:
-            case Alimer::CBV:
+            case Alimer::RHI::CBV:
                 return internal_state->cbv.index;
                 break;
-            case Alimer::SRV:
+            case Alimer::RHI::SRV:
                 if (subresource < 0)
                 {
                     return internal_state->srv.index;
@@ -5638,7 +5673,7 @@ namespace Alimer
                     return internal_state->subresources_srv[subresource].index;
                 }
                 break;
-            case Alimer::UAV:
+            case Alimer::RHI::UAV:
                 if (subresource < 0)
                 {
                     return internal_state->uav.index;
@@ -6046,7 +6081,7 @@ namespace Alimer
         cmd_meta[cmd].waits.push_back(wait_for);
     }
 
-    void RHIDeviceD3D12::BeginRenderPass(CommandList commandList, const SwapChain* swapchain, const RHIColor& clearColor)
+    void RHIDeviceD3D12::BeginRenderPass(CommandList commandList, const SwapChain* swapchain, const float clearColor[4])
     {
         swapchains[commandList].push_back(swapchain);
         auto internal_state = to_internal(swapchain);
@@ -6067,10 +6102,10 @@ namespace Alimer
         D3D12_RENDER_PASS_RENDER_TARGET_DESC RTV = {};
         RTV.cpuDescriptor = internal_state->backbufferRTV[internal_state->swapChain->GetCurrentBackBufferIndex()];
         RTV.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
-        RTV.BeginningAccess.Clear.ClearValue.Color[0] = clearColor.r;
-        RTV.BeginningAccess.Clear.ClearValue.Color[1] = clearColor.g;
-        RTV.BeginningAccess.Clear.ClearValue.Color[2] = clearColor.b;
-        RTV.BeginningAccess.Clear.ClearValue.Color[3] = clearColor.a;
+        RTV.BeginningAccess.Clear.ClearValue.Color[0] = clearColor[0];
+        RTV.BeginningAccess.Clear.ClearValue.Color[1] = clearColor[1];
+        RTV.BeginningAccess.Clear.ClearValue.Color[2] = clearColor[2];
+        RTV.BeginningAccess.Clear.ClearValue.Color[3] = clearColor[3];
         RTV.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
         GetCommandList(commandList)->BeginRenderPass(1, &RTV, nullptr, D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES);
     }
@@ -6869,6 +6904,6 @@ namespace Alimer
         auto wName = ToUtf16(name);
         PIXSetMarker(GetCommandList(cmd), PIX_COLOR_DEFAULT, wName.c_str());
     }
-}
+    }
 
 #endif /* defined(ALIMER_RHI_D3D12) */

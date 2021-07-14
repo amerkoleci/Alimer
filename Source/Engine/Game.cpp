@@ -41,8 +41,8 @@ namespace Alimer
     {
         // Shutdown modules.
         host.reset();
-        GRHIDevice->WaitForGPU();
-        RHIShutdown();
+        RHI::WaitForGPU();
+        RHI::Shutdown();
         gLog().Shutdown();
         g_currentGame = nullptr;
     }
@@ -123,9 +123,13 @@ namespace Alimer
         // Platform logic has been setup and main window has been created.
 
         // Init RHI
-        RHIValidationMode validationMode = RHIValidationMode::GPU;
+        RHI::ValidationMode validationMode = RHI::ValidationMode::Disabled;
 
-        if (!RHInitialize(validationMode, RHIBackendType::Count))
+#if defined(_DEBUG)
+        validationMode = RHI::ValidationMode::Enabled;
+#endif
+
+        if (!RHI::Initialize(validationMode, RHI::BackendType::Count))
         {
             headless = true;
         }
@@ -149,14 +153,12 @@ namespace Alimer
             BeginDraw())
         {
             // Custom application draw.
-            CommandList commandBuffer = GRHIDevice->BeginCommandList();
+            RHI::CommandList commandBuffer = RHI::GDevice->BeginCommandList();
 
-            //auto view = host->GetMainWindow()->GetRHISwapChain()->GetCurrentTextureView();
-
-            GRHIDevice->BeginRenderPass(commandBuffer, host->GetMainWindow()->GetRHISwapChain(), Colors::CornflowerBlue);
+            RHI::GDevice->BeginRenderPass(commandBuffer, host->GetMainWindow()->GetRHISwapChain(), Colors::CornflowerBlue);
             //commandBuffer->BeginRenderPass(host->GetMainWindow()->GetRHISwapChain(), Colors::CornflowerBlue);
             //OnDraw(commandBuffer);
-            GRHIDevice->EndRenderPass(commandBuffer);
+            RHI::GDevice->EndRenderPass(commandBuffer);
             //commandBuffer->EndRenderPass();
             EndDraw();
         }
@@ -169,11 +171,11 @@ namespace Alimer
 
     void Game::EndDraw()
     {
-        GRHIDevice->SubmitCommandLists();
+        RHI::GDevice->SubmitCommandLists();
         //RHIEndFrame();
     }
 
-    void Game::OnDraw(_In_ RHICommandBuffer* commandBuffer)
+    void Game::OnDraw(_In_ RHI::RHICommandBuffer* commandBuffer)
     {
 
 

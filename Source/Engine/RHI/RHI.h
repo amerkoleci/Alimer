@@ -17,7 +17,7 @@
 #define GPU_RESOURCE_HEAP_UAV_COUNT		16
 #define GPU_SAMPLER_HEAP_COUNT			16
 
-namespace Alimer
+namespace Alimer::RHI
 {
     /* Constants */
     static constexpr uint32_t kMaxFramesInFlight = 2;
@@ -31,6 +31,7 @@ namespace Alimer
     static constexpr uint32_t kRHICubeMapSlices = 6;
     static constexpr uint32_t kInvalidBindlessIndex = static_cast<uint32_t>(-1);
 
+    /* Forward declarations */
     struct Shader;
     struct GPUResource;
     struct GPUBuffer;
@@ -50,7 +51,7 @@ namespace Alimer
         SHADERSTAGE_COUNT,
     };
 
-    enum class RHIShaderFormat
+    enum class ShaderFormat
     {
         DXIL,
         SPIRV,
@@ -711,7 +712,7 @@ namespace Alimer
     {
         uint32_t width = 0;
         uint32_t height = 0;
-        FORMAT format = FORMAT_R10G10B10A2_UNORM;
+        PixelFormat format = PixelFormat::BGRA8UNorm;
         bool verticalSync = true;
         bool isFullscreen = false;
     };
@@ -1004,22 +1005,14 @@ namespace Alimer
         uint32_t Depth = 1;
     };
 
-    /* Forward declarations */
-    class RHIResource;
-    class RHIResourceView;
-    class RHITextureView;
-    class RHIBuffer;
-
-    using RHIBufferRef = SharedPtr<RHIBuffer>;
-
-    enum class RHIBackendType : uint32_t
+    enum class BackendType : uint32_t
     {
         Direct3D12,
         Vulkan,
         Count
     };
 
-    enum class RHIValidationMode : uint32_t
+    enum class ValidationMode : uint32_t
     {
         /// No validation is enabled.
         Disabled,
@@ -1154,14 +1147,6 @@ namespace Alimer
         uint32_t width = 1;
         uint32_t height = 1;
         uint32_t depth = 1;
-    };
-
-    struct RHIColor
-    {
-        float r;
-        float g;
-        float b;
-        float a;
     };
 
     struct RHIViewport
@@ -1341,8 +1326,8 @@ namespace Alimer
     protected:
         uint64_t allocatedSize = 0;
 
-        mutable std::unordered_map<size_t, std::unique_ptr<RHIResourceView>> resourceViewCache;
-        mutable std::mutex resourceViewCacheMutex;
+        //mutable std::unordered_map<size_t, std::unique_ptr<RHIResourceView>> resourceViewCache;
+        //mutable std::mutex resourceViewCacheMutex;
     };
 
     class ALIMER_API RHIResourceView
@@ -1420,7 +1405,6 @@ namespace Alimer
         //virtual void SetScissorRects(const Rect* rects, uint32_t count) = 0;
 
         virtual void SetStencilReference(uint32_t value) = 0;
-        virtual void SetBlendColor(const RHIColor& color) = 0;
         virtual void SetBlendColor(const float blendColor[4]) = 0;
 
         void SetIndexBuffer(const RHIBuffer* buffer, RHIIndexType indexType, uint32_t offset = 0);
@@ -1459,17 +1443,17 @@ namespace Alimer
     class ALIMER_API RHIDevice
     {
     protected:
-        bool DEBUGDEVICE = false;
+        ValidationMode validationMode = ValidationMode::Disabled;
         uint32_t capabilities = 0;
         size_t SHADER_IDENTIFIER_SIZE = 0;
         size_t TOPLEVEL_ACCELERATION_STRUCTURE_INSTANCE_SIZE = 0;
         uint32_t VARIABLE_RATE_SHADING_TILE_SIZE = 0;
-        uint64_t TIMESTAMP_FREQUENCY = 0;
+        uint64_t timestampFrequency = 0;
 
     public:
         virtual ~RHIDevice() = default;
 
-        virtual bool Initialize(RHIValidationMode validationMode) = 0;
+        virtual bool Initialize() = 0;
         virtual void Shutdown() = 0;
 
         virtual bool CreateSwapChain(const RHISwapChainDescription* desc, void* window, SwapChain* swapChain) const = 0;
@@ -1513,21 +1497,21 @@ namespace Alimer
 
         inline bool CheckCapability(GRAPHICSDEVICE_CAPABILITY capability) const { return capabilities & capability; }
 
-        constexpr bool IsDebugDevice() const { return DEBUGDEVICE; }
+        constexpr ValidationMode GetValidationMode() const { return validationMode; }
 
         constexpr size_t GetShaderIdentifierSize() const { return SHADER_IDENTIFIER_SIZE; }
         constexpr size_t GetTopLevelAccelerationStructureInstanceSize() const { return TOPLEVEL_ACCELERATION_STRUCTURE_INSTANCE_SIZE; }
         constexpr uint32_t GetVariableRateShadingTileSize() const { return VARIABLE_RATE_SHADING_TILE_SIZE; }
-        constexpr uint64_t GetTimestampFrequency() const { return TIMESTAMP_FREQUENCY; }
+        constexpr uint64_t GetTimestampFrequency() const { return timestampFrequency; }
 
-        virtual RHIShaderFormat GetShaderFormat() const = 0;
+        virtual ShaderFormat GetShaderFormat() const = 0;
 
         virtual RHITexture GetBackBuffer(const SwapChain* swapchain) const = 0;
 
         ///////////////Thread-sensitive////////////////////////
 
         virtual void WaitCommandList(CommandList cmd, CommandList wait_for) {}
-        virtual void BeginRenderPass(CommandList commandList, const SwapChain* swapchain, const RHIColor& clearColor) = 0;
+        virtual void BeginRenderPass(CommandList commandList, const SwapChain* swapchain, const float clearColor[4]) = 0;
         virtual void BeginRenderPass(CommandList commandList, const RenderPass* renderpass) = 0;
         virtual void EndRenderPass(CommandList commandList) = 0;
         virtual void BindScissorRects(uint32_t numRects, const Rect* rects, CommandList cmd) = 0;
@@ -1590,18 +1574,19 @@ namespace Alimer
         ALIMER_DISABLE_COPY_MOVE(RHIDevice);
     };
 
-    extern ALIMER_API RHIDevice* GRHIDevice;
+    extern ALIMER_API RHIDevice* GDevice;
 
-    ALIMER_API bool RHInitialize(RHIValidationMode validationMode, RHIBackendType backendType = RHIBackendType::Count);
-    ALIMER_API void RHIShutdown();
+    ALIMER_API bool Initialize(ValidationMode validationMode, BackendType backendType = BackendType::Count);
+    ALIMER_API void Shutdown();
+    ALIMER_API void WaitForGPU();
 }
 
 namespace std
 {
     template<>
-    struct hash<Alimer::RHITextureViewDescription>
+    struct hash<Alimer::RHI::RHITextureViewDescription>
     {
-        size_t operator()(const Alimer::RHITextureViewDescription& desc) const
+        size_t operator()(const Alimer::RHI::RHITextureViewDescription& desc) const
         {
             size_t hash = 0;
             Alimer::HashCombine(hash, (uint32_t)desc.format);
@@ -1614,5 +1599,5 @@ namespace std
     };
 }
 
-ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(Alimer::RHITextureUsage);
-ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(Alimer::RHIBufferUsage);
+ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(Alimer::RHI::RHITextureUsage);
+ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(Alimer::RHI::RHIBufferUsage);

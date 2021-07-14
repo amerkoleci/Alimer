@@ -15,7 +15,7 @@
 #   include "RHI_Vulkan.h"
 #endif
 
-namespace Alimer
+namespace Alimer::RHI
 {
     /* RHIObject */
     void RHIObject::SetName(const String& newName)
@@ -283,25 +283,25 @@ namespace Alimer
     }
 
     /* RHIDevice */
-    RHIDevice* GRHIDevice = nullptr;
+    RHIDevice* GDevice = nullptr;
 
-    bool RHInitialize(RHIValidationMode validationMode, RHIBackendType backendType)
+    bool Initialize(ValidationMode validationMode, BackendType backendType)
     {
-        if (GRHIDevice != nullptr)
+        if (GDevice != nullptr)
             return true;
 
-        if (backendType == RHIBackendType::Count)
+        if (backendType == BackendType::Count)
         {
 #if defined(ALIMER_RHI_D3D12)
             if (RHIDeviceD3D12::IsAvailable())
-                backendType = RHIBackendType::Direct3D12;
+                backendType = BackendType::Direct3D12;
 #endif
 
-            if (backendType == RHIBackendType::Count)
+            if (backendType == BackendType::Count)
             {
 #if defined(ALIMER_RHI_VULKAN)
                 if (RHIDeviceVulkan::IsAvailable())
-                    backendType = RHIBackendType::Vulkan;
+                    backendType = BackendType::Vulkan;
 #endif
             }
         }
@@ -309,14 +309,14 @@ namespace Alimer
         switch (backendType)
         {
 #if defined(ALIMER_RHI_D3D12)
-            case RHIBackendType::Direct3D12:
-                GRHIDevice = new RHIDeviceD3D12(validationMode);
+            case BackendType::Direct3D12:
+                GDevice = new RHIDeviceD3D12(validationMode);
                 break;
 #endif
 
 #if defined(ALIMER_RHI_VULKAN)
-            case RHIBackendType::Vulkan:
-                GRHIDevice = new RHIDeviceVulkan(validationMode);
+            case BackendType::Vulkan:
+                GDevice = new RHIDeviceVulkan(validationMode);
                 break;
 #endif
 
@@ -325,16 +325,21 @@ namespace Alimer
                 return false;
         }
 
-        return GRHIDevice->Initialize(validationMode);
+        return GDevice->Initialize();
     }
 
-    void RHIShutdown()
+    void Shutdown()
     {
-        if (GRHIDevice != nullptr)
+        if (GDevice != nullptr)
         {
-            GRHIDevice->Shutdown();
-            delete GRHIDevice;
-            GRHIDevice = nullptr;
+            GDevice->Shutdown();
+            delete GDevice;
+            GDevice = nullptr;
         }
+    }
+
+    void WaitForGPU()
+    {
+        GDevice->WaitForGPU();
     }
 }

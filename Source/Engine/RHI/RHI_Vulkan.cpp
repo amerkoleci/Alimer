@@ -21,7 +21,7 @@
 #define VULKAN_BINDING_SHIFT_U 2000
 #define VULKAN_BINDING_SHIFT_S 3000
 
-namespace Alimer
+namespace Alimer::RHI
 {
     namespace
     {
@@ -123,6 +123,164 @@ namespace Alimer
         static_assert(offsetof(RHIViewport, height) == offsetof(VkViewport, height), "Layout mismatch");
         static_assert(offsetof(RHIViewport, minDepth) == offsetof(VkViewport, minDepth), "Layout mismatch");
         static_assert(offsetof(RHIViewport, maxDepth) == offsetof(VkViewport, maxDepth), "Layout mismatch");
+
+        [[nodiscard]] constexpr VkFormat ToVulkanFormat(PixelFormat format)
+        {
+            switch (format)
+            {
+                // 8-bit formats
+                case PixelFormat::R8Unorm:  return VK_FORMAT_R8_UNORM;
+                case PixelFormat::R8Snorm:  return VK_FORMAT_R8_SNORM;
+                case PixelFormat::R8Uint:   return VK_FORMAT_R8_UINT;
+                case PixelFormat::R8Sint:   return VK_FORMAT_R8_SINT;
+                    // 16-bit formats
+                case PixelFormat::R16Unorm:     return VK_FORMAT_R16_UNORM;
+                case PixelFormat::R16Snorm:     return VK_FORMAT_R16_SNORM;
+                case PixelFormat::R16Uint:      return VK_FORMAT_R16_UINT;
+                case PixelFormat::R16Sint:      return VK_FORMAT_R16_SINT;
+                case PixelFormat::R16Float:     return VK_FORMAT_R16_SFLOAT;
+                case PixelFormat::RG8Unorm:     return VK_FORMAT_R8G8_UNORM;
+                case PixelFormat::RG8Snorm:     return VK_FORMAT_R8G8_SNORM;
+                case PixelFormat::RG8Uint:      return VK_FORMAT_R8G8_UINT;
+                case PixelFormat::RG8Sint:      return VK_FORMAT_R8G8_SINT;
+                    // 32-bit formats
+                case PixelFormat::R32Uint:          return VK_FORMAT_R32_UINT;
+                case PixelFormat::R32Sint:          return VK_FORMAT_R32_SINT;
+                case PixelFormat::R32Float:         return VK_FORMAT_R32_SFLOAT;
+                case PixelFormat::RG16Unorm:        return VK_FORMAT_R16G16_UNORM;
+                case PixelFormat::RG16Snorm:        return VK_FORMAT_R16G16_SNORM;
+                case PixelFormat::RG16Uint:         return VK_FORMAT_R16G16_UINT;
+                case PixelFormat::RG16Sint:         return VK_FORMAT_R16G16_SINT;
+                case PixelFormat::RG16Float:        return VK_FORMAT_R16G16_SFLOAT;
+                case PixelFormat::RGBA8UNorm:       return VK_FORMAT_R8G8B8A8_UNORM;
+                case PixelFormat::RGBA8UNormSrgb:   return VK_FORMAT_R8G8B8A8_SRGB;
+                case PixelFormat::RGBA8SNorm:       return VK_FORMAT_R8G8B8A8_SNORM;
+                case PixelFormat::RGBA8Uint:        return VK_FORMAT_R8G8B8A8_UINT;
+                case PixelFormat::RGBA8Sint:        return VK_FORMAT_R8G8B8A8_SINT;
+                case PixelFormat::BGRA8UNorm:       return VK_FORMAT_B8G8R8A8_UNORM;
+                case PixelFormat::BGRA8UNormSrgb:   return VK_FORMAT_B8G8R8A8_SRGB;
+                    // Packed 32-Bit formats
+                case PixelFormat::RGB10A2Unorm:     return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+                case PixelFormat::RG11B10Float:     return VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+                case PixelFormat::RGB9E5Float:      return VK_FORMAT_E5B9G9R9_UFLOAT_PACK32;
+                    // 64-Bit formats
+                case PixelFormat::RG32Uint:         return VK_FORMAT_R32G32_UINT;
+                case PixelFormat::RG32Sint:         return VK_FORMAT_R32G32_SINT;
+                case PixelFormat::RG32Float:        return VK_FORMAT_R32G32_SFLOAT;
+                case PixelFormat::RGBA16Unorm:      return VK_FORMAT_R16G16B16A16_UNORM;
+                case PixelFormat::RGBA16Snorm:      return VK_FORMAT_R16G16B16A16_SNORM;
+                case PixelFormat::RGBA16Uint:       return VK_FORMAT_R16G16B16A16_UINT;
+                case PixelFormat::RGBA16Sint:       return VK_FORMAT_R16G16B16A16_SINT;
+                case PixelFormat::RGBA16Float:      return VK_FORMAT_R16G16B16A16_SFLOAT;
+                    // 128-Bit formats
+                case PixelFormat::RGBA32Uint:       return VK_FORMAT_R32G32B32A32_UINT;
+                case PixelFormat::RGBA32Sint:       return VK_FORMAT_R32G32B32A32_SINT;
+                case PixelFormat::RGBA32Float:      return VK_FORMAT_R32G32B32A32_SFLOAT;
+                    // Depth-stencil formats
+                case PixelFormat::Depth16Unorm:     return VK_FORMAT_D16_UNORM;
+                case PixelFormat::Depth32Float:     return VK_FORMAT_D32_SFLOAT;
+                case PixelFormat::Depth24UnormStencil8: return VK_FORMAT_D24_UNORM_S8_UINT;
+                case PixelFormat::Depth32FloatStencil8: return VK_FORMAT_D32_SFLOAT_S8_UINT;
+                    // Compressed BC formats
+                case PixelFormat::BC1RGBAUnorm:         return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+                case PixelFormat::BC1RGBAUnormSrgb:     return VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
+                case PixelFormat::BC2RGBAUnorm:         return VK_FORMAT_BC2_UNORM_BLOCK;
+                case PixelFormat::BC2RGBAUnormSrgb:     return VK_FORMAT_BC2_SRGB_BLOCK;
+                case PixelFormat::BC3RGBAUnorm:         return VK_FORMAT_BC3_UNORM_BLOCK;
+                case PixelFormat::BC3RGBAUnormSrgb:     return VK_FORMAT_BC3_SRGB_BLOCK;
+                case PixelFormat::BC4RSnorm:            return VK_FORMAT_BC4_SNORM_BLOCK;
+                case PixelFormat::BC4RUnorm:            return VK_FORMAT_BC4_UNORM_BLOCK;
+                case PixelFormat::BC5RGSnorm:           return VK_FORMAT_BC5_SNORM_BLOCK;
+                case PixelFormat::BC5RGUnorm:           return VK_FORMAT_BC5_UNORM_BLOCK;
+                case PixelFormat::BC6HRGBFloat:         return VK_FORMAT_BC6H_SFLOAT_BLOCK;
+                case PixelFormat::BC6HRGBUfloat:        return VK_FORMAT_BC6H_UFLOAT_BLOCK;
+                case PixelFormat::BC7RGBAUnorm:         return VK_FORMAT_BC7_UNORM_BLOCK;
+                case PixelFormat::BC7RGBAUnormSrgb:     return VK_FORMAT_BC7_SRGB_BLOCK;
+
+                default:
+                    ALIMER_UNREACHABLE();
+                    return VK_FORMAT_UNDEFINED;
+            }
+        }
+
+        [[nodiscard]] constexpr PixelFormat FromVulkanFormat(VkFormat format)
+        {
+            switch (format)
+            {
+                // 8-bit formats
+                case VK_FORMAT_R8_UNORM:	return PixelFormat::R8Unorm;
+                case VK_FORMAT_R8_SNORM:	return PixelFormat::R8Snorm;
+                case VK_FORMAT_R8_UINT:		return PixelFormat::R8Uint;
+                case VK_FORMAT_R8_SINT:		return PixelFormat::R8Sint;
+                    // 16-bit formats
+                case VK_FORMAT_R16_UNORM:	return PixelFormat::R16Unorm;
+                case VK_FORMAT_R16_SNORM:	return PixelFormat::R16Snorm;
+                case VK_FORMAT_R16_UINT:	return PixelFormat::R16Uint;
+                case VK_FORMAT_R16_SINT:	return PixelFormat::R16Sint;
+                case VK_FORMAT_R16_SFLOAT:	return PixelFormat::R16Float;
+                case VK_FORMAT_R8G8_UNORM:	return PixelFormat::RG8Unorm;
+                case VK_FORMAT_R8G8_SNORM:	return PixelFormat::RG8Snorm;
+                case VK_FORMAT_R8G8_UINT:	return PixelFormat::RG8Uint;
+                case VK_FORMAT_R8G8_SINT:	return PixelFormat::RG8Sint;
+                    // 32-bit formats
+                case VK_FORMAT_R32_UINT:        return PixelFormat::R32Uint;
+                case VK_FORMAT_R32_SINT:        return PixelFormat::R32Sint;
+                case VK_FORMAT_R32_SFLOAT:      return PixelFormat::R32Float;
+                case VK_FORMAT_R16G16_UNORM:	return PixelFormat::RG16Unorm;
+                case VK_FORMAT_R16G16_SNORM:	return PixelFormat::RG16Snorm;
+                case VK_FORMAT_R16G16_UINT:		return PixelFormat::RG16Uint;
+                case VK_FORMAT_R16G16_SINT:		return PixelFormat::RG16Sint;
+                case VK_FORMAT_R16G16_SFLOAT:	return PixelFormat::RG16Float;
+                case VK_FORMAT_R8G8B8A8_UNORM:	return PixelFormat::RGBA8UNorm;
+                case VK_FORMAT_R8G8B8A8_SRGB:	return PixelFormat::RGBA8UNormSrgb;
+                case VK_FORMAT_R8G8B8A8_SNORM:	return PixelFormat::RGBA8SNorm;
+                case VK_FORMAT_R8G8B8A8_UINT:	return PixelFormat::RGBA8Uint;
+                case VK_FORMAT_R8G8B8A8_SINT:	return PixelFormat::RGBA8Sint;
+                case VK_FORMAT_B8G8R8A8_UNORM:	return PixelFormat::BGRA8UNorm;
+                case VK_FORMAT_B8G8R8A8_SRGB:   return PixelFormat::BGRA8UNormSrgb;
+                    // Packed 32-Bit formats
+                case VK_FORMAT_A2B10G10R10_UNORM_PACK32:	return PixelFormat::RGB10A2Unorm;
+                case VK_FORMAT_B10G11R11_UFLOAT_PACK32:     return PixelFormat::RG11B10Float;
+                case VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:      return PixelFormat::RGB9E5Float;
+                    // 64-Bit formats
+                case VK_FORMAT_R32G32_UINT:			return PixelFormat::RG32Uint;
+                case VK_FORMAT_R32G32_SINT:         return PixelFormat::RG32Sint;
+                case VK_FORMAT_R32G32_SFLOAT:       return PixelFormat::RG32Float;
+                case VK_FORMAT_R16G16B16A16_UNORM:  return PixelFormat::RGBA16Unorm;
+                case VK_FORMAT_R16G16B16A16_SNORM:  return PixelFormat::RGBA16Snorm;
+                case VK_FORMAT_R16G16B16A16_UINT:   return PixelFormat::RGBA16Uint;
+                case VK_FORMAT_R16G16B16A16_SINT:   return PixelFormat::RGBA16Sint;
+                case VK_FORMAT_R16G16B16A16_SFLOAT: return PixelFormat::RGBA16Float;
+                    // 128-Bit formats
+                case VK_FORMAT_R32G32B32A32_UINT:   return PixelFormat::RGBA32Uint;
+                case VK_FORMAT_R32G32B32A32_SINT:   return PixelFormat::RGBA32Sint;
+                case VK_FORMAT_R32G32B32A32_SFLOAT: return PixelFormat::RGBA32Float;
+                    // Depth-stencil formats
+                case VK_FORMAT_D16_UNORM:			return PixelFormat::Depth16Unorm;
+                case VK_FORMAT_D32_SFLOAT:			return PixelFormat::Depth32Float;
+                case VK_FORMAT_D24_UNORM_S8_UINT:	return PixelFormat::Depth24UnormStencil8;
+                case VK_FORMAT_D32_SFLOAT_S8_UINT:	return PixelFormat::Depth32FloatStencil8;
+                    // Compressed BC formats
+                case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:	return PixelFormat::BC1RGBAUnorm;
+                case VK_FORMAT_BC1_RGBA_SRGB_BLOCK:		return PixelFormat::BC1RGBAUnormSrgb;
+                case VK_FORMAT_BC2_UNORM_BLOCK:			return PixelFormat::BC2RGBAUnorm;
+                case VK_FORMAT_BC2_SRGB_BLOCK:			return PixelFormat::BC2RGBAUnormSrgb;
+                case VK_FORMAT_BC3_UNORM_BLOCK:			return PixelFormat::BC3RGBAUnorm;
+                case VK_FORMAT_BC3_SRGB_BLOCK:			return PixelFormat::BC3RGBAUnormSrgb;
+                case VK_FORMAT_BC4_SNORM_BLOCK:			return PixelFormat::BC4RSnorm;
+                case VK_FORMAT_BC4_UNORM_BLOCK:			return PixelFormat::BC4RUnorm;
+                case VK_FORMAT_BC5_SNORM_BLOCK:			return PixelFormat::BC5RGSnorm;
+                case VK_FORMAT_BC5_UNORM_BLOCK:			return PixelFormat::BC5RGUnorm;
+                case VK_FORMAT_BC6H_SFLOAT_BLOCK:		return PixelFormat::BC6HRGBFloat;
+                case VK_FORMAT_BC6H_UFLOAT_BLOCK:		return PixelFormat::BC6HRGBUfloat;
+                case VK_FORMAT_BC7_UNORM_BLOCK:			return PixelFormat::BC7RGBAUnorm;
+                case VK_FORMAT_BC7_SRGB_BLOCK:			return PixelFormat::BC7RGBAUnormSrgb;
+
+                default:
+                    ALIMER_UNREACHABLE();
+                    return PixelFormat::Undefined;
+            }
+        }
     }
 
     namespace Vulkan_Internal
@@ -481,28 +639,28 @@ namespace Alimer
         {
             switch (value)
             {
-                case Alimer::STENCIL_OP_KEEP:
+                case Alimer::RHI::STENCIL_OP_KEEP:
                     return VK_STENCIL_OP_KEEP;
                     break;
-                case Alimer::STENCIL_OP_ZERO:
+                case Alimer::RHI::STENCIL_OP_ZERO:
                     return VK_STENCIL_OP_ZERO;
                     break;
-                case Alimer::STENCIL_OP_REPLACE:
+                case Alimer::RHI::STENCIL_OP_REPLACE:
                     return VK_STENCIL_OP_REPLACE;
                     break;
-                case Alimer::STENCIL_OP_INCR_SAT:
+                case Alimer::RHI::STENCIL_OP_INCR_SAT:
                     return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
                     break;
-                case Alimer::STENCIL_OP_DECR_SAT:
+                case Alimer::RHI::STENCIL_OP_DECR_SAT:
                     return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
                     break;
-                case Alimer::STENCIL_OP_INVERT:
+                case Alimer::RHI::STENCIL_OP_INVERT:
                     return VK_STENCIL_OP_INVERT;
                     break;
-                case Alimer::STENCIL_OP_INCR:
+                case Alimer::RHI::STENCIL_OP_INCR:
                     return VK_STENCIL_OP_INCREMENT_AND_WRAP;
                     break;
-                case Alimer::STENCIL_OP_DECR:
+                case Alimer::RHI::STENCIL_OP_DECR:
                     return VK_STENCIL_OP_DECREMENT_AND_WRAP;
                     break;
                 default:
@@ -514,24 +672,24 @@ namespace Alimer
         {
             switch (value)
             {
-                case Alimer::IMAGE_LAYOUT_UNDEFINED:
+                case Alimer::RHI::IMAGE_LAYOUT_UNDEFINED:
                     return VK_IMAGE_LAYOUT_UNDEFINED;
-                case Alimer::IMAGE_LAYOUT_RENDERTARGET:
+                case Alimer::RHI::IMAGE_LAYOUT_RENDERTARGET:
                     return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                case Alimer::IMAGE_LAYOUT_DEPTHSTENCIL:
+                case Alimer::RHI::IMAGE_LAYOUT_DEPTHSTENCIL:
                     return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-                case Alimer::IMAGE_LAYOUT_DEPTHSTENCIL_READONLY:
+                case Alimer::RHI::IMAGE_LAYOUT_DEPTHSTENCIL_READONLY:
                     return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-                case Alimer::IMAGE_LAYOUT_SHADER_RESOURCE:
-                case Alimer::IMAGE_LAYOUT_SHADER_RESOURCE_COMPUTE:
+                case Alimer::RHI::IMAGE_LAYOUT_SHADER_RESOURCE:
+                case Alimer::RHI::IMAGE_LAYOUT_SHADER_RESOURCE_COMPUTE:
                     return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                case Alimer::IMAGE_LAYOUT_UNORDERED_ACCESS:
+                case Alimer::RHI::IMAGE_LAYOUT_UNORDERED_ACCESS:
                     return VK_IMAGE_LAYOUT_GENERAL;
-                case Alimer::IMAGE_LAYOUT_COPY_SRC:
+                case Alimer::RHI::IMAGE_LAYOUT_COPY_SRC:
                     return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-                case Alimer::IMAGE_LAYOUT_COPY_DST:
+                case Alimer::RHI::IMAGE_LAYOUT_COPY_DST:
                     return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-                case Alimer::IMAGE_LAYOUT_SHADING_RATE_SOURCE:
+                case Alimer::RHI::IMAGE_LAYOUT_SHADING_RATE_SOURCE:
                     return VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
             }
             return VK_IMAGE_LAYOUT_UNDEFINED;
@@ -540,21 +698,21 @@ namespace Alimer
         {
             switch (value)
             {
-                case Alimer::MS:
+                case Alimer::RHI::MS:
                     return VK_SHADER_STAGE_MESH_BIT_NV;
-                case Alimer::AS:
+                case Alimer::RHI::AS:
                     return VK_SHADER_STAGE_TASK_BIT_NV;
-                case Alimer::VS:
+                case Alimer::RHI::VS:
                     return VK_SHADER_STAGE_VERTEX_BIT;
-                case Alimer::HS:
+                case Alimer::RHI::HS:
                     return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-                case Alimer::DS:
+                case Alimer::RHI::DS:
                     return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-                case Alimer::GS:
+                case Alimer::RHI::GS:
                     return VK_SHADER_STAGE_GEOMETRY_BIT;
-                case Alimer::PS:
+                case Alimer::RHI::PS:
                     return VK_SHADER_STAGE_FRAGMENT_BIT;
-                case Alimer::CS:
+                case Alimer::RHI::CS:
                     return VK_SHADER_STAGE_COMPUTE_BIT;
                 default:
                     return VK_SHADER_STAGE_ALL;
@@ -568,29 +726,29 @@ namespace Alimer
 
             switch (value)
             {
-                case Alimer::IMAGE_LAYOUT_UNDEFINED:
+                case Alimer::RHI::IMAGE_LAYOUT_UNDEFINED:
                     break;
-                case Alimer::IMAGE_LAYOUT_RENDERTARGET:
+                case Alimer::RHI::IMAGE_LAYOUT_RENDERTARGET:
                     flags |= VK_ACCESS_SHADER_WRITE_BIT;
                     break;
-                case Alimer::IMAGE_LAYOUT_DEPTHSTENCIL:
+                case Alimer::RHI::IMAGE_LAYOUT_DEPTHSTENCIL:
                     flags |= VK_ACCESS_SHADER_WRITE_BIT;
                     break;
-                case Alimer::IMAGE_LAYOUT_DEPTHSTENCIL_READONLY:
+                case Alimer::RHI::IMAGE_LAYOUT_DEPTHSTENCIL_READONLY:
                     flags |= VK_ACCESS_SHADER_READ_BIT;
                     break;
-                case Alimer::IMAGE_LAYOUT_SHADER_RESOURCE:
-                case Alimer::IMAGE_LAYOUT_SHADER_RESOURCE_COMPUTE:
+                case Alimer::RHI::IMAGE_LAYOUT_SHADER_RESOURCE:
+                case Alimer::RHI::IMAGE_LAYOUT_SHADER_RESOURCE_COMPUTE:
                     flags |= VK_ACCESS_SHADER_READ_BIT;
                     break;
-                case Alimer::IMAGE_LAYOUT_UNORDERED_ACCESS:
+                case Alimer::RHI::IMAGE_LAYOUT_UNORDERED_ACCESS:
                     flags |= VK_ACCESS_SHADER_READ_BIT;
                     flags |= VK_ACCESS_SHADER_WRITE_BIT;
                     break;
-                case Alimer::IMAGE_LAYOUT_COPY_SRC:
+                case Alimer::RHI::IMAGE_LAYOUT_COPY_SRC:
                     flags |= VK_ACCESS_TRANSFER_READ_BIT;
                     break;
-                case Alimer::IMAGE_LAYOUT_COPY_DST:
+                case Alimer::RHI::IMAGE_LAYOUT_COPY_DST:
                     flags |= VK_ACCESS_TRANSFER_WRITE_BIT;
                     break;
             }
@@ -603,37 +761,37 @@ namespace Alimer
 
             switch (value)
             {
-                case Alimer::BUFFER_STATE_UNDEFINED:
+                case Alimer::RHI::BUFFER_STATE_UNDEFINED:
                     break;
-                case Alimer::BUFFER_STATE_VERTEX_BUFFER:
+                case Alimer::RHI::BUFFER_STATE_VERTEX_BUFFER:
                     flags |= VK_ACCESS_SHADER_READ_BIT;
                     flags |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
                     break;
-                case Alimer::BUFFER_STATE_INDEX_BUFFER:
+                case Alimer::RHI::BUFFER_STATE_INDEX_BUFFER:
                     flags |= VK_ACCESS_SHADER_READ_BIT;
                     flags |= VK_ACCESS_INDEX_READ_BIT;
                     break;
-                case Alimer::BUFFER_STATE_CONSTANT_BUFFER:
+                case Alimer::RHI::BUFFER_STATE_CONSTANT_BUFFER:
                     flags |= VK_ACCESS_SHADER_READ_BIT;
                     flags |= VK_ACCESS_UNIFORM_READ_BIT;
                     break;
-                case Alimer::BUFFER_STATE_INDIRECT_ARGUMENT:
+                case Alimer::RHI::BUFFER_STATE_INDIRECT_ARGUMENT:
                     flags |= VK_ACCESS_SHADER_READ_BIT;
                     flags |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
                     break;
-                case Alimer::BUFFER_STATE_SHADER_RESOURCE:
-                case Alimer::BUFFER_STATE_SHADER_RESOURCE_COMPUTE:
+                case Alimer::RHI::BUFFER_STATE_SHADER_RESOURCE:
+                case Alimer::RHI::BUFFER_STATE_SHADER_RESOURCE_COMPUTE:
                     flags |= VK_ACCESS_SHADER_READ_BIT;
                     flags |= VK_ACCESS_UNIFORM_READ_BIT;
                     break;
-                case Alimer::BUFFER_STATE_UNORDERED_ACCESS:
+                case Alimer::RHI::BUFFER_STATE_UNORDERED_ACCESS:
                     flags |= VK_ACCESS_SHADER_READ_BIT;
                     flags |= VK_ACCESS_SHADER_WRITE_BIT;
                     break;
-                case Alimer::BUFFER_STATE_COPY_SRC:
+                case Alimer::RHI::BUFFER_STATE_COPY_SRC:
                     flags |= VK_ACCESS_TRANSFER_READ_BIT;
                     break;
-                case Alimer::BUFFER_STATE_COPY_DST:
+                case Alimer::RHI::BUFFER_STATE_COPY_DST:
                     flags |= VK_ACCESS_TRANSFER_WRITE_BIT;
                     break;
                 default:
@@ -2106,13 +2264,12 @@ namespace Alimer
         return true;
     }
 
-    RHIDeviceVulkan::RHIDeviceVulkan(RHIValidationMode validationMode)
+    RHIDeviceVulkan::RHIDeviceVulkan(ValidationMode validationMode_)
     {
         ALIMER_VERIFY(IsAvailable());
 
+        validationMode = validationMode_;
         TOPLEVEL_ACCELERATION_STRUCTURE_INSTANCE_SIZE = sizeof(VkAccelerationStructureInstanceKHR);
-
-        DEBUGDEVICE = validationMode != RHIValidationMode::Disabled;
 
         // Fill out application info:
         VkApplicationInfo appInfo{ VK_STRUCTURE_TYPE_APPLICATION_INFO };
@@ -2172,7 +2329,7 @@ namespace Alimer
         instanceExtensions.push_back(VK_EXT_HEADLESS_SURFACE_EXTENSION_NAME);
 #endif
 
-        if (validationMode != RHIValidationMode::Disabled)
+        if (validationMode != ValidationMode::Disabled)
         {
             // Determine the optimal validation layers to enable that are necessary for useful debugging
             std::vector<const char*> optimalValidationLyers = GetOptimalValidationLayers(availableInstanceLayers);
@@ -2188,7 +2345,7 @@ namespace Alimer
 
         VkDebugUtilsMessengerCreateInfoEXT debugUtilsCreateInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT };
 
-        if (validationMode != RHIValidationMode::Disabled
+        if (validationMode != ValidationMode::Disabled
             && debugUtils)
         {
             debugUtilsCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
@@ -2206,7 +2363,7 @@ namespace Alimer
 
         volkLoadInstanceOnly(instance);
 
-        if (validationMode != RHIValidationMode::Disabled
+        if (validationMode != ValidationMode::Disabled
             && debugUtils)
         {
             result = vkCreateDebugUtilsMessengerEXT(instance, &debugUtilsCreateInfo, nullptr, &debugUtilsMessenger);
@@ -2239,9 +2396,8 @@ namespace Alimer
         }
     }
 
-    bool RHIDeviceVulkan::Initialize(RHIValidationMode validationMode)
+    bool RHIDeviceVulkan::Initialize()
     {
-
         // Enumerating and creating devices:
         {
             uint32_t deviceCount = 0;
@@ -2346,9 +2502,8 @@ namespace Alimer
                     }
                 }
 
-                if (!DEBUGDEVICE && checkExtensionSupport(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME, available_deviceExtensions))
+                if (checkExtensionSupport(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME, available_deviceExtensions))
                 {
-                    // Note: VRS will crash vulkan validation layers: https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/2473
                     enabled_deviceExtensions.push_back(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
                     fragment_shading_rate_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
                     *features_chain = &fragment_shading_rate_features;
@@ -2755,7 +2910,7 @@ namespace Alimer
             assert(res == VK_SUCCESS);
         }
 
-        TIMESTAMP_FREQUENCY = uint64_t(1.0 / double(properties2.properties.limits.timestampPeriod) * 1000 * 1000 * 1000);
+        timestampFrequency = uint64_t(1.0 / double(properties2.properties.limits.timestampPeriod) * 1000 * 1000 * 1000);
 
         // Dynamic PSO states:
         pso_dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
@@ -2952,19 +3107,20 @@ namespace Alimer
         }
 
         VkSurfaceFormatKHR surfaceFormat = {};
-        surfaceFormat.format = _ConvertFormat(pDesc->format);
-        bool valid = false;
+        surfaceFormat.format = ToVulkanFormat(pDesc->format);
+        bool surfaceFormatFound = false;
 
         for (const auto& format : internal_state->swapchain_formats)
         {
             if (format.format == surfaceFormat.format)
             {
                 surfaceFormat = format;
-                valid = true;
+                surfaceFormatFound = true;
                 break;
             }
         }
-        if (!valid)
+
+        if (!surfaceFormatFound)
         {
             surfaceFormat = { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
         }
@@ -3675,28 +3831,28 @@ namespace Alimer
         internal_state->stageInfo.pName = "main";
         switch (stage)
         {
-            case Alimer::MS:
+            case Alimer::RHI::MS:
                 internal_state->stageInfo.stage = VK_SHADER_STAGE_MESH_BIT_NV;
                 break;
-            case Alimer::AS:
+            case Alimer::RHI::AS:
                 internal_state->stageInfo.stage = VK_SHADER_STAGE_TASK_BIT_NV;
                 break;
-            case Alimer::VS:
+            case Alimer::RHI::VS:
                 internal_state->stageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
                 break;
-            case Alimer::HS:
+            case Alimer::RHI::HS:
                 internal_state->stageInfo.stage = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
                 break;
-            case Alimer::DS:
+            case Alimer::RHI::DS:
                 internal_state->stageInfo.stage = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
                 break;
-            case Alimer::GS:
+            case Alimer::RHI::GS:
                 internal_state->stageInfo.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
                 break;
-            case Alimer::PS:
+            case Alimer::RHI::PS:
                 internal_state->stageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
                 break;
-            case Alimer::CS:
+            case Alimer::RHI::CS:
                 internal_state->stageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
                 break;
             default:
@@ -5282,7 +5438,7 @@ namespace Alimer
 
         switch (type)
         {
-            case Alimer::SRV:
+            case Alimer::RHI::SRV:
             {
                 switch (texture->desc.Format)
                 {
@@ -5342,7 +5498,7 @@ namespace Alimer
                 }
             }
             break;
-            case Alimer::UAV:
+            case Alimer::RHI::UAV:
             {
                 if (view_desc.viewType == VK_IMAGE_VIEW_TYPE_CUBE || view_desc.viewType == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)
                 {
@@ -5387,7 +5543,7 @@ namespace Alimer
                 }
             }
             break;
-            case Alimer::RTV:
+            case Alimer::RHI::RTV:
             {
                 VkImageView rtv;
                 view_desc.subresourceRange.levelCount = 1;
@@ -5411,7 +5567,7 @@ namespace Alimer
                 }
             }
             break;
-            case Alimer::DSV:
+            case Alimer::RHI::DSV:
             {
                 view_desc.subresourceRange.levelCount = 1;
                 view_desc.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
@@ -5468,7 +5624,7 @@ namespace Alimer
 
         switch (type)
         {
-            case Alimer::CBV:
+            case Alimer::RHI::CBV:
             {
                 int index = allocationhandler->bindlessUniformBuffers.allocate();
                 if (index >= 0)
@@ -5492,8 +5648,8 @@ namespace Alimer
             }
             break;
 
-            case Alimer::SRV:
-            case Alimer::UAV:
+            case Alimer::RHI::SRV:
+            case Alimer::RHI::UAV:
             {
                 if (desc.Format == FORMAT_UNKNOWN)
                 {
@@ -5629,14 +5785,14 @@ namespace Alimer
         switch (type)
         {
             default:
-            case Alimer::CBV:
+            case Alimer::RHI::CBV:
                 if (resource->IsBuffer())
                 {
                     auto internal_state = to_internal((const GPUBuffer*)resource);
                     return internal_state->cbv_index;
                 }
                 break;
-            case Alimer::SRV:
+            case Alimer::RHI::SRV:
                 if (resource->IsBuffer())
                 {
                     auto internal_state = to_internal((const GPUBuffer*)resource);
@@ -5667,7 +5823,7 @@ namespace Alimer
                     return internal_state->index;
                 }
                 break;
-            case Alimer::UAV:
+            case Alimer::RHI::UAV:
                 if (resource->IsBuffer())
                 {
                     auto internal_state = to_internal((const GPUBuffer*)resource);
@@ -5714,25 +5870,25 @@ namespace Alimer
         switch (rate)
         {
             default:
-            case Alimer::SHADING_RATE_1X1:
+            case Alimer::RHI::SHADING_RATE_1X1:
                 *(uint8_t*)dest = 0;
                 break;
-            case Alimer::SHADING_RATE_1X2:
+            case Alimer::RHI::SHADING_RATE_1X2:
                 *(uint8_t*)dest = 0x1;
                 break;
-            case Alimer::SHADING_RATE_2X1:
+            case Alimer::RHI::SHADING_RATE_2X1:
                 *(uint8_t*)dest = 0x4;
                 break;
-            case Alimer::SHADING_RATE_2X2:
+            case Alimer::RHI::SHADING_RATE_2X2:
                 *(uint8_t*)dest = 0x5;
                 break;
-            case Alimer::SHADING_RATE_2X4:
+            case Alimer::RHI::SHADING_RATE_2X4:
                 *(uint8_t*)dest = 0x6;
                 break;
-            case Alimer::SHADING_RATE_4X2:
+            case Alimer::RHI::SHADING_RATE_4X2:
                 *(uint8_t*)dest = 0x9;
                 break;
-            case Alimer::SHADING_RATE_4X4:
+            case Alimer::RHI::SHADING_RATE_4X4:
                 *(uint8_t*)dest = 0xa;
                 break;
         }
@@ -6179,7 +6335,8 @@ namespace Alimer
         result.desc.type = TextureDesc::TEXTURE_2D;
         result.desc.Width = swapchain_internal->swapChainExtent.width;
         result.desc.Height = swapchain_internal->swapChainExtent.height;
-        result.desc.Format = swapchain->desc.format;
+        // TODO
+        //result.desc.Format = swapchain->desc.format;
         return result;
     }
 
@@ -6190,7 +6347,7 @@ namespace Alimer
         cmd_meta[cmd].waits.push_back(wait_for);
     }
 
-    void RHIDeviceVulkan::BeginRenderPass(CommandList commandList, const SwapChain* swapchain, const RHIColor& clearColor)
+    void RHIDeviceVulkan::BeginRenderPass(CommandList commandList, const SwapChain* swapchain, const float clearColor[4])
     {
         auto internal_state = to_internal(swapchain);
         active_renderpass[commandList] = &internal_state->renderPass;
@@ -6218,10 +6375,10 @@ namespace Alimer
         barrier_flush(commandList);
 
         VkClearValue vkClearColor = {
-            clearColor.r,
-            clearColor.g,
-            clearColor.b,
-            clearColor.a,
+            clearColor[0],
+            clearColor[1],
+            clearColor[2],
+            clearColor[3],
         };
         VkRenderPassBeginInfo renderPassInfo = {};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -6429,31 +6586,31 @@ namespace Alimer
             VkExtent2D fragmentSize;
             switch (rate)
             {
-                case Alimer::SHADING_RATE_1X1:
+                case Alimer::RHI::SHADING_RATE_1X1:
                     fragmentSize.width = 1;
                     fragmentSize.height = 1;
                     break;
-                case Alimer::SHADING_RATE_1X2:
+                case Alimer::RHI::SHADING_RATE_1X2:
                     fragmentSize.width = 1;
                     fragmentSize.height = 2;
                     break;
-                case Alimer::SHADING_RATE_2X1:
+                case Alimer::RHI::SHADING_RATE_2X1:
                     fragmentSize.width = 2;
                     fragmentSize.height = 1;
                     break;
-                case Alimer::SHADING_RATE_2X2:
+                case Alimer::RHI::SHADING_RATE_2X2:
                     fragmentSize.width = 2;
                     fragmentSize.height = 2;
                     break;
-                case Alimer::SHADING_RATE_2X4:
+                case Alimer::RHI::SHADING_RATE_2X4:
                     fragmentSize.width = 2;
                     fragmentSize.height = 4;
                     break;
-                case Alimer::SHADING_RATE_4X2:
+                case Alimer::RHI::SHADING_RATE_4X2:
                     fragmentSize.width = 4;
                     fragmentSize.height = 2;
                     break;
-                case Alimer::SHADING_RATE_4X4:
+                case Alimer::RHI::SHADING_RATE_4X4:
                     fragmentSize.width = 4;
                     fragmentSize.height = 4;
                     break;

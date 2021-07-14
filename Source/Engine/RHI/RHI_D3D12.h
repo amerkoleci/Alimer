@@ -23,7 +23,7 @@
 
 struct IDxcUtils;
 
-namespace Alimer
+namespace Alimer::RHI
 {
     class RHIDeviceD3D12 final : public RHIDevice
     {
@@ -31,11 +31,10 @@ namespace Alimer
         IDxcUtils* dxcUtils = nullptr;
 
         DWORD dxgiFactoryFlags = 0;
-        Microsoft::WRL::ComPtr<IDXGIFactory6> dxgiFactory;
+        Microsoft::WRL::ComPtr<IDXGIFactory4> dxgiFactory;
         bool tearingSupported = false;
 
         Microsoft::WRL::ComPtr<ID3D12Device5> device;
-        Microsoft::WRL::ComPtr<IDXGIAdapter4> adapter;
 
         Microsoft::WRL::ComPtr<ID3D12CommandSignature> dispatchIndirectCommandSignature;
         Microsoft::WRL::ComPtr<ID3D12CommandSignature> drawInstancedIndirectCommandSignature;
@@ -219,9 +218,9 @@ namespace Alimer
     public:
         [[nodiscard]] static bool IsAvailable();
 
-        RHIDeviceD3D12(RHIValidationMode validationMode);
+        RHIDeviceD3D12(ValidationMode validationMode);
 
-        bool Initialize(RHIValidationMode validationMode) override;
+        bool Initialize() override;
         void Shutdown() override;
 
         bool CreateSwapChain(const RHISwapChainDescription* desc, void* window, SwapChain* swapChain) const override;
@@ -259,14 +258,14 @@ namespace Alimer
         void WaitForGPU() const override;
         void ClearPipelineStateCache() override;
 
-        RHIShaderFormat GetShaderFormat() const override { return RHIShaderFormat::DXIL; }
+        ShaderFormat GetShaderFormat() const override { return ShaderFormat::DXIL; }
 
         RHITexture GetBackBuffer(const SwapChain* swapchain) const override;
 
         ///////////////Thread-sensitive////////////////////////
 
         void WaitCommandList(CommandList cmd, CommandList wait_for) override;
-        void BeginRenderPass(CommandList commandList, const SwapChain* swapchain, const RHIColor& clearColor) override;
+        void BeginRenderPass(CommandList commandList, const SwapChain* swapchain, const float clearColor[4]) override;
         void BeginRenderPass(CommandList commandList, const RenderPass* renderpass) override;
         void EndRenderPass(CommandList commandList) override;
         void BindScissorRects(uint32_t numRects, const Rect* rects, CommandList cmd) override;
