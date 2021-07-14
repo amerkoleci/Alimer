@@ -41,6 +41,7 @@ namespace Alimer
     {
         // Shutdown modules.
         host.reset();
+        GRHIDevice->WaitForGPU();
         RHIShutdown();
         gLog().Shutdown();
         g_currentGame = nullptr;

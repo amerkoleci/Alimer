@@ -24,11 +24,14 @@
 #define D3D12_GPU_VIRTUAL_ADDRESS_NULL      ((D3D12_GPU_VIRTUAL_ADDRESS)0)
 #define D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN   ((D3D12_GPU_VIRTUAL_ADDRESS)-1)
 
+struct IDxcUtils;
+
 namespace Alimer
 {
     class RHIDeviceD3D12 final : public RHIDevice
     {
     private:
+        IDxcUtils* dxcUtils = nullptr;
         Microsoft::WRL::ComPtr<ID3D12Device5> device;
         Microsoft::WRL::ComPtr<IDXGIAdapter4> adapter;
         Microsoft::WRL::ComPtr<IDXGIFactory6> factory;

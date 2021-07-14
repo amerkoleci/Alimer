@@ -34,18 +34,18 @@ namespace Alimer
     namespace DX12_Internal
     {
 
-#ifdef PLATFORM_UWP
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
+        using PFN_CREATE_DXGI_FACTORY2 = decltype(&CreateDXGIFactory2);
+        static PFN_CREATE_DXGI_FACTORY2 CreateDXGIFactory2 = nullptr;
+
+        static PFN_D3D12_GET_DEBUG_INTERFACE D3D12GetDebugInterface = nullptr;
+        static PFN_D3D12_CREATE_DEVICE D3D12CreateDevice = nullptr;
+        static PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE D3D12SerializeVersionedRootSignature = nullptr;
+#else
         // UWP will use static link + /DELAYLOAD linker feature for the dlls (optionally)
 #pragma comment(lib,"d3d12.lib")
 #pragma comment(lib,"dxgi.lib")
-#else
-        using PFN_CREATE_DXGI_FACTORY_2 = decltype(&CreateDXGIFactory2);
-        static PFN_CREATE_DXGI_FACTORY_2 CreateDXGIFactory2 = nullptr;
-        static PFN_D3D12_CREATE_DEVICE D3D12CreateDevice = nullptr;
-        static PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE D3D12SerializeVersionedRootSignature = nullptr;
-#endif // PLATFORM_UWP
-
-        ComPtr<IDxcUtils> dxcUtils;
+#endif
 
         // Engine -> Native converters
 
@@ -2331,58 +2331,107 @@ namespace Alimer
         }
     }
 
+    bool RHIDeviceD3D12::IsAvailable()
+    {
+        static bool available_initialized = false;
+        static bool available = false;
+
+        if (available_initialized) {
+            return available;
+        }
+
+        available_initialized = true;
+
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
+        HMODULE dxgiDLL = LoadLibraryExW(L"dxgi.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+        HMODULE d3d12DLL = LoadLibraryExW(L"d3d12.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+
+        if (dxgiDLL == nullptr ||
+            d3d12DLL == nullptr)
+        {
+            return false;
+        }
+
+        CreateDXGIFactory2 = (PFN_CREATE_DXGI_FACTORY2)GetProcAddress(dxgiDLL, "CreateDXGIFactory2");
+        if (CreateDXGIFactory2 == nullptr)
+        {
+            return false;
+        }
+
+        //DXGIGetDebugInterface1 = (PFN_DXGI_GET_DEBUG_INTERFACE1)GetProcAddress(dxgiDLL, "DXGIGetDebugInterface1");
+
+        D3D12GetDebugInterface = (PFN_D3D12_GET_DEBUG_INTERFACE)GetProcAddress(d3d12DLL, "D3D12GetDebugInterface");
+        D3D12CreateDevice = (PFN_D3D12_CREATE_DEVICE)GetProcAddress(d3d12DLL, "D3D12CreateDevice");
+        if (!D3D12CreateDevice) {
+            return false;
+        }
+
+        D3D12SerializeVersionedRootSignature = (PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE)GetProcAddress(d3d12DLL, "D3D12SerializeVersionedRootSignature");
+        if (!D3D12SerializeVersionedRootSignature) {
+            return false;
+        }
+#endif
+
+        if (SUCCEEDED(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_0, _uuidof(ID3D12Device), nullptr)))
+        {
+            available = true;
+            return true;
+        }
+
+        return false;
+    }
+
     RHIDeviceD3D12::RHIDeviceD3D12(RHIValidationMode validationMode)
     {
+        ALIMER_VERIFY(IsAvailable());
+
         capabilities |= GRAPHICSDEVICE_CAPABILITY_BINDLESS_DESCRIPTORS;
         SHADER_IDENTIFIER_SIZE = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
         TOPLEVEL_ACCELERATION_STRUCTURE_INSTANCE_SIZE = sizeof(D3D12_RAYTRACING_INSTANCE_DESC);
 
         DEBUGDEVICE = validationMode != RHIValidationMode::Disabled;
 
-#ifdef PLATFORM_UWP
-        HMODULE dxcompiler = LoadPackagedLibrary(L"dxcompiler.dll", 0);
-#else
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
         HMODULE dxcompiler = LoadLibraryW(L"dxcompiler.dll");
-        HMODULE dxgi = LoadLibraryEx(L"dxgi.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
-        HMODULE dx12 = LoadLibraryEx(L"d3d12.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
-
-        CreateDXGIFactory2 = (PFN_CREATE_DXGI_FACTORY_2)GetProcAddress(dxgi, "CreateDXGIFactory2");
-        assert(CreateDXGIFactory2 != nullptr);
-
-        D3D12CreateDevice = (PFN_D3D12_CREATE_DEVICE)GetProcAddress(dx12, "D3D12CreateDevice");
-        assert(D3D12CreateDevice != nullptr);
-
-        D3D12SerializeVersionedRootSignature = (PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE)GetProcAddress(dx12, "D3D12SerializeVersionedRootSignature");
-        assert(D3D12SerializeVersionedRootSignature != nullptr);
-#endif // PLATFORM_UWP
+#else
+        HMODULE dxcompiler = LoadPackagedLibrary(L"dxcompiler.dll", 0);
+#endif
 
         DxcCreateInstanceProc DxcCreateInstance = (DxcCreateInstanceProc)GetProcAddress(dxcompiler, "DxcCreateInstance");
-        assert(DxcCreateInstance != nullptr);
+        ALIMER_ASSERT(DxcCreateInstance != nullptr);
 
         HRESULT hr;
 
-        hr = DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils));
-        assert(SUCCEEDED(hr));
+        ThrowIfFailed(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils)));
 
-#if !defined(PLATFORM_UWP)
         if (validationMode != RHIValidationMode::Disabled)
         {
-            // Enable the debug layer.
-            auto D3D12GetDebugInterface = (PFN_D3D12_GET_DEBUG_INTERFACE)GetProcAddress(dx12, "D3D12GetDebugInterface");
-            if (D3D12GetDebugInterface)
+            ComPtr<ID3D12Debug> debugController;
+            if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(debugController.GetAddressOf()))))
             {
-                ComPtr<ID3D12Debug1> d3dDebug;
-                if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&d3dDebug))))
+                debugController->EnableDebugLayer();
+
+                if (validationMode == RHIValidationMode::GPU)
                 {
-                    d3dDebug->EnableDebugLayer();
-                    //if (gpuvalidation)
-                    //{
-                    //    d3dDebug->SetEnableGPUBasedValidation(TRUE);
-                    //}
+                    ComPtr<ID3D12Debug1> debugController1;
+                    if (SUCCEEDED(debugController.As(&debugController1)))
+                    {
+                        debugController1->SetEnableGPUBasedValidation(TRUE);
+                        debugController1->SetEnableSynchronizedCommandQueueValidation(TRUE);
+                    }
+
+                    ComPtr<ID3D12Debug2> debugController2;
+                    if (SUCCEEDED(debugController.As(&debugController2)))
+                    {
+                        debugController2->SetGPUBasedValidationFlags(D3D12_GPU_BASED_VALIDATION_FLAGS_NONE);
+                    }
                 }
             }
+            else
+            {
+                OutputDebugStringA("WARNING: Direct3D Debug Device is not available\n");
+            }
         }
-#endif
 
         hr = CreateDXGIFactory2(/*debuglayer ? DXGI_CREATE_FACTORY_DEBUG :*/ 0, IID_PPV_ARGS(&factory));
         if (FAILED(hr))
@@ -2793,7 +2842,7 @@ namespace Alimer
     {
         WaitForGPU();
         copyAllocator.destroy();
-        dxcUtils.Reset();
+        SafeRelease(dxcUtils);
     }
 
     bool RHIDeviceD3D12::CreateSwapChain(const SwapChainDesc* pDesc, void* window, SwapChain* swapChain) const

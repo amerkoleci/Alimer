@@ -11,7 +11,7 @@
 #   include "RHI_D3D12.h"
 #endif
 
-#if defined(ALIMER_RHI_VULKAN) && defined(TODO)
+#if defined(ALIMER_RHI_VULKAN) 
 #   include "RHI_Vulkan.h"
 #endif
 
@@ -295,18 +295,45 @@ namespace Alimer
     /* RHIDevice */
     RHIDevice* GRHIDevice = nullptr;
 
-    bool RHInitialize(RHIValidationMode validationMode)
+    bool RHInitialize(RHIValidationMode validationMode, RHIBackendType backendType)
     {
         if (GRHIDevice != nullptr)
             return true;
 
+        if (backendType == RHIBackendType::Count)
+        {
 #if defined(ALIMER_RHI_D3D12)
-        GRHIDevice = new RHIDeviceD3D12(validationMode);
+            if (RHIDeviceD3D12::IsAvailable())
+                backendType = RHIBackendType::Direct3D12;
+#endif
+
+            if (backendType == RHIBackendType::Count)
+            {
+#if defined(ALIMER_RHI_VULKAN)
+                if (RHIDeviceVulkan::IsAvailable())
+                    backendType = RHIBackendType::Vulkan;
+#endif
+            }
+        }
+
+        switch (backendType)
+        {
+#if defined(ALIMER_RHI_D3D12)
+            case RHIBackendType::Direct3D12:
+                GRHIDevice = new RHIDeviceD3D12(validationMode);
+                break;
 #endif
 
 #if defined(ALIMER_RHI_VULKAN)
-        //GRHIDevice = new RHIDeviceVulkan(validationMode);
+            case RHIBackendType::Vulkan:
+                GRHIDevice = new RHIDeviceVulkan(validationMode);
+                break;
 #endif
+
+            default:
+                LOGE("RHI: Cannot detect supported backend");
+                return false;
+        }
 
         return GRHIDevice->Initialize(validationMode);
     }

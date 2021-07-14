@@ -1020,6 +1020,13 @@ namespace Alimer
     using RHIBufferRef = SharedPtr<RHIBuffer>;
     using RHISwapChainRef = SharedPtr<RHISwapChain>;
 
+    enum class RHIBackendType : uint32_t
+    {
+        Direct3D12,
+        Vulkan,
+        Count
+    };
+
     enum class RHIValidationMode : uint32_t
     {
         /// No validation is enabled.
@@ -1624,7 +1631,7 @@ namespace Alimer
 
     extern ALIMER_API RHIDevice* GRHIDevice;
 
-    ALIMER_API bool RHInitialize(RHIValidationMode validationMode);
+    ALIMER_API bool RHInitialize(RHIValidationMode validationMode, RHIBackendType backendType = RHIBackendType::Count);
     ALIMER_API void RHIShutdown();
 
     //ALIMER_API RHITextureRef RHICreateTexture(const RHITextureDescription& desc);
