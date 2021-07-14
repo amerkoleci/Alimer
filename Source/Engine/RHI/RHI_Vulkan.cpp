@@ -655,51 +655,6 @@ namespace Alimer
             return false;
         }
 
-        // Validation layer helpers:
-        const std::vector<const char*> validationLayers = {
-            "VK_LAYER_KHRONOS_validation"
-        };
-        bool checkValidationLayerSupport()
-        {
-            uint32_t layerCount;
-            VkResult res = vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-            assert(res == VK_SUCCESS);
-
-            std::vector<VkLayerProperties> availableLayers(layerCount);
-            res = vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-            assert(res == VK_SUCCESS);
-
-            for (const char* layerName : validationLayers) {
-                bool layerFound = false;
-
-                for (const auto& layerProperties : availableLayers) {
-                    if (strcmp(layerName, layerProperties.layerName) == 0) {
-                        layerFound = true;
-                        break;
-                    }
-                }
-
-                if (!layerFound) {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        // Memory tools:
-
-        inline size_t Align(size_t uLocation, size_t uAlign)
-        {
-            if ((0 == uAlign) || (uAlign & (uAlign - 1)))
-            {
-                assert(0);
-            }
-
-            return ((uLocation + (uAlign - 1)) & ~(uAlign - 1));
-        }
-
-
         struct Buffer_Vulkan
         {
             std::shared_ptr<RHIDeviceVulkan::AllocationHandler> allocationhandler;
@@ -1302,7 +1257,7 @@ namespace Alimer
     }
     uint8_t* RHIDeviceVulkan::FrameResources::ResourceFrameAllocator::allocate(size_t dataSize, size_t alignment)
     {
-        dataCur = reinterpret_cast<uint8_t*>(Align(reinterpret_cast<size_t>(dataCur), alignment));
+        dataCur = reinterpret_cast<uint8_t*>(AlignTo(reinterpret_cast<size_t>(dataCur), alignment));
 
         if (dataCur + dataSize > dataEnd)
         {
@@ -2167,75 +2122,122 @@ namespace Alimer
         appInfo.engineVersion = VK_MAKE_VERSION(ALIMER_VERSION_MAJOR, ALIMER_VERSION_MINOR, ALIMER_VERSION_PATCH);
         appInfo.apiVersion = VK_API_VERSION_1_2;
 
-        // Enumerate available extensions:
+        // Enumerate available layers and extensions
+        uint32_t instanceLayerCount;
+        VK_CHECK(vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr));
+        std::vector<VkLayerProperties> availableInstanceLayers(instanceLayerCount);
+        VK_CHECK(vkEnumerateInstanceLayerProperties(&instanceLayerCount, availableInstanceLayers.data()));
+
         uint32_t extensionCount = 0;
         VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr));
         std::vector<VkExtensionProperties> availableInstanceExtensions(extensionCount);
         VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableInstanceExtensions.data()));
 
-        std::vector<const char*> extensionNames;
+        std::vector<const char*> instanceLayers;
+        std::vector<const char*> instanceExtensions;
 
-        if (checkExtensionSupport(VK_EXT_DEBUG_UTILS_EXTENSION_NAME, availableInstanceExtensions))
+        // Check if VK_EXT_debug_utils is supported, which supersedes VK_EXT_Debug_Report
+        for (auto& available_extension : availableInstanceExtensions)
         {
-            // This is needed for not only debug layer, but also debug markers, object naming, etc:
-            extensionNames.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-        }
-
-        extensionNames.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-
-#ifdef _WIN32
-        extensionNames.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-#elif SDL2
-        {
-            uint32_t extensionCount;
-            SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, nullptr);
-            std::vector<const char*> extensionNames_sdl(extensionCount);
-            SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, extensionNames_sdl.data());
-            extensionNames.reserve(extensionNames.size() + extensionNames_sdl.size());
-            extensionNames.insert(extensionNames.begin(),
-                extensionNames_sdl.cbegin(), extensionNames_sdl.cend());
-        }
-#endif // _WIN32
-
-        if (DEBUGDEVICE && !checkValidationLayerSupport())
-        {
-            LOGE("Vulkan validation layer requested but not available!");
-            DEBUGDEVICE = false;
-        }
-
-        // Create instance:
-        {
-            VkInstanceCreateInfo createInfo = {};
-            createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-            createInfo.pApplicationInfo = &appInfo;
-            createInfo.enabledExtensionCount = static_cast<uint32_t>(extensionNames.size());
-            createInfo.ppEnabledExtensionNames = extensionNames.data();
-            createInfo.enabledLayerCount = 0;
-            if (DEBUGDEVICE)
+            if (strcmp(available_extension.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0)
             {
-                createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-                createInfo.ppEnabledLayerNames = validationLayers.data();
+                debugUtils = true;
+                instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
             }
-
-            VkResult res = vkCreateInstance(&createInfo, nullptr, &instance);
-            assert(res == VK_SUCCESS);
-
-            volkLoadInstanceOnly(instance);
+            else if (strcmp(available_extension.extensionName, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME) == 0)
+            {
+                instanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+            }
         }
 
-        // Register validation layer callback:
-        if (DEBUGDEVICE)
+        instanceExtensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+        // Enable surface extensions depending on os
+#if defined(VK_USE_PLATFORM_WIN32_KHR)
+        instanceExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+#elif defined(VK_USE_PLATFORM_ANDROID_KHR)
+        instanceExtensions.push_back(VK_KHR_ANDROID_SURFACE_EXTENSION_NAME);
+#elif defined(_DIRECT2DISPLAY)
+        instanceExtensions.push_back(VK_KHR_DISPLAY_EXTENSION_NAME);
+#elif defined(VK_USE_PLATFORM_DIRECTFB_EXT)
+        instanceExtensions.push_back(VK_EXT_DIRECTFB_SURFACE_EXTENSION_NAME);
+#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
+        instanceExtensions.push_back(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
+#elif defined(VK_USE_PLATFORM_XCB_KHR)
+        instanceExtensions.push_back(VK_KHR_XCB_SURFACE_EXTENSION_NAME);
+#elif defined(VK_USE_PLATFORM_IOS_MVK)
+        instanceExtensions.push_back(VK_MVK_IOS_SURFACE_EXTENSION_NAME);
+#elif defined(VK_USE_PLATFORM_MACOS_MVK)
+        instanceExtensions.push_back(VK_MVK_MACOS_SURFACE_EXTENSION_NAME);
+#elif defined(VK_USE_PLATFORM_HEADLESS_EXT)
+        instanceExtensions.push_back(VK_EXT_HEADLESS_SURFACE_EXTENSION_NAME);
+#endif
+
+        if (validationMode != RHIValidationMode::Disabled)
         {
-            VkDebugUtilsMessengerCreateInfoEXT createInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT };
-            createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
-            createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
-            createInfo.pfnUserCallback = DebugUtilsMessengerCallback;
-            VK_CHECK(
-                vkCreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugUtilsMessenger)
-                );
+            // Determine the optimal validation layers to enable that are necessary for useful debugging
+            std::vector<const char*> optimalValidationLyers = GetOptimalValidationLayers(availableInstanceLayers);
+            instanceLayers.insert(instanceLayers.end(), optimalValidationLyers.begin(), optimalValidationLyers.end());
+        }
+
+        VkInstanceCreateInfo createInfo{ VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
+        createInfo.pApplicationInfo = &appInfo;
+        createInfo.enabledLayerCount = static_cast<uint32_t>(instanceLayers.size());
+        createInfo.ppEnabledLayerNames = instanceLayers.data();
+        createInfo.enabledExtensionCount = static_cast<uint32_t>(instanceExtensions.size());
+        createInfo.ppEnabledExtensionNames = instanceExtensions.data();
+
+        VkDebugUtilsMessengerCreateInfoEXT debugUtilsCreateInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT };
+
+        if (validationMode != RHIValidationMode::Disabled
+            && debugUtils)
+        {
+            debugUtilsCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
+            debugUtilsCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+            debugUtilsCreateInfo.pfnUserCallback = DebugUtilsMessengerCallback;
+            createInfo.pNext = &debugUtilsCreateInfo;
+        }
+
+        VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
+        if (result != VK_SUCCESS)
+        {
+            VK_LOG_ERROR(result, "Failed to create Vulkan instance.");
+            return;
+        }
+
+        volkLoadInstanceOnly(instance);
+
+        if (validationMode != RHIValidationMode::Disabled
+            && debugUtils)
+        {
+            result = vkCreateDebugUtilsMessengerEXT(instance, &debugUtilsCreateInfo, nullptr, &debugUtilsMessenger);
+            if (result != VK_SUCCESS)
+            {
+                VK_LOG_ERROR(result, "Could not create debug utils messenger");
+            }
+        }
+
+        LOGI("Created VkInstance with version: {}.{}.{}",
+            VK_VERSION_MAJOR(appInfo.apiVersion),
+            VK_VERSION_MINOR(appInfo.apiVersion),
+            VK_VERSION_PATCH(appInfo.apiVersion)
+        );
+
+        if (createInfo.enabledLayerCount)
+        {
+            LOGI("Enabled {} Validation Layers:", createInfo.enabledLayerCount);
+
+            for (uint32_t i = 0; i < createInfo.enabledLayerCount; ++i)
+            {
+                LOGI("	\t{}", createInfo.ppEnabledLayerNames[i]);
+            }
+        }
+
+        LOGI("Enabled {} Instance Extensions:", createInfo.enabledExtensionCount);
+        for (uint32_t i = 0; i < createInfo.enabledExtensionCount; ++i)
+        {
+            LOGI("	\t{}", createInfo.ppEnabledExtensionNames[i]);
         }
     }
-
 
     bool RHIDeviceVulkan::Initialize(RHIValidationMode validationMode)
     {
@@ -2252,8 +2254,7 @@ namespace Alimer
             }
 
             std::vector<VkPhysicalDevice> devices(deviceCount);
-            res = vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
-            assert(res == VK_SUCCESS);
+            VK_CHECK(vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data()));
 
             const std::vector<const char*> required_deviceExtensions = {
                 VK_KHR_SWAPCHAIN_EXTENSION_NAME,
@@ -2875,7 +2876,7 @@ namespace Alimer
         }
     }
 
-    bool RHIDeviceVulkan::CreateSwapChain(const SwapChainDesc* pDesc, void* window, SwapChain* swapChain) const
+    bool RHIDeviceVulkan::CreateSwapChain(const RHISwapChainDescription* pDesc, void* window, SwapChain* swapChain) const
     {
         auto internal_state = std::static_pointer_cast<SwapChain_Vulkan>(swapChain->internal_state);
         if (swapChain->internal_state == nullptr)
@@ -2972,8 +2973,13 @@ namespace Alimer
         internal_state->swapChainExtent.width = std::max(internal_state->swapchain_capabilities.minImageExtent.width, std::min(internal_state->swapchain_capabilities.maxImageExtent.width, internal_state->swapChainExtent.width));
         internal_state->swapChainExtent.height = std::max(internal_state->swapchain_capabilities.minImageExtent.height, std::min(internal_state->swapchain_capabilities.maxImageExtent.height, internal_state->swapChainExtent.height));
 
-
-        uint32_t imageCount = pDesc->buffercount;
+        // Determine the number of images
+        uint32_t imageCount = internal_state->swapchain_capabilities.minImageCount + 1;
+        if ((internal_state->swapchain_capabilities.maxImageCount > 0)
+            && (imageCount > internal_state->swapchain_capabilities.maxImageCount))
+        {
+            imageCount = internal_state->swapchain_capabilities.maxImageCount;
+        }
 
         VkSwapchainCreateInfoKHR createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -2989,7 +2995,7 @@ namespace Alimer
         createInfo.preTransform = internal_state->swapchain_capabilities.currentTransform;
         createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         createInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR; // The only one that is always supported
-        if (!pDesc->vsync)
+        if (!pDesc->verticalSync)
         {
             // The immediate present mode is not necessarily supported:
             for (auto& presentmode : internal_state->swapchain_presentModes)
@@ -3013,11 +3019,10 @@ namespace Alimer
         }
 
         res = vkGetSwapchainImagesKHR(device, internal_state->swapChain, &imageCount, nullptr);
-        assert(res == VK_SUCCESS);
-        assert(pDesc->buffercount <= imageCount);
+        VK_CHECK(res);
         internal_state->swapChainImages.resize(imageCount);
         res = vkGetSwapchainImagesKHR(device, internal_state->swapChain, &imageCount, internal_state->swapChainImages.data());
-        assert(res == VK_SUCCESS);
+        VK_CHECK(res);
         internal_state->swapChainImageFormat = surfaceFormat.format;
 
         if (vkSetDebugUtilsObjectNameEXT != nullptr)
@@ -3158,7 +3163,8 @@ namespace Alimer
         }
 
         return true;
-    }
+        }
+
     bool RHIDeviceVulkan::CreateBuffer(const GPUBufferDesc* pDesc, const SubresourceData* pInitialData, GPUBuffer* pBuffer) const
     {
         auto internal_state = std::make_shared<Buffer_Vulkan>();
@@ -3532,7 +3538,7 @@ namespace Alimer
             for (uint32_t mip = 0; mip < pDesc->MipLevels; ++mip)
             {
                 const SubresourceData& subresourceData = pInitialData[initDataIdx++];
-                size_t cpysize = subresourceData.SysMemPitch * height * depth * layers;
+                uint32_t cpysize = subresourceData.SysMemPitch * height * depth * layers;
                 if (IsFormatBlockCompressed(pDesc->Format))
                 {
                     cpysize /= 4;
@@ -3563,7 +3569,7 @@ namespace Alimer
 
                 copyRegions.push_back(copyRegion);
 
-                cpyoffset += Align(cpysize, GetFormatStride(pDesc->Format));
+                cpyoffset += AlignTo(cpysize, GetFormatStride(pDesc->Format));
             }
 
             {
@@ -5114,8 +5120,8 @@ namespace Alimer
                 write.dstSet = allocationhandler->bindlessAccelerationStructures.descriptorSet;
                 write.pNext = &acc;
                 vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
-            }
         }
+    }
 
 #if 0
         buildAccelerationStructuresKHR(
@@ -5551,7 +5557,7 @@ namespace Alimer
                     srv_desc.buffer = internal_state->resource;
                     srv_desc.flags = 0;
                     srv_desc.format = _ConvertFormat(desc.Format);
-                    srv_desc.offset = Align(offset, properties2.properties.limits.minTexelBufferOffsetAlignment); // damn, if this needs alignment, that could break a lot of things! (index buffer, index offset?)
+                    srv_desc.offset = AlignTo(offset, properties2.properties.limits.minTexelBufferOffsetAlignment); // damn, if this needs alignment, that could break a lot of things! (index buffer, index offset?)
                     srv_desc.range = std::min(size, (uint64_t)desc.ByteWidth - srv_desc.offset);
 
                     VkBufferView view;
@@ -6270,21 +6276,37 @@ namespace Alimer
         vkCmdSetScissor(GetCommandList(cmd), 0, numRects, scissors);
     }
 
-    void RHIDeviceVulkan::BindViewports(uint32_t NumViewports, const Viewport* pViewports, CommandList cmd)
+    void RHIDeviceVulkan::BindViewport(CommandList commandList, const RHIViewport& viewport)
     {
-        assert(pViewports != nullptr);
-        assert(NumViewports <= 16);
-        VkViewport vp[16];
-        for (uint32_t i = 0; i < NumViewports; ++i)
+        // Flip viewport to match DirectX coordinate system
+        VkViewport vkViewport;
+        vkViewport.x = viewport.x;
+        vkViewport.y = viewport.y + viewport.height;
+        vkViewport.width = viewport.width;
+        vkViewport.height = -viewport.height;
+        vkViewport.minDepth = viewport.minDepth;
+        vkViewport.maxDepth = viewport.maxDepth;
+
+        vkCmdSetViewport(GetCommandList(commandList), 0, 1, &vkViewport);
+    }
+
+    void RHIDeviceVulkan::BindViewports(CommandList commandList, uint32_t viewportCount, const RHIViewport* pViewports)
+    {
+        ALIMER_ASSERT(pViewports != nullptr);
+        ALIMER_ASSERT(viewportCount <= kMaxViewportsAndScissors);
+
+        // Flip viewport to match DirectX coordinate system
+        VkViewport vkViewports[kMaxViewportsAndScissors];
+        for (uint32_t i = 0; i < viewportCount; ++i)
         {
-            vp[i].x = pViewports[i].TopLeftX;
-            vp[i].y = pViewports[i].TopLeftY + pViewports[i].Height;
-            vp[i].width = pViewports[i].Width;
-            vp[i].height = -pViewports[i].Height;
-            vp[i].minDepth = pViewports[i].MinDepth;
-            vp[i].maxDepth = pViewports[i].MaxDepth;
+            vkViewports[i].x = pViewports[i].x;
+            vkViewports[i].y = pViewports[i].y + pViewports[i].height;
+            vkViewports[i].width = pViewports[i].width;
+            vkViewports[i].height = -pViewports[i].height;
+            vkViewports[i].minDepth = pViewports[i].minDepth;
+            vkViewports[i].maxDepth = pViewports[i].maxDepth;
         }
-        vkCmdSetViewport(GetCommandList(cmd), 0, NumViewports, vp);
+        vkCmdSetViewport(GetCommandList(commandList), 0, viewportCount, vkViewports);
     }
 
     void RHIDeviceVulkan::BindResource(SHADERSTAGE stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource)
@@ -6332,12 +6354,7 @@ namespace Alimer
             }
         }
     }
-    void RHIDeviceVulkan::UnbindResources(uint32_t slot, uint32_t num, CommandList cmd)
-    {
-    }
-    void RHIDeviceVulkan::UnbindUAVs(uint32_t slot, uint32_t num, CommandList cmd)
-    {
-    }
+
     void RHIDeviceVulkan::BindSampler(SHADERSTAGE stage, const Sampler* sampler, uint32_t slot, CommandList cmd)
     {
         assert(slot < GPU_SAMPLER_HEAP_COUNT);

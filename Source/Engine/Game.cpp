@@ -125,7 +125,7 @@ namespace Alimer
         // Init RHI
         RHIValidationMode validationMode = RHIValidationMode::GPU;
 
-        if (!RHInitialize(validationMode))
+        if (!RHInitialize(validationMode, RHIBackendType::Count))
         {
             headless = true;
         }

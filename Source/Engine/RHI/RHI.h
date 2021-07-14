@@ -21,15 +21,15 @@ namespace Alimer
 {
     /* Constants */
     static constexpr uint32_t kRHIMaxFramesInFlight = 2;
-    static constexpr uint32_t kRHIMaxBackBufferCount = 3;
-    static constexpr uint32_t kRHIMaxViewportsAndScissors = 8;
-    static constexpr uint32_t kRHIMaxVertexBufferBindings = 4;
-    static constexpr uint32_t kRHIMaxVertexAttributes = 16;
-    static constexpr uint32_t kRHIMaxVertexAttributeOffset = 2047u;
-    static constexpr uint32_t kRHIMaxVertexBufferStride = 2048u;
-    static constexpr uint32_t kRHIMaxFrameCommandBuffers = 32u;
+    static constexpr uint32_t kMaxBackBufferCount = 3;
+    static constexpr uint32_t kMaxViewportsAndScissors = 8;
+    static constexpr uint32_t kMaxVertexBufferBindings = 4;
+    static constexpr uint32_t kMaxVertexAttributes = 16;
+    static constexpr uint32_t kMaxVertexAttributeOffset = 2047u;
+    static constexpr uint32_t kMaxVertexBufferStride = 2048u;
+    static constexpr uint32_t kMaxFrameCommandBuffers = 32u;
     static constexpr uint32_t kRHICubeMapSlices = 6;
-    static constexpr uint32_t kRHIInvalidBindlessIndex = static_cast<uint32_t>(-1);
+    static constexpr uint32_t kInvalidBindlessIndex = static_cast<uint32_t>(-1);
 
     struct Shader;
     struct GPUResource;
@@ -397,15 +397,6 @@ namespace Alimer
 
     // Descriptor structs:
 
-    struct Viewport
-    {
-        float TopLeftX = 0.0f;
-        float TopLeftY = 0.0f;
-        float Width = 0.0f;
-        float Height = 0.0f;
-        float MinDepth = 0.0f;
-        float MaxDepth = 1.0f;
-    };
     struct InputLayout
     {
         static const uint32_t APPEND_ALIGNED_ELEMENT = 0xffffffff; // automatically figure out AlignedByteOffset depending on Format
@@ -715,16 +706,17 @@ namespace Alimer
         uint32_t _flags = FLAG_EMPTY;
         std::vector<RenderPassAttachment> attachments;
     };
-    struct SwapChainDesc
+
+    struct RHISwapChainDescription
     {
         uint32_t width = 0;
         uint32_t height = 0;
-        uint32_t buffercount = 2;
         FORMAT format = FORMAT_R10G10B10A2_UNORM;
-        bool fullscreen = false;
-        bool vsync = true;
+        bool verticalSync = true;
+        bool isFullscreen = false;
         float clearcolor[4] = { 0,0,0,1 };
     };
+
     struct IndirectDrawArgsInstanced
     {
         uint32_t VertexCountPerInstance = 0;
@@ -848,9 +840,9 @@ namespace Alimer
 
     struct SwapChain : public GraphicsDeviceChild
     {
-        SwapChainDesc desc;
+        RHISwapChainDescription desc;
 
-        const SwapChainDesc& GetDesc() const { return desc; }
+        const RHISwapChainDescription& GetDesc() const { return desc; }
     };
 
 
@@ -1015,10 +1007,8 @@ namespace Alimer
     class RHIResourceView;
     class RHITextureView;
     class RHIBuffer;
-    class RHISwapChain;
 
     using RHIBufferRef = SharedPtr<RHIBuffer>;
-    using RHISwapChainRef = SharedPtr<RHISwapChain>;
 
     enum class RHIBackendType : uint32_t
     {
@@ -1318,14 +1308,6 @@ namespace Alimer
         float lodMaxClamp = FLT_MAX;
     };
 
-    struct RHISwapChainDescription
-    {
-        RHIExtent2D size = { 0, 0 };
-        PixelFormat format = PixelFormat::BGRA8UNorm;
-        bool verticalSync = true;
-        bool isFullscreen = false;
-    };
-
     class ALIMER_API RHIObject
     {
     public:
@@ -1417,24 +1399,6 @@ namespace Alimer
     {
     };
 
-    class ALIMER_API RHISwapChain : public RHIObject
-    {
-    public:
-        RHISwapChain(const RHISwapChainDescription& desc);
-
-        virtual RHITextureView* GetCurrentTextureView() const = 0;
-
-        const RHIExtent2D& GetSize() const noexcept { return size; }
-        uint32_t GetWidth() const noexcept { return size.width; }
-        uint32_t GetHeight() const noexcept { return size.height; }
-
-    protected:
-        RHIExtent2D size;
-        PixelFormat colorFormat;
-        bool verticalSync;
-        bool isFullscreen;
-    };
-
     class ALIMER_API RHICommandBuffer
     {
     public:
@@ -1444,8 +1408,8 @@ namespace Alimer
         virtual void PopDebugGroup() = 0;
         virtual void InsertDebugMarker(const StringView& name) = 0;
 
-        virtual void BeginRenderPass(RHISwapChain* swapChain, const RHIColor& clearColor) = 0;
-        virtual void EndRenderPass() = 0;
+        //virtual void BeginRenderPass(RHISwapChain* swapChain, const RHIColor& clearColor) = 0;
+        //virtual void EndRenderPass() = 0;
 
         virtual void SetViewport(const RHIViewport& viewport) = 0;
         virtual void SetViewports(const RHIViewport* viewports, uint32_t count) = 0;
@@ -1507,7 +1471,7 @@ namespace Alimer
         virtual bool Initialize(RHIValidationMode validationMode) = 0;
         virtual void Shutdown() = 0;
 
-        virtual bool CreateSwapChain(const SwapChainDesc* pDesc, void* window, SwapChain* swapChain) const = 0;
+        virtual bool CreateSwapChain(const RHISwapChainDescription* desc, void* window, SwapChain* swapChain) const = 0;
         virtual bool CreateBuffer(const GPUBufferDesc* pDesc, const SubresourceData* pInitialData, GPUBuffer* pBuffer) const = 0;
         virtual bool CreateTexture(const TextureDesc* pDesc, const SubresourceData* pInitialData, RHITexture* pTexture) const = 0;
         virtual bool CreateShader(SHADERSTAGE stage, const void* pShaderBytecode, size_t BytecodeLength, Shader* pShader) const = 0;
@@ -1569,13 +1533,12 @@ namespace Alimer
         virtual void RenderPassBegin(const RenderPass* renderpass, CommandList cmd) = 0;
         virtual void RenderPassEnd(CommandList cmd) = 0;
         virtual void BindScissorRects(uint32_t numRects, const Rect* rects, CommandList cmd) = 0;
-        virtual void BindViewports(uint32_t NumViewports, const Viewport* pViewports, CommandList cmd) = 0;
+        virtual void BindViewport(CommandList commandList, const RHIViewport& viewport) = 0;
+        virtual void BindViewports(CommandList commandList, uint32_t viewportCount, const RHIViewport* pViewports) = 0;
         virtual void BindResource(SHADERSTAGE stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource = -1) = 0;
         virtual void BindResources(SHADERSTAGE stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd) = 0;
         virtual void BindUAV(SHADERSTAGE stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource = -1) = 0;
         virtual void BindUAVs(SHADERSTAGE stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd) = 0;
-        virtual void UnbindResources(uint32_t slot, uint32_t num, CommandList cmd) = 0;
-        virtual void UnbindUAVs(uint32_t slot, uint32_t num, CommandList cmd) = 0;
         virtual void BindSampler(SHADERSTAGE stage, const Sampler* sampler, uint32_t slot, CommandList cmd) = 0;
         virtual void BindConstantBuffer(SHADERSTAGE stage, const GPUBuffer* buffer, uint32_t slot, CommandList cmd) = 0;
         virtual void BindVertexBuffers(const GPUBuffer* const* vertexBuffers, uint32_t slot, uint32_t count, const uint32_t* strides, const uint32_t* offsets, CommandList cmd) = 0;

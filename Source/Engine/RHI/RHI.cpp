@@ -118,16 +118,6 @@ namespace Alimer
 
     }
 
-    /* RHISwapChain */
-    RHISwapChain::RHISwapChain(const RHISwapChainDescription& desc)
-        : size(desc.size)
-        , colorFormat(desc.format)
-        , verticalSync(desc.verticalSync)
-        , isFullscreen(desc.isFullscreen)
-    {
-
-    }
-
     /* RHICommandBuffer */
     void RHICommandBuffer::SetIndexBuffer(const RHIBuffer* buffer, RHIIndexType indexType, uint32_t offset)
     {

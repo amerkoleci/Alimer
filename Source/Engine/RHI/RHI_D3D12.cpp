@@ -14,6 +14,10 @@
 #include "dxcapi.h"
 #include "directx/d3d12shader.h"
 
+#ifdef _DEBUG
+#include <dxgidebug.h>
+#endif
+
 #include <pix.h>
 
 #include <sstream>
@@ -33,10 +37,14 @@ namespace Alimer
 
     namespace DX12_Internal
     {
-
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
         using PFN_CREATE_DXGI_FACTORY2 = decltype(&CreateDXGIFactory2);
         static PFN_CREATE_DXGI_FACTORY2 CreateDXGIFactory2 = nullptr;
+
+#ifdef _DEBUG
+        using PFN_DXGI_GET_DEBUG_INTERFACE1 = decltype(&DXGIGetDebugInterface1);
+        static PFN_DXGI_GET_DEBUG_INTERFACE1 DXGIGetDebugInterface1 = nullptr;
+#endif
 
         static PFN_D3D12_GET_DEBUG_INTERFACE D3D12GetDebugInterface = nullptr;
         static PFN_D3D12_CREATE_DEVICE D3D12CreateDevice = nullptr;
@@ -45,6 +53,12 @@ namespace Alimer
         // UWP will use static link + /DELAYLOAD linker feature for the dlls (optionally)
 #pragma comment(lib,"d3d12.lib")
 #pragma comment(lib,"dxgi.lib")
+#endif
+
+#ifdef _DEBUG
+        // Declare debug guids to avoid linking with "dxguid.lib"
+        static constexpr IID RHI_DXGI_DEBUG_ALL = { 0xe48ae283, 0xda80, 0x490b, {0x87, 0xe6, 0x43, 0xe9, 0xa9, 0xcf, 0xda, 0x8} };
+        static constexpr IID RHI_DXGI_DEBUG_DXGI = { 0x25cddaa4, 0xb1c6, 0x47e1, {0xac, 0x3e, 0x98, 0x87, 0x5b, 0x5a, 0x2e, 0x2a} };
 #endif
 
         // Engine -> Native converters
@@ -1485,6 +1499,196 @@ namespace Alimer
     }
     using namespace DX12_Internal;
 
+    namespace
+    {
+        static_assert(sizeof(RHIViewport) == sizeof(D3D12_VIEWPORT), "Size mismatch");
+        static_assert(offsetof(RHIViewport, x) == offsetof(D3D12_VIEWPORT, TopLeftX), "Layout mismatch");
+        static_assert(offsetof(RHIViewport, y) == offsetof(D3D12_VIEWPORT, TopLeftY), "Layout mismatch");
+        static_assert(offsetof(RHIViewport, width) == offsetof(D3D12_VIEWPORT, Width), "Layout mismatch");
+        static_assert(offsetof(RHIViewport, height) == offsetof(D3D12_VIEWPORT, Height), "Layout mismatch");
+        static_assert(offsetof(RHIViewport, minDepth) == offsetof(D3D12_VIEWPORT, MinDepth), "Layout mismatch");
+        static_assert(offsetof(RHIViewport, maxDepth) == offsetof(D3D12_VIEWPORT, MaxDepth), "Layout mismatch");
+
+        [[nodiscard]] constexpr DXGI_FORMAT ToDXGIFormat(PixelFormat format)
+        {
+            switch (format)
+            {
+                // 8-bit formats
+                case PixelFormat::R8Unorm:  return DXGI_FORMAT_R8_UNORM;
+                case PixelFormat::R8Snorm:  return DXGI_FORMAT_R8_SNORM;
+                case PixelFormat::R8Uint:   return DXGI_FORMAT_R8_UINT;
+                case PixelFormat::R8Sint:   return DXGI_FORMAT_R8_SINT;
+                    // 16-bit formats
+                case PixelFormat::R16Unorm:     return DXGI_FORMAT_R16_UNORM;
+                case PixelFormat::R16Snorm:     return DXGI_FORMAT_R16_SNORM;
+                case PixelFormat::R16Uint:      return DXGI_FORMAT_R16_UINT;
+                case PixelFormat::R16Sint:      return DXGI_FORMAT_R16_SINT;
+                case PixelFormat::R16Float:     return DXGI_FORMAT_R16_FLOAT;
+                case PixelFormat::RG8Unorm:     return DXGI_FORMAT_R8G8_UNORM;
+                case PixelFormat::RG8Snorm:     return DXGI_FORMAT_R8G8_SNORM;
+                case PixelFormat::RG8Uint:      return DXGI_FORMAT_R8G8_UINT;
+                case PixelFormat::RG8Sint:      return DXGI_FORMAT_R8G8_SINT;
+                    // 32-bit formats
+                case PixelFormat::R32Uint:          return DXGI_FORMAT_R32_UINT;
+                case PixelFormat::R32Sint:          return DXGI_FORMAT_R32_SINT;
+                case PixelFormat::R32Float:         return DXGI_FORMAT_R32_FLOAT;
+                case PixelFormat::RG16Unorm:        return DXGI_FORMAT_R16G16_UNORM;
+                case PixelFormat::RG16Snorm:        return DXGI_FORMAT_R16G16_SNORM;
+                case PixelFormat::RG16Uint:         return DXGI_FORMAT_R16G16_UINT;
+                case PixelFormat::RG16Sint:         return DXGI_FORMAT_R16G16_SINT;
+                case PixelFormat::RG16Float:        return DXGI_FORMAT_R16G16_FLOAT;
+                case PixelFormat::RGBA8UNorm:       return DXGI_FORMAT_R8G8B8A8_UNORM;
+                case PixelFormat::RGBA8UNormSrgb:   return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+                case PixelFormat::RGBA8SNorm:       return DXGI_FORMAT_R8G8B8A8_SNORM;
+                case PixelFormat::RGBA8Uint:        return DXGI_FORMAT_R8G8B8A8_UINT;
+                case PixelFormat::RGBA8Sint:        return DXGI_FORMAT_R8G8B8A8_SINT;
+                case PixelFormat::BGRA8UNorm:       return DXGI_FORMAT_B8G8R8A8_UNORM;
+                case PixelFormat::BGRA8UNormSrgb:   return DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+                    // Packed 32-Bit formats
+                case PixelFormat::RGB10A2Unorm:     return DXGI_FORMAT_R10G10B10A2_UNORM;
+                case PixelFormat::RG11B10Float:     return DXGI_FORMAT_R11G11B10_FLOAT;
+                case PixelFormat::RGB9E5Float:      return DXGI_FORMAT_R9G9B9E5_SHAREDEXP;
+                    // 64-Bit formats
+                case PixelFormat::RG32Uint:         return DXGI_FORMAT_R32G32_UINT;
+                case PixelFormat::RG32Sint:         return DXGI_FORMAT_R32G32_SINT;
+                case PixelFormat::RG32Float:        return DXGI_FORMAT_R32G32_FLOAT;
+                case PixelFormat::RGBA16Unorm:      return DXGI_FORMAT_R16G16B16A16_UNORM;
+                case PixelFormat::RGBA16Snorm:      return DXGI_FORMAT_R16G16B16A16_SNORM;
+                case PixelFormat::RGBA16Uint:       return DXGI_FORMAT_R16G16B16A16_UINT;
+                case PixelFormat::RGBA16Sint:       return DXGI_FORMAT_R16G16B16A16_SINT;
+                case PixelFormat::RGBA16Float:      return DXGI_FORMAT_R16G16B16A16_FLOAT;
+                    // 128-Bit formats
+                case PixelFormat::RGBA32Uint:       return DXGI_FORMAT_R32G32B32A32_UINT;
+                case PixelFormat::RGBA32Sint:       return DXGI_FORMAT_R32G32B32A32_SINT;
+                case PixelFormat::RGBA32Float:      return DXGI_FORMAT_R32G32B32A32_FLOAT;
+                    // Depth-stencil formats
+                case PixelFormat::Depth16Unorm:			return DXGI_FORMAT_D16_UNORM;
+                case PixelFormat::Depth32Float:			return DXGI_FORMAT_D32_FLOAT;
+                case PixelFormat::Depth24UnormStencil8: return DXGI_FORMAT_D24_UNORM_S8_UINT;
+                case PixelFormat::Depth32FloatStencil8: return DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+                    // Compressed BC formats
+                case PixelFormat::BC1RGBAUnorm:         return DXGI_FORMAT_BC1_UNORM;
+                case PixelFormat::BC1RGBAUnormSrgb:     return DXGI_FORMAT_BC1_UNORM_SRGB;
+                case PixelFormat::BC2RGBAUnorm:         return DXGI_FORMAT_BC2_UNORM;
+                case PixelFormat::BC2RGBAUnormSrgb:     return DXGI_FORMAT_BC2_UNORM_SRGB;
+                case PixelFormat::BC3RGBAUnorm:         return DXGI_FORMAT_BC3_UNORM;
+                case PixelFormat::BC3RGBAUnormSrgb:     return DXGI_FORMAT_BC3_UNORM_SRGB;
+                case PixelFormat::BC4RSnorm:            return DXGI_FORMAT_BC4_SNORM;
+                case PixelFormat::BC4RUnorm:            return DXGI_FORMAT_BC4_UNORM;
+                case PixelFormat::BC5RGSnorm:           return DXGI_FORMAT_BC5_SNORM;
+                case PixelFormat::BC5RGUnorm:           return DXGI_FORMAT_BC5_UNORM;
+                case PixelFormat::BC6HRGBFloat:         return DXGI_FORMAT_BC6H_SF16;
+                case PixelFormat::BC6HRGBUfloat:        return DXGI_FORMAT_BC6H_UF16;
+                case PixelFormat::BC7RGBAUnorm:         return DXGI_FORMAT_BC7_UNORM;
+                case PixelFormat::BC7RGBAUnormSrgb:     return DXGI_FORMAT_BC7_UNORM_SRGB;
+
+                default:
+                    ALIMER_UNREACHABLE();
+                    return DXGI_FORMAT_UNKNOWN;
+            }
+        }
+
+        [[nodiscard]] constexpr PixelFormat FromDXGIFormat(DXGI_FORMAT format)
+        {
+            switch (format)
+            {
+                // 8-bit formats
+                case DXGI_FORMAT_R8_UNORM:	return PixelFormat::R8Unorm;
+                case DXGI_FORMAT_R8_SNORM:	return PixelFormat::R8Snorm;
+                case DXGI_FORMAT_R8_UINT:	return PixelFormat::R8Uint;
+                case DXGI_FORMAT_R8_SINT:	return PixelFormat::R8Sint;
+                    // 16-bit formats
+                case DXGI_FORMAT_R16_UNORM:		return PixelFormat::R16Unorm;
+                case DXGI_FORMAT_R16_SNORM:		return PixelFormat::R16Snorm;
+                case DXGI_FORMAT_R16_UINT:		return PixelFormat::R16Uint;
+                case DXGI_FORMAT_R16_SINT:		return PixelFormat::R16Sint;
+                case DXGI_FORMAT_R16_FLOAT:		return PixelFormat::R16Float;
+                case DXGI_FORMAT_R8G8_UNORM:	return PixelFormat::RG8Unorm;
+                case DXGI_FORMAT_R8G8_SNORM:	return PixelFormat::RG8Snorm;
+                case DXGI_FORMAT_R8G8_UINT:		return PixelFormat::RG8Uint;
+                case DXGI_FORMAT_R8G8_SINT:		return PixelFormat::RG8Sint;
+                    // 32-bit formats
+                case DXGI_FORMAT_R32_UINT:				return PixelFormat::R32Uint;
+                case DXGI_FORMAT_R32_SINT:				return PixelFormat::R32Sint;
+                case DXGI_FORMAT_R32_FLOAT:				return PixelFormat::R32Float;
+                case DXGI_FORMAT_R16G16_UNORM:			return PixelFormat::RG16Unorm;
+                case DXGI_FORMAT_R16G16_SNORM:			return PixelFormat::RG16Snorm;
+                case DXGI_FORMAT_R16G16_UINT:			return PixelFormat::RG16Uint;
+                case DXGI_FORMAT_R16G16_SINT:			return PixelFormat::RG16Sint;
+                case DXGI_FORMAT_R16G16_FLOAT:			return PixelFormat::RG16Float;
+                case DXGI_FORMAT_R8G8B8A8_UNORM:		return PixelFormat::RGBA8UNorm;
+                case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:	return PixelFormat::RGBA8UNormSrgb;
+                case DXGI_FORMAT_R8G8B8A8_SNORM:		return PixelFormat::RGBA8SNorm;
+                case DXGI_FORMAT_R8G8B8A8_UINT:			return PixelFormat::RGBA8Uint;
+                case DXGI_FORMAT_R8G8B8A8_SINT:			return PixelFormat::RGBA8Sint;
+                case DXGI_FORMAT_B8G8R8A8_UNORM:		return PixelFormat::BGRA8UNorm;
+                case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:	return PixelFormat::BGRA8UNormSrgb;
+                    // Packed 32-Bit formats
+                case DXGI_FORMAT_R10G10B10A2_UNORM:		return PixelFormat::RGB10A2Unorm;
+                case DXGI_FORMAT_R11G11B10_FLOAT:		return PixelFormat::RG11B10Float;
+                case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:    return PixelFormat::RGB9E5Float;
+                    // 64-Bit formats
+                case DXGI_FORMAT_R32G32_UINT:			return PixelFormat::RG32Uint;
+                case DXGI_FORMAT_R32G32_SINT:			return PixelFormat::RG32Sint;
+                case DXGI_FORMAT_R32G32_FLOAT:			return PixelFormat::RG32Float;
+                case DXGI_FORMAT_R16G16B16A16_UNORM:	return PixelFormat::RGBA16Unorm;
+                case DXGI_FORMAT_R16G16B16A16_SNORM:	return PixelFormat::RGBA16Snorm;
+                case DXGI_FORMAT_R16G16B16A16_UINT:		return PixelFormat::RGBA16Uint;
+                case DXGI_FORMAT_R16G16B16A16_SINT:		return PixelFormat::RGBA16Sint;
+                case DXGI_FORMAT_R16G16B16A16_FLOAT:	return PixelFormat::RGBA16Float;
+                    // 128-Bit formats
+                case DXGI_FORMAT_R32G32B32A32_UINT:		return PixelFormat::RGBA32Uint;
+                case DXGI_FORMAT_R32G32B32A32_SINT:		return PixelFormat::RGBA32Sint;
+                case DXGI_FORMAT_R32G32B32A32_FLOAT:	return PixelFormat::RGBA32Float;
+                    // Depth-stencil formats
+                case DXGI_FORMAT_D16_UNORM:				return PixelFormat::Depth16Unorm;
+                case DXGI_FORMAT_D32_FLOAT:				return PixelFormat::Depth32Float;
+                case DXGI_FORMAT_D24_UNORM_S8_UINT:		return PixelFormat::Depth24UnormStencil8;
+                case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:	return PixelFormat::Depth32FloatStencil8;
+                    // Compressed BC formats
+                case DXGI_FORMAT_BC1_UNORM:			return PixelFormat::BC1RGBAUnorm;
+                case DXGI_FORMAT_BC1_UNORM_SRGB:	return PixelFormat::BC1RGBAUnormSrgb;
+                case DXGI_FORMAT_BC2_UNORM:			return PixelFormat::BC2RGBAUnorm;
+                case DXGI_FORMAT_BC2_UNORM_SRGB:	return PixelFormat::BC2RGBAUnormSrgb;
+                case DXGI_FORMAT_BC3_UNORM:			return PixelFormat::BC3RGBAUnorm;
+                case DXGI_FORMAT_BC3_UNORM_SRGB:	return PixelFormat::BC3RGBAUnormSrgb;
+                case DXGI_FORMAT_BC4_SNORM:			return PixelFormat::BC4RSnorm;
+                case DXGI_FORMAT_BC4_UNORM:			return PixelFormat::BC4RUnorm;
+                case DXGI_FORMAT_BC5_SNORM:			return PixelFormat::BC5RGSnorm;
+                case DXGI_FORMAT_BC5_UNORM:			return PixelFormat::BC5RGUnorm;
+                case DXGI_FORMAT_BC6H_SF16:			return PixelFormat::BC6HRGBFloat;
+                case DXGI_FORMAT_BC6H_UF16:			return PixelFormat::BC6HRGBUfloat;
+                case DXGI_FORMAT_BC7_UNORM:			return PixelFormat::BC7RGBAUnorm;
+                case DXGI_FORMAT_BC7_UNORM_SRGB:	return PixelFormat::BC7RGBAUnormSrgb;
+
+                default:
+                    ALIMER_UNREACHABLE();
+                    return PixelFormat::Undefined;
+            }
+        }
+
+        [[nodiscard]] constexpr DXGI_FORMAT ToDXGISwapChainFormat(PixelFormat format)
+        {
+            switch (format) {
+                case PixelFormat::RGBA16Float:
+                    return DXGI_FORMAT_R16G16B16A16_FLOAT;
+
+                case PixelFormat::BGRA8UNorm:
+                case PixelFormat::BGRA8UNormSrgb:
+                    return DXGI_FORMAT_B8G8R8A8_UNORM;
+
+                case PixelFormat::RGBA8UNorm:
+                case PixelFormat::RGBA8UNormSrgb:
+                    return DXGI_FORMAT_R8G8B8A8_UNORM;
+
+                case PixelFormat::RGB10A2Unorm:
+                    return DXGI_FORMAT_R10G10B10A2_UNORM;
+            }
+
+            return DXGI_FORMAT_B8G8R8A8_UNORM;
+        }
+    }
+
     // Allocators:
 
     void RHIDeviceD3D12::CopyAllocator::init(RHIDeviceD3D12* device)
@@ -2358,7 +2562,9 @@ namespace Alimer
             return false;
         }
 
-        //DXGIGetDebugInterface1 = (PFN_DXGI_GET_DEBUG_INTERFACE1)GetProcAddress(dxgiDLL, "DXGIGetDebugInterface1");
+#ifdef _DEBUG
+        DXGIGetDebugInterface1 = (PFN_DXGI_GET_DEBUG_INTERFACE1)GetProcAddress(dxgiDLL, "DXGIGetDebugInterface1");
+#endif
 
         D3D12GetDebugInterface = (PFN_D3D12_GET_DEBUG_INTERFACE)GetProcAddress(d3d12DLL, "D3D12GetDebugInterface");
         D3D12CreateDevice = (PFN_D3D12_CREATE_DEVICE)GetProcAddress(d3d12DLL, "D3D12CreateDevice");
@@ -2431,13 +2637,57 @@ namespace Alimer
             {
                 OutputDebugStringA("WARNING: Direct3D Debug Device is not available\n");
             }
+
+#if defined(_DEBUG)
+            ComPtr<IDXGIInfoQueue> dxgiInfoQueue;
+            if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(dxgiInfoQueue.GetAddressOf()))))
+            {
+                dxgiFactoryFlags = DXGI_CREATE_FACTORY_DEBUG;
+
+                dxgiInfoQueue->SetBreakOnSeverity(RHI_DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, true);
+                dxgiInfoQueue->SetBreakOnSeverity(RHI_DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, true);
+
+                DXGI_INFO_QUEUE_MESSAGE_ID hide[] =
+                {
+                    80 /* IDXGISwapChain::GetContainingOutput: The swapchain's adapter does not control the output on which the swapchain's window resides. */,
+                };
+                DXGI_INFO_QUEUE_FILTER filter = {};
+                filter.DenyList.NumIDs = static_cast<UINT>(std::size(hide));
+                filter.DenyList.pIDList = hide;
+                dxgiInfoQueue->AddStorageFilterEntries(RHI_DXGI_DEBUG_DXGI, &filter);
+            }
+#endif
         }
 
-        hr = CreateDXGIFactory2(/*debuglayer ? DXGI_CREATE_FACTORY_DEBUG :*/ 0, IID_PPV_ARGS(&factory));
+        hr = CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(dxgiFactory.ReleaseAndGetAddressOf()));
         if (FAILED(hr))
         {
             LOGF("Failed to create DXGI factory");
             //wiPlatform::Exit();
+        }
+
+        // Determines whether tearing support is available for fullscreen borderless windows.
+        {
+            BOOL allowTearing = FALSE;
+
+            ComPtr<IDXGIFactory5> dxgiFactory5;
+            HRESULT hr = dxgiFactory.As(&dxgiFactory5);
+            if (SUCCEEDED(hr))
+            {
+                hr = dxgiFactory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing));
+            }
+
+            if (FAILED(hr) || !allowTearing)
+            {
+                tearingSupported = false;
+#ifdef _DEBUG
+                LOGW("Direct3D12: Variable refresh rate displays not supported");
+#endif
+            }
+            else
+            {
+                tearingSupported = true;
+            }
         }
     }
 
@@ -2445,7 +2695,7 @@ namespace Alimer
     {
         // pick the highest performance adapter that is able to create the device
         Microsoft::WRL::ComPtr<IDXGIAdapter1> candidateAdapter;
-        for (uint32_t i = 0; factory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&candidateAdapter)) != DXGI_ERROR_NOT_FOUND; ++i)
+        for (uint32_t i = 0; dxgiFactory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&candidateAdapter)) != DXGI_ERROR_NOT_FOUND; ++i)
         {
             DXGI_ADAPTER_DESC1 adapterDesc;
             candidateAdapter->GetDesc1(&adapterDesc);
@@ -2845,7 +3095,7 @@ namespace Alimer
         SafeRelease(dxcUtils);
     }
 
-    bool RHIDeviceD3D12::CreateSwapChain(const SwapChainDesc* pDesc, void* window, SwapChain* swapChain) const
+    bool RHIDeviceD3D12::CreateSwapChain(const RHISwapChainDescription* pDesc, void* window, SwapChain* swapChain) const
     {
         auto internal_state = std::static_pointer_cast<SwapChain_DX12>(swapChain->internal_state);
         if (swapChain->internal_state == nullptr)
@@ -2857,50 +3107,49 @@ namespace Alimer
         swapChain->desc = *pDesc;
         HRESULT hr;
 
+
+        DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
         if (internal_state->swapChain == nullptr)
         {
             // Create swapchain:
-            ComPtr<IDXGISwapChain1> _swapChain;
+            ComPtr<IDXGISwapChain1> tempSwapChain;
 
-            DXGI_SWAP_CHAIN_DESC1 sd = {};
-            sd.Width = pDesc->width;
-            sd.Height = pDesc->height;
-            sd.Format = _ConvertFormat(pDesc->format);
-            sd.Stereo = false;
-            sd.SampleDesc.Count = 1;
-            sd.SampleDesc.Quality = 0;
-            sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-            sd.BufferCount = pDesc->buffercount;
-            sd.Flags = 0;
-            sd.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
-            sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+            swapChainDesc.Width = pDesc->width;
+            swapChainDesc.Height = pDesc->height;
+            swapChainDesc.Format = _ConvertFormat(pDesc->format);
+            swapChainDesc.Stereo = FALSE;
+            swapChainDesc.SampleDesc.Count = 1;
+            swapChainDesc.SampleDesc.Quality = 0;
+            swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+            swapChainDesc.BufferCount = kMaxBackBufferCount;
+            swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
+            swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+            swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+            swapChainDesc.Flags = (tearingSupported) ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0u;
 
-#ifndef PLATFORM_UWP
-            sd.Scaling = DXGI_SCALING_STRETCH;
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
+            ALIMER_ASSERT(IsWindow((HWND)window));
 
-            DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreenDesc;
-            fullscreenDesc.RefreshRate.Numerator = 60;
-            fullscreenDesc.RefreshRate.Denominator = 1;
-            fullscreenDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED; // needs to be unspecified for correct fullscreen scaling!
-            fullscreenDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
-            fullscreenDesc.Windowed = !pDesc->fullscreen;
-            hr = factory->CreateSwapChainForHwnd(
+            DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsSwapChainDesc = {};
+            fsSwapChainDesc.Windowed = !pDesc->isFullscreen;
+
+            hr = dxgiFactory->CreateSwapChainForHwnd(
                 GetGraphicsQueue(),
                 (HWND)window,
-                &sd,
-                &fullscreenDesc,
+                &swapChainDesc,
+                &fsSwapChainDesc,
                 nullptr,
-                &_swapChain
+                tempSwapChain.GetAddressOf()
             );
 #else
-            sd.Scaling = DXGI_SCALING_ASPECT_RATIO_STRETCH;
+            swapChainDesc.Scaling = DXGI_SCALING_ASPECT_RATIO_STRETCH;
 
-            hr = factory->CreateSwapChainForCoreWindow(
+            hr = dxgiFactory->CreateSwapChainForCoreWindow(
                 GetGraphicsQueue(),
                 static_cast<IUnknown*>(winrt::get_abi(*window)),
                 &sd,
                 nullptr,
-                &_swapChain
+                tempSwapChain.GetAddressOf()
             );
 #endif
 
@@ -2909,7 +3158,7 @@ namespace Alimer
                 return false;
             }
 
-            hr = _swapChain.As(&internal_state->swapChain);
+            hr = tempSwapChain.As(&internal_state->swapChain);
             if (FAILED(hr))
             {
                 return false;
@@ -2926,8 +3175,10 @@ namespace Alimer
             }
             internal_state->backbufferRTV.clear();
 
+            ThrowIfFailed(internal_state->swapChain->GetDesc1(&swapChainDesc));
+
             hr = internal_state->swapChain->ResizeBuffers(
-                pDesc->buffercount,
+                swapChainDesc.BufferCount,
                 pDesc->width,
                 pDesc->height,
                 _ConvertFormat(pDesc->format),
@@ -2936,10 +3187,10 @@ namespace Alimer
             assert(SUCCEEDED(hr));
         }
 
-        internal_state->backBuffers.resize(pDesc->buffercount);
-        internal_state->backbufferRTV.resize(pDesc->buffercount);
+        internal_state->backBuffers.resize(swapChainDesc.BufferCount);
+        internal_state->backbufferRTV.resize(swapChainDesc.BufferCount);
 
-        for (uint32_t i = 0; i < pDesc->buffercount; ++i)
+        for (uint32_t i = 0; i < swapChainDesc.BufferCount; ++i)
         {
             hr = internal_state->swapChain->GetBuffer(i, IID_PPV_ARGS(&internal_state->backBuffers[i]));
             assert(SUCCEEDED(hr));
@@ -5675,7 +5926,14 @@ namespace Alimer
             {
                 for (auto& swapchain : swapchains[cmd])
                 {
-                    to_internal(swapchain)->swapChain->Present(swapchain->desc.vsync, 0);
+                    if (swapchain->desc.verticalSync)
+                    {
+                        to_internal(swapchain)->swapChain->Present(1, 0);
+                    }
+                    else
+                    {
+                        to_internal(swapchain)->swapChain->Present(0, tearingSupported ? DXGI_PRESENT_ALLOW_TEARING : 0);
+                    }
                 }
             }
         }
@@ -5893,22 +6151,18 @@ namespace Alimer
         GetCommandList(cmd)->RSSetScissorRects(numRects, pRects);
     }
 
-    void RHIDeviceD3D12::BindViewports(uint32_t NumViewports, const Viewport* pViewports, CommandList cmd)
+    void RHIDeviceD3D12::BindViewport(CommandList commandList, const RHIViewport& viewport)
     {
-        assert(pViewports != nullptr);
-        assert(NumViewports <= D3D12_VIEWPORT_AND_SCISSORRECT_MAX_INDEX);
-        D3D12_VIEWPORT d3dViewPorts[D3D12_VIEWPORT_AND_SCISSORRECT_MAX_INDEX];
-        for (uint32_t i = 0; i < NumViewports; ++i)
-        {
-            d3dViewPorts[i].TopLeftX = pViewports[i].TopLeftX;
-            d3dViewPorts[i].TopLeftY = pViewports[i].TopLeftY;
-            d3dViewPorts[i].Width = pViewports[i].Width;
-            d3dViewPorts[i].Height = pViewports[i].Height;
-            d3dViewPorts[i].MinDepth = pViewports[i].MinDepth;
-            d3dViewPorts[i].MaxDepth = pViewports[i].MaxDepth;
-        }
-        GetCommandList(cmd)->RSSetViewports(NumViewports, d3dViewPorts);
+        GetCommandList(commandList)->RSSetViewports(1, (D3D12_VIEWPORT*)&viewport);
     }
+
+    void RHIDeviceD3D12::BindViewports(CommandList commandList, uint32_t viewportCount, const RHIViewport* pViewports)
+    {
+        ALIMER_ASSERT(pViewports != nullptr);
+        ALIMER_ASSERT(viewportCount <= kMaxViewportsAndScissors);
+        GetCommandList(commandList)->RSSetViewports(viewportCount, (D3D12_VIEWPORT*)pViewports);
+    }
+
     void RHIDeviceD3D12::BindResource(SHADERSTAGE stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource)
     {
         assert(slot < GPU_RESOURCE_HEAP_SRV_COUNT);
@@ -5949,12 +6203,7 @@ namespace Alimer
             }
         }
     }
-    void RHIDeviceD3D12::UnbindResources(uint32_t slot, uint32_t num, CommandList cmd)
-    {
-    }
-    void RHIDeviceD3D12::UnbindUAVs(uint32_t slot, uint32_t num, CommandList cmd)
-    {
-    }
+
     void RHIDeviceD3D12::BindSampler(SHADERSTAGE stage, const Sampler* sampler, uint32_t slot, CommandList cmd)
     {
         assert(slot < GPU_SAMPLER_HEAP_COUNT);

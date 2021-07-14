@@ -70,6 +70,7 @@ namespace Alimer
     class RHIDeviceVulkan final : public RHIDevice
     {
     private:
+        bool debugUtils = false;
         VkInstance instance = VK_NULL_HANDLE;
         VkDebugUtilsMessengerEXT debugUtilsMessenger = VK_NULL_HANDLE;
         VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
@@ -339,7 +340,7 @@ namespace Alimer
         bool Initialize(RHIValidationMode validationMode) override;
         void Shutdown() override;
 
-        bool CreateSwapChain(const SwapChainDesc* pDesc, void* window, SwapChain* swapChain) const override;
+        bool CreateSwapChain(const RHISwapChainDescription* desc, void* window, SwapChain* swapChain) const override;
         bool CreateBuffer(const GPUBufferDesc* pDesc, const SubresourceData* pInitialData, GPUBuffer* pBuffer) const override;
         bool CreateTexture(const TextureDesc* pDesc, const SubresourceData* pInitialData, RHITexture* pTexture) const override;
         bool CreateShader(SHADERSTAGE stage, const void* pShaderBytecode, size_t BytecodeLength, Shader* pShader) const override;
@@ -385,13 +386,12 @@ namespace Alimer
         void RenderPassBegin(const RenderPass* renderpass, CommandList cmd) override;
         void RenderPassEnd(CommandList cmd) override;
         void BindScissorRects(uint32_t numRects, const Rect* rects, CommandList cmd) override;
-        void BindViewports(uint32_t NumViewports, const Viewport* pViewports, CommandList cmd) override;
+        void BindViewport(CommandList commandList, const RHIViewport& viewport) override;
+        void BindViewports(CommandList commandList, uint32_t viewportCount, const RHIViewport* pViewports) override;
         void BindResource(SHADERSTAGE stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource = -1) override;
         void BindResources(SHADERSTAGE stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd) override;
         void BindUAV(SHADERSTAGE stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource = -1) override;
         void BindUAVs(SHADERSTAGE stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd) override;
-        void UnbindResources(uint32_t slot, uint32_t num, CommandList cmd) override;
-        void UnbindUAVs(uint32_t slot, uint32_t num, CommandList cmd) override;
         void BindSampler(SHADERSTAGE stage, const Sampler* sampler, uint32_t slot, CommandList cmd) override;
         void BindConstantBuffer(SHADERSTAGE stage, const GPUBuffer* buffer, uint32_t slot, CommandList cmd) override;
         void BindVertexBuffers(const GPUBuffer* const* vertexBuffers, uint32_t slot, uint32_t count, const uint32_t* strides, const uint32_t* offsets, CommandList cmd) override;
