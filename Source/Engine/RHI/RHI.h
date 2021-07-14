@@ -37,21 +37,21 @@ namespace Alimer::RHI
     struct GPUBuffer;
     struct RHITexture;
 
-    enum SHADERSTAGE
+    enum class ShaderStage : uint32_t
     {
-        MS,
-        AS,
-        VS,
-        HS,
-        DS,
-        GS,
-        PS,
-        CS,
-        LIB,
-        SHADERSTAGE_COUNT,
+        Vertex,
+        Hull,
+        Domain,
+        Geometry,
+        Pixel,
+        Compute,
+        Mesh,
+        Amplification,
+        Library,
+        Count,
     };
 
-    enum class ShaderFormat
+    enum class ShaderFormat : uint32_t
     {
         DXIL,
         SPIRV,
@@ -160,7 +160,6 @@ namespace Alimer::RHI
     enum USAGE
     {
         USAGE_DEFAULT,
-        USAGE_IMMUTABLE,
         USAGE_DYNAMIC,
         USAGE_STAGING,
     };
@@ -397,6 +396,28 @@ namespace Alimer::RHI
     };
 
     // Descriptor structs:
+    struct Extent2D
+    {
+        uint32_t width = 1;
+        uint32_t height = 1;
+    };
+
+    struct Extent3D
+    {
+        uint32_t width = 1;
+        uint32_t height = 1;
+        uint32_t depth = 1;
+    };
+
+    struct RHIViewport
+    {
+        float x;
+        float y;
+        float width;
+        float height;
+        float minDepth;
+        float maxDepth;
+    };
 
     struct InputLayout
     {
@@ -708,7 +729,7 @@ namespace Alimer::RHI
         std::vector<RenderPassAttachment> attachments;
     };
 
-    struct RHISwapChainDescription
+    struct SwapChainDescriptor
     {
         uint32_t width = 0;
         uint32_t height = 0;
@@ -783,7 +804,7 @@ namespace Alimer::RHI
 
     struct Shader : public GraphicsDeviceChild
     {
-        SHADERSTAGE stage = SHADERSTAGE_COUNT;
+        ShaderStage stage = ShaderStage::Count;
         std::vector<StaticSampler> auto_samplers; // ability to set static samplers without explicit root signature
     };
 
@@ -843,11 +864,12 @@ namespace Alimer::RHI
 
     struct SwapChain : public GraphicsDeviceChild
     {
-        RHISwapChainDescription desc;
+        Extent2D extent;
+        bool verticalSync = true;
+        bool isFullscreen = false;
 
-        const RHISwapChainDescription& GetDesc() const { return desc; }
+        const Extent2D& GetExtent() const { return extent; }
     };
-
 
     struct RaytracingAccelerationStructureDesc
     {
@@ -1075,17 +1097,6 @@ namespace Alimer::RHI
         Indirect = 1 << 8,
     };
 
-    enum class RHIShaderStage : uint32_t
-    {
-        Vertex,
-        Hull,
-        Domain,
-        Geometry,
-        Pixel,
-        Compute,
-        Count,
-    };
-
     enum class RHICompareFunction : uint32_t
     {
         Never,
@@ -1134,29 +1145,6 @@ namespace Alimer::RHI
         TransparentBlack,
         OpaqueBlack,
         OpaqueWhite,
-    };
-
-    struct RHIExtent2D
-    {
-        uint32_t width = 1;
-        uint32_t height = 1;
-    };
-
-    struct RHIExtent3D
-    {
-        uint32_t width = 1;
-        uint32_t height = 1;
-        uint32_t depth = 1;
-    };
-
-    struct RHIViewport
-    {
-        float x;
-        float y;
-        float width;
-        float height;
-        float minDepth;
-        float maxDepth;
     };
 
     struct RHITextureDescription
@@ -1377,11 +1365,6 @@ namespace Alimer::RHI
         inline bool IsValid() const { return state.get() != nullptr; }
     };
 
-    struct RHIShader : public RHIObject2
-    {
-        RHIShaderStage stage = RHIShaderStage::Count;
-    };
-
     struct RHISampler : public RHIObject2
     {
     };
@@ -1456,10 +1439,10 @@ namespace Alimer::RHI
         virtual bool Initialize() = 0;
         virtual void Shutdown() = 0;
 
-        virtual bool CreateSwapChain(const RHISwapChainDescription* desc, void* window, SwapChain* swapChain) const = 0;
+        virtual bool CreateSwapChain(const SwapChainDescriptor* descriptor, void* window, SwapChain* swapChain) const = 0;
         virtual bool CreateBuffer(const GPUBufferDesc* pDesc, const void* initialData, GPUBuffer* pBuffer) const = 0;
         virtual bool CreateTexture(const TextureDesc* pDesc, const SubresourceData* pInitialData, RHITexture* pTexture) const = 0;
-        virtual bool CreateShader(SHADERSTAGE stage, const void* pShaderBytecode, size_t BytecodeLength, Shader* pShader) const = 0;
+        virtual bool CreateShader(ShaderStage stage, const void* pShaderBytecode, size_t BytecodeLength, Shader* pShader) const = 0;
         virtual bool CreateSampler(const SamplerDesc* pSamplerDesc, Sampler* pSamplerState) const = 0;
         virtual bool CreateQueryHeap(const GPUQueryHeapDesc* pDesc, GPUQueryHeap* pQueryHeap) const = 0;
         virtual bool CreatePipelineState(const PipelineStateDesc* pDesc, PipelineState* pso) const = 0;
@@ -1517,12 +1500,12 @@ namespace Alimer::RHI
         virtual void BindScissorRects(uint32_t numRects, const Rect* rects, CommandList cmd) = 0;
         virtual void BindViewport(CommandList commandList, const RHIViewport& viewport) = 0;
         virtual void BindViewports(CommandList commandList, uint32_t viewportCount, const RHIViewport* pViewports) = 0;
-        virtual void BindResource(SHADERSTAGE stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource = -1) = 0;
-        virtual void BindResources(SHADERSTAGE stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd) = 0;
-        virtual void BindUAV(SHADERSTAGE stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource = -1) = 0;
-        virtual void BindUAVs(SHADERSTAGE stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd) = 0;
-        virtual void BindSampler(SHADERSTAGE stage, const Sampler* sampler, uint32_t slot, CommandList cmd) = 0;
-        virtual void BindConstantBuffer(SHADERSTAGE stage, const GPUBuffer* buffer, uint32_t slot, CommandList cmd) = 0;
+        virtual void BindResource(ShaderStage stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource = -1) = 0;
+        virtual void BindResources(ShaderStage stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd) = 0;
+        virtual void BindUAV(ShaderStage stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource = -1) = 0;
+        virtual void BindUAVs(ShaderStage stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd) = 0;
+        virtual void BindSampler(ShaderStage stage, const Sampler* sampler, uint32_t slot, CommandList cmd) = 0;
+        virtual void BindConstantBuffer(ShaderStage stage, const GPUBuffer* buffer, uint32_t slot, CommandList cmd) = 0;
         virtual void BindVertexBuffers(const GPUBuffer* const* vertexBuffers, uint32_t slot, uint32_t count, const uint32_t* strides, const uint32_t* offsets, CommandList cmd) = 0;
         virtual void BindIndexBuffer(const GPUBuffer* indexBuffer, const INDEXBUFFER_FORMAT format, uint32_t offset, CommandList cmd) = 0;
         virtual void BindStencilRef(uint32_t value, CommandList cmd) = 0;

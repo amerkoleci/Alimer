@@ -709,24 +709,24 @@ namespace Alimer::RHI
 
             return D3D12_RESOURCE_STATE_COMMON;
         }
-        constexpr D3D12_SHADER_VISIBILITY _ConvertShaderVisibility(SHADERSTAGE value)
+        constexpr D3D12_SHADER_VISIBILITY _ConvertShaderVisibility(ShaderStage value)
         {
             switch (value)
             {
-                case MS:
-                    return D3D12_SHADER_VISIBILITY_MESH;
-                case AS:
-                    return D3D12_SHADER_VISIBILITY_AMPLIFICATION;
-                case VS:
+                case ShaderStage::Vertex:
                     return D3D12_SHADER_VISIBILITY_VERTEX;
-                case HS:
+                case ShaderStage::Hull:
                     return D3D12_SHADER_VISIBILITY_HULL;
-                case DS:
+                case ShaderStage::Domain:
                     return D3D12_SHADER_VISIBILITY_DOMAIN;
-                case GS:
+                case ShaderStage::Geometry:
                     return D3D12_SHADER_VISIBILITY_GEOMETRY;
-                case PS:
+                case ShaderStage::Pixel:
                     return D3D12_SHADER_VISIBILITY_PIXEL;
+                case ShaderStage::Mesh:
+                    return D3D12_SHADER_VISIBILITY_MESH;
+                case ShaderStage::Amplification:
+                    return D3D12_SHADER_VISIBILITY_AMPLIFICATION;
                 default:
                     return D3D12_SHADER_VISIBILITY_ALL;
             }
@@ -2639,7 +2639,7 @@ namespace Alimer::RHI
             {
                 OutputDebugStringA("WARNING: Direct3D Debug Device is not available\n");
             }
-                
+
 #if defined(_DEBUG)
             ComPtr<IDXGIInfoQueue> dxgiInfoQueue;
             if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(dxgiInfoQueue.GetAddressOf()))))
@@ -3121,7 +3121,7 @@ namespace Alimer::RHI
         SafeRelease(dxcUtils);
     }
 
-    bool RHIDeviceD3D12::CreateSwapChain(const RHISwapChainDescription* pDesc, void* window, SwapChain* swapChain) const
+    bool RHIDeviceD3D12::CreateSwapChain(const SwapChainDescriptor* pDesc, void* window, SwapChain* swapChain) const
     {
         HRESULT hr = S_OK;
 
@@ -3132,7 +3132,8 @@ namespace Alimer::RHI
         }
         internal_state->allocationhandler = allocationhandler;
         swapChain->internal_state = internal_state;
-        swapChain->desc = *pDesc;
+        swapChain->verticalSync = pDesc->verticalSync;
+        swapChain->isFullscreen = pDesc->isFullscreen;
 
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
         if (internal_state->swapChain == nullptr)
@@ -3193,7 +3194,7 @@ namespace Alimer::RHI
             {
                 return false;
             }
-            }
+        }
         else
         {
             // Resize swapchain:
@@ -3216,6 +3217,10 @@ namespace Alimer::RHI
             );
             assert(SUCCEEDED(hr));
         }
+
+        ThrowIfFailed(internal_state->swapChain->GetDesc1(&swapChainDesc));
+        swapChain->extent.width = swapChainDesc.Width;
+        swapChain->extent.height = swapChainDesc.Height;
 
         internal_state->backBuffers.resize(swapChainDesc.BufferCount);
         internal_state->backbufferRTV.resize(swapChainDesc.BufferCount);
@@ -3240,7 +3245,7 @@ namespace Alimer::RHI
         internal_state->renderpass.desc.attachments.push_back(RenderPassAttachment::RenderTarget(&internal_state->dummyTexture));
 
         return true;
-        }
+    }
 
     bool RHIDeviceD3D12::CreateBuffer(const GPUBufferDesc* pDesc, const void* initialData, GPUBuffer* pBuffer) const
     {
@@ -3550,7 +3555,8 @@ namespace Alimer::RHI
 
         return SUCCEEDED(hr);
     }
-    bool RHIDeviceD3D12::CreateShader(SHADERSTAGE stage, const void* pShaderBytecode, size_t BytecodeLength, Shader* pShader) const
+
+    bool RHIDeviceD3D12::CreateShader(ShaderStage stage, const void* pShaderBytecode, size_t BytecodeLength, Shader* pShader) const
     {
         auto internal_state = std::make_shared<PipelineState_DX12>();
         internal_state->allocationhandler = allocationhandler;
@@ -3779,7 +3785,7 @@ namespace Alimer::RHI
             ReflectionData.Ptr = pShaderBytecode;
             ReflectionData.Size = (SIZE_T)BytecodeLength;
 
-            if (stage == LIB)
+            if (stage == ShaderStage::Library)
             {
                 ComPtr<ID3D12LibraryReflection> reflection;
                 hr = dxcUtils->CreateReflection(&ReflectionData, IID_PPV_ARGS(&reflection));
@@ -3849,26 +3855,26 @@ namespace Alimer::RHI
             {
                 switch (stage)
                 {
-                    case MS:
-                        sam.ShaderVisibility = D3D12_SHADER_VISIBILITY_MESH;
-                        break;
-                    case AS:
-                        sam.ShaderVisibility = D3D12_SHADER_VISIBILITY_AMPLIFICATION;
-                        break;
-                    case VS:
+                    case ShaderStage::Vertex:
                         sam.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
                         break;
-                    case HS:
+                    case ShaderStage::Hull:
                         sam.ShaderVisibility = D3D12_SHADER_VISIBILITY_HULL;
                         break;
-                    case DS:
+                    case ShaderStage::Domain:
                         sam.ShaderVisibility = D3D12_SHADER_VISIBILITY_DOMAIN;
                         break;
-                    case GS:
+                    case ShaderStage::Geometry:
                         sam.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
                         break;
-                    case PS:
+                    case ShaderStage::Pixel:
                         sam.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+                        break;
+                    case ShaderStage::Mesh:
+                        sam.ShaderVisibility = D3D12_SHADER_VISIBILITY_MESH;
+                        break;
+                    case ShaderStage::Amplification:
+                        sam.ShaderVisibility = D3D12_SHADER_VISIBILITY_AMPLIFICATION;
                         break;
                     default:
                         sam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
@@ -3877,7 +3883,7 @@ namespace Alimer::RHI
             }
 
 
-            if (stage == CS || stage == LIB)
+            if (stage == ShaderStage::Compute || stage == ShaderStage::Library)
             {
                 std::vector<D3D12_ROOT_PARAMETER1> params;
 
@@ -4083,7 +4089,7 @@ namespace Alimer::RHI
             }
         }
 
-        if (stage == CS)
+        if (stage == ShaderStage::Compute)
         {
             struct PSO_STREAM
             {
@@ -5753,6 +5759,7 @@ namespace Alimer::RHI
         auto internal_state = to_internal(resource);
         internal_state->resource->Unmap(0, nullptr);
     }
+
     void RHIDeviceD3D12::QueryRead(const GPUQueryHeap* heap, uint32_t index, uint32_t count, uint64_t* results) const
     {
         if (count == 0)
@@ -5962,7 +5969,7 @@ namespace Alimer::RHI
             {
                 for (auto& swapchain : swapchains[cmd])
                 {
-                    if (swapchain->desc.verticalSync)
+                    if (swapchain->verticalSync)
                     {
                         to_internal(swapchain)->swapChain->Present(1, 0);
                     }
@@ -6201,7 +6208,7 @@ namespace Alimer::RHI
         GetCommandList(commandList)->RSSetViewports(viewportCount, (D3D12_VIEWPORT*)pViewports);
     }
 
-    void RHIDeviceD3D12::BindResource(SHADERSTAGE stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource)
+    void RHIDeviceD3D12::BindResource(ShaderStage stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource)
     {
         assert(slot < GPU_RESOURCE_HEAP_SRV_COUNT);
         if (descriptors[cmd].SRV[slot] != resource || descriptors[cmd].SRV_index[slot] != subresource)
@@ -6211,7 +6218,7 @@ namespace Alimer::RHI
             descriptors[cmd].dirty_res = true;
         }
     }
-    void RHIDeviceD3D12::BindResources(SHADERSTAGE stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd)
+    void RHIDeviceD3D12::BindResources(ShaderStage stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd)
     {
         if (resources != nullptr)
         {
@@ -6221,7 +6228,7 @@ namespace Alimer::RHI
             }
         }
     }
-    void RHIDeviceD3D12::BindUAV(SHADERSTAGE stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource)
+    void RHIDeviceD3D12::BindUAV(ShaderStage stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource)
     {
         assert(slot < GPU_RESOURCE_HEAP_UAV_COUNT);
         if (descriptors[cmd].UAV[slot] != resource || descriptors[cmd].UAV_index[slot] != subresource)
@@ -6231,7 +6238,7 @@ namespace Alimer::RHI
             descriptors[cmd].dirty_res = true;
         }
     }
-    void RHIDeviceD3D12::BindUAVs(SHADERSTAGE stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd)
+    void RHIDeviceD3D12::BindUAVs(ShaderStage stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd)
     {
         if (resources != nullptr)
         {
@@ -6242,7 +6249,7 @@ namespace Alimer::RHI
         }
     }
 
-    void RHIDeviceD3D12::BindSampler(SHADERSTAGE stage, const Sampler* sampler, uint32_t slot, CommandList cmd)
+    void RHIDeviceD3D12::BindSampler(ShaderStage stage, const Sampler* sampler, uint32_t slot, CommandList cmd)
     {
         assert(slot < GPU_SAMPLER_HEAP_COUNT);
         if (descriptors[cmd].SAM[slot] != sampler)
@@ -6251,7 +6258,7 @@ namespace Alimer::RHI
             descriptors[cmd].dirty_sam = true;
         }
     }
-    void RHIDeviceD3D12::BindConstantBuffer(SHADERSTAGE stage, const GPUBuffer* buffer, uint32_t slot, CommandList cmd)
+    void RHIDeviceD3D12::BindConstantBuffer(ShaderStage stage, const GPUBuffer* buffer, uint32_t slot, CommandList cmd)
     {
         assert(slot < GPU_RESOURCE_HEAP_CBV_COUNT);
         if (buffer->desc.Usage == USAGE_DYNAMIC || descriptors[cmd].CBV[slot] != buffer)
@@ -6272,7 +6279,7 @@ namespace Alimer::RHI
 
             // CBV flag marked as bound for this slot:
             //	Also, the corresponding slot is marked dirty
-            if (stage == CS)
+            if (stage == ShaderStage::Compute)
             {
                 internal_state->cbv_mask_compute[cmd] |= 1 << slot;
                 descriptors[cmd].dirty_root_cbvs_compute |= 1 << slot;
@@ -6387,12 +6394,13 @@ namespace Alimer::RHI
         active_pso[cmd] = pso;
         dirty_pso[cmd] = true;
     }
+
     void RHIDeviceD3D12::BindComputeShader(const Shader* cs, CommandList cmd)
     {
         active_pso[cmd] = nullptr;
         active_rt[cmd] = nullptr;
 
-        assert(cs->stage == CS || cs->stage == LIB);
+        ALIMER_ASSERT(cs->stage == ShaderStage::Compute || cs->stage == ShaderStage::Library);
         if (active_cs[cmd] != cs)
         {
             prev_pipeline_hash[cmd] = 0;
@@ -6401,7 +6409,7 @@ namespace Alimer::RHI
 
             auto internal_state = to_internal(cs);
 
-            if (cs->stage == CS)
+            if (cs->stage == ShaderStage::Compute)
             {
                 GetCommandList(cmd)->SetPipelineState(internal_state->resource.Get());
             }
@@ -6430,60 +6438,71 @@ namespace Alimer::RHI
 
         }
     }
+
     void RHIDeviceD3D12::Draw(uint32_t vertexCount, uint32_t startVertexLocation, CommandList cmd)
     {
         predraw(cmd);
         GetCommandList(cmd)->DrawInstanced(vertexCount, 1, startVertexLocation, 0);
     }
+
     void RHIDeviceD3D12::DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, CommandList cmd)
     {
         predraw(cmd);
         GetCommandList(cmd)->DrawIndexedInstanced(indexCount, 1, startIndexLocation, baseVertexLocation, 0);
     }
+
     void RHIDeviceD3D12::DrawInstanced(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation, CommandList cmd)
     {
         predraw(cmd);
         GetCommandList(cmd)->DrawInstanced(vertexCount, instanceCount, startVertexLocation, startInstanceLocation);
     }
+
     void RHIDeviceD3D12::DrawIndexedInstanced(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t startInstanceLocation, CommandList cmd)
     {
         predraw(cmd);
         GetCommandList(cmd)->DrawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, startInstanceLocation);
     }
+
     void RHIDeviceD3D12::DrawInstancedIndirect(const GPUBuffer* args, uint32_t args_offset, CommandList cmd)
     {
         predraw(cmd);
         auto internal_state = to_internal(args);
         GetCommandList(cmd)->ExecuteIndirect(drawInstancedIndirectCommandSignature.Get(), 1, internal_state->resource.Get(), args_offset, nullptr, 0);
     }
+
     void RHIDeviceD3D12::DrawIndexedInstancedIndirect(const GPUBuffer* args, uint32_t args_offset, CommandList cmd)
     {
         predraw(cmd);
         auto internal_state = to_internal(args);
         GetCommandList(cmd)->ExecuteIndirect(drawIndexedInstancedIndirectCommandSignature.Get(), 1, internal_state->resource.Get(), args_offset, nullptr, 0);
     }
+
     void RHIDeviceD3D12::Dispatch(uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ, CommandList cmd)
     {
         predispatch(cmd);
         GetCommandList(cmd)->Dispatch(threadGroupCountX, threadGroupCountY, threadGroupCountZ);
     }
+
     void RHIDeviceD3D12::DispatchIndirect(const GPUBuffer* args, uint32_t args_offset, CommandList cmd)
     {
         predispatch(cmd);
         auto internal_state = to_internal(args);
         GetCommandList(cmd)->ExecuteIndirect(dispatchIndirectCommandSignature.Get(), 1, internal_state->resource.Get(), args_offset, nullptr, 0);
     }
+
     void RHIDeviceD3D12::DispatchMesh(uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ, CommandList cmd)
     {
         predraw(cmd);
         GetCommandList(cmd)->DispatchMesh(threadGroupCountX, threadGroupCountY, threadGroupCountZ);
     }
+
     void RHIDeviceD3D12::DispatchMeshIndirect(const GPUBuffer* args, uint32_t args_offset, CommandList cmd)
     {
         predraw(cmd);
         auto internal_state = to_internal(args);
         GetCommandList(cmd)->ExecuteIndirect(dispatchMeshIndirectCommandSignature.Get(), 1, internal_state->resource.Get(), args_offset, nullptr, 0);
     }
+
     void RHIDeviceD3D12::CopyResource(const GPUResource* pDst, const GPUResource* pSrc, CommandList cmd)
     {
         barrier_flush(cmd);
@@ -6508,10 +6527,10 @@ namespace Alimer::RHI
             GetCommandList(cmd)->CopyResource(internal_state_dst->resource.Get(), internal_state_src->resource.Get());
         }
     }
+
     void RHIDeviceD3D12::UpdateBuffer(const GPUBuffer* buffer, const void* data, CommandList cmd, int dataSize)
     {
-        assert(buffer->desc.Usage != USAGE_IMMUTABLE && "Cannot update IMMUTABLE GPUBuffer!");
-        assert((int)buffer->desc.ByteWidth >= dataSize || dataSize < 0 && "Data size is too big!");
+        ALIMER_ASSERT((int)buffer->desc.ByteWidth >= dataSize || dataSize < 0 && "Data size is too big!");
 
         if (dataSize == 0)
         {
@@ -6904,6 +6923,6 @@ namespace Alimer::RHI
         auto wName = ToUtf16(name);
         PIXSetMarker(GetCommandList(cmd), PIX_COLOR_DEFAULT, wName.c_str());
     }
-    }
+}
 
 #endif /* defined(ALIMER_RHI_D3D12) */

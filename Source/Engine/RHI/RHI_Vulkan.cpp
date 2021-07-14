@@ -694,26 +694,26 @@ namespace Alimer::RHI
             }
             return VK_IMAGE_LAYOUT_UNDEFINED;
         }
-        constexpr VkShaderStageFlags _ConvertStageFlags(SHADERSTAGE value)
+        constexpr VkShaderStageFlags _ConvertStageFlags(ShaderStage value)
         {
             switch (value)
             {
-                case Alimer::RHI::MS:
-                    return VK_SHADER_STAGE_MESH_BIT_NV;
-                case Alimer::RHI::AS:
-                    return VK_SHADER_STAGE_TASK_BIT_NV;
-                case Alimer::RHI::VS:
+                case ShaderStage::Vertex:
                     return VK_SHADER_STAGE_VERTEX_BIT;
-                case Alimer::RHI::HS:
+                case ShaderStage::Hull:
                     return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-                case Alimer::RHI::DS:
+                case ShaderStage::Domain:
                     return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-                case Alimer::RHI::GS:
+                case ShaderStage::Geometry:
                     return VK_SHADER_STAGE_GEOMETRY_BIT;
-                case Alimer::RHI::PS:
+                case ShaderStage::Pixel:
                     return VK_SHADER_STAGE_FRAGMENT_BIT;
-                case Alimer::RHI::CS:
+                case ShaderStage::Compute:
                     return VK_SHADER_STAGE_COMPUTE_BIT;
+                case ShaderStage::Mesh:
+                    return VK_SHADER_STAGE_MESH_BIT_NV;
+                case ShaderStage::Amplification:
+                    return VK_SHADER_STAGE_TASK_BIT_NV;
                 default:
                     return VK_SHADER_STAGE_ALL;
             }
@@ -1021,7 +1021,7 @@ namespace Alimer::RHI
             size_t binding_hash = 0;
 
             VkGraphicsPipelineCreateInfo pipelineInfo = {};
-            VkPipelineShaderStageCreateInfo shaderStages[SHADERSTAGE_COUNT] = {};
+            VkPipelineShaderStageCreateInfo shaderStages[(uint32_t)ShaderStage::Count] = {};
             VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
             VkPipelineRasterizationStateCreateInfo rasterizer = {};
             VkPipelineRasterizationDepthClipStateCreateInfoEXT depthclip = {};
@@ -1919,7 +1919,7 @@ namespace Alimer::RHI
         {
             bindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
 
-            if (device->active_cs[cmd]->stage == LIB)
+            if (device->active_cs[cmd]->stage == ShaderStage::Library)
             {
                 bindPoint = VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR;
             }
@@ -3031,7 +3031,7 @@ namespace Alimer::RHI
         }
     }
 
-    bool RHIDeviceVulkan::CreateSwapChain(const RHISwapChainDescription* pDesc, void* window, SwapChain* swapChain) const
+    bool RHIDeviceVulkan::CreateSwapChain(const SwapChainDescriptor* pDesc, void* window, SwapChain* swapChain) const
     {
         auto internal_state = std::static_pointer_cast<SwapChain_Vulkan>(swapChain->internal_state);
         if (swapChain->internal_state == nullptr)
@@ -3040,7 +3040,8 @@ namespace Alimer::RHI
         }
         internal_state->allocationhandler = allocationhandler;
         swapChain->internal_state = internal_state;
-        swapChain->desc = *pDesc;
+        swapChain->verticalSync = pDesc->verticalSync;
+        swapChain->isFullscreen = pDesc->isFullscreen;
 
         VkResult res;
 
@@ -3126,8 +3127,8 @@ namespace Alimer::RHI
         }
 
         internal_state->swapChainExtent = { pDesc->width, pDesc->height };
-        internal_state->swapChainExtent.width = std::max(internal_state->swapchain_capabilities.minImageExtent.width, std::min(internal_state->swapchain_capabilities.maxImageExtent.width, internal_state->swapChainExtent.width));
-        internal_state->swapChainExtent.height = std::max(internal_state->swapchain_capabilities.minImageExtent.height, std::min(internal_state->swapchain_capabilities.maxImageExtent.height, internal_state->swapChainExtent.height));
+        internal_state->swapChainExtent.width = Max(internal_state->swapchain_capabilities.minImageExtent.width, std::min(internal_state->swapchain_capabilities.maxImageExtent.width, internal_state->swapChainExtent.width));
+        internal_state->swapChainExtent.height = Max(internal_state->swapchain_capabilities.minImageExtent.height, std::min(internal_state->swapchain_capabilities.maxImageExtent.height, internal_state->swapChainExtent.height));
 
         // Determine the number of images
         uint32_t imageCount = internal_state->swapchain_capabilities.minImageCount + 1;
@@ -3166,20 +3167,19 @@ namespace Alimer::RHI
         createInfo.clipped = VK_TRUE;
         createInfo.oldSwapchain = internal_state->swapChain;
 
-        res = vkCreateSwapchainKHR(device, &createInfo, nullptr, &internal_state->swapChain);
-        assert(res == VK_SUCCESS);
+        VK_CHECK(vkCreateSwapchainKHR(device, &createInfo, nullptr, &internal_state->swapChain));
 
         if (createInfo.oldSwapchain != VK_NULL_HANDLE)
         {
             vkDestroySwapchainKHR(device, createInfo.oldSwapchain, nullptr);
         }
 
-        res = vkGetSwapchainImagesKHR(device, internal_state->swapChain, &imageCount, nullptr);
-        VK_CHECK(res);
+        VK_CHECK(vkGetSwapchainImagesKHR(device, internal_state->swapChain, &imageCount, nullptr));
         internal_state->swapChainImages.resize(imageCount);
-        res = vkGetSwapchainImagesKHR(device, internal_state->swapChain, &imageCount, internal_state->swapChainImages.data());
-        VK_CHECK(res);
+        VK_CHECK(vkGetSwapchainImagesKHR(device, internal_state->swapChain, &imageCount, internal_state->swapChainImages.data()));
         internal_state->swapChainImageFormat = surfaceFormat.format;
+        swapChain->extent.width = createInfo.imageExtent.width;
+        swapChain->extent.height = createInfo.imageExtent.height;
 
         if (vkSetDebugUtilsObjectNameEXT != nullptr)
         {
@@ -3809,7 +3809,8 @@ namespace Alimer::RHI
 
         return res == VK_SUCCESS;
     }
-    bool RHIDeviceVulkan::CreateShader(SHADERSTAGE stage, const void* pShaderBytecode, size_t BytecodeLength, Shader* pShader) const
+
+    bool RHIDeviceVulkan::CreateShader(ShaderStage stage, const void* pShaderBytecode, size_t BytecodeLength, Shader* pShader) const
     {
         auto internal_state = std::make_shared<Shader_Vulkan>();
         internal_state->allocationhandler = allocationhandler;
@@ -3831,29 +3832,29 @@ namespace Alimer::RHI
         internal_state->stageInfo.pName = "main";
         switch (stage)
         {
-            case Alimer::RHI::MS:
-                internal_state->stageInfo.stage = VK_SHADER_STAGE_MESH_BIT_NV;
-                break;
-            case Alimer::RHI::AS:
-                internal_state->stageInfo.stage = VK_SHADER_STAGE_TASK_BIT_NV;
-                break;
-            case Alimer::RHI::VS:
+            case ShaderStage::Vertex:
                 internal_state->stageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
                 break;
-            case Alimer::RHI::HS:
+            case ShaderStage::Hull:
                 internal_state->stageInfo.stage = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
                 break;
-            case Alimer::RHI::DS:
+            case ShaderStage::Domain:
                 internal_state->stageInfo.stage = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
                 break;
-            case Alimer::RHI::GS:
+            case ShaderStage::Geometry:
                 internal_state->stageInfo.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
                 break;
-            case Alimer::RHI::PS:
+            case ShaderStage::Pixel:
                 internal_state->stageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
                 break;
-            case Alimer::RHI::CS:
+            case ShaderStage::Compute:
                 internal_state->stageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+                break;
+            case ShaderStage::Mesh:
+                internal_state->stageInfo.stage = VK_SHADER_STAGE_MESH_BIT_NV;
+                break;
+            case ShaderStage::Amplification:
+                internal_state->stageInfo.stage = VK_SHADER_STAGE_TASK_BIT_NV;
                 break;
             default:
                 // also means library shader (ray tracing)
@@ -3999,7 +4000,7 @@ namespace Alimer::RHI
 
             spvReflectDestroyShaderModule(&module);
 
-            if (stage == CS || stage == LIB)
+            if (stage == ShaderStage::Compute || stage == ShaderStage::Library)
             {
                 internal_state->binding_hash = 0;
                 size_t i = 0;
@@ -4105,7 +4106,7 @@ namespace Alimer::RHI
             }
         }
 
-        if (stage == CS)
+        if (stage == ShaderStage::Compute)
         {
             VkComputePipelineCreateInfo pipelineInfo = {};
             pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
@@ -6455,7 +6456,7 @@ namespace Alimer::RHI
         vkCmdSetViewport(GetCommandList(commandList), 0, viewportCount, vkViewports);
     }
 
-    void RHIDeviceVulkan::BindResource(SHADERSTAGE stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource)
+    void RHIDeviceVulkan::BindResource(ShaderStage stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource)
     {
         assert(slot < GPU_RESOURCE_HEAP_SRV_COUNT);
         auto& descriptors = GetFrameResources().descriptors[cmd];
@@ -6467,7 +6468,7 @@ namespace Alimer::RHI
         }
     }
 
-    void RHIDeviceVulkan::BindResources(SHADERSTAGE stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd)
+    void RHIDeviceVulkan::BindResources(ShaderStage stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd)
     {
         if (resources != nullptr)
         {
@@ -6478,7 +6479,7 @@ namespace Alimer::RHI
         }
     }
 
-    void RHIDeviceVulkan::BindUAV(SHADERSTAGE stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource)
+    void RHIDeviceVulkan::BindUAV(ShaderStage stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource)
     {
         ALIMER_ASSERT(slot < GPU_RESOURCE_HEAP_UAV_COUNT);
         auto& descriptors = GetFrameResources().descriptors[cmd];
@@ -6490,7 +6491,7 @@ namespace Alimer::RHI
         }
     }
 
-    void RHIDeviceVulkan::BindUAVs(SHADERSTAGE stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd)
+    void RHIDeviceVulkan::BindUAVs(ShaderStage stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd)
     {
         if (resources != nullptr)
         {
@@ -6501,7 +6502,7 @@ namespace Alimer::RHI
         }
     }
 
-    void RHIDeviceVulkan::BindSampler(SHADERSTAGE stage, const Sampler* sampler, uint32_t slot, CommandList cmd)
+    void RHIDeviceVulkan::BindSampler(ShaderStage stage, const Sampler* sampler, uint32_t slot, CommandList cmd)
     {
         assert(slot < GPU_SAMPLER_HEAP_COUNT);
         auto& descriptors = GetFrameResources().descriptors[cmd];
@@ -6511,7 +6512,7 @@ namespace Alimer::RHI
             descriptors.dirty = true;
         }
     }
-    void RHIDeviceVulkan::BindConstantBuffer(SHADERSTAGE stage, const GPUBuffer* buffer, uint32_t slot, CommandList cmd)
+    void RHIDeviceVulkan::BindConstantBuffer(ShaderStage stage, const GPUBuffer* buffer, uint32_t slot, CommandList cmd)
     {
         assert(slot < GPU_RESOURCE_HEAP_CBV_COUNT);
         auto& descriptors = GetFrameResources().descriptors[cmd];
@@ -6560,6 +6561,7 @@ namespace Alimer::RHI
             dirty_pso[cmd] = true;
         }
     }
+
     void RHIDeviceVulkan::BindIndexBuffer(const GPUBuffer* indexBuffer, const INDEXBUFFER_FORMAT format, uint32_t offset, CommandList cmd)
     {
         if (indexBuffer != nullptr)
@@ -6568,15 +6570,18 @@ namespace Alimer::RHI
             vkCmdBindIndexBuffer(GetCommandList(cmd), internal_state->resource, (VkDeviceSize)offset, format == INDEXFORMAT_16BIT ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
         }
     }
+
     void RHIDeviceVulkan::BindStencilRef(uint32_t value, CommandList cmd)
     {
         vkCmdSetStencilReference(GetCommandList(cmd), VK_STENCIL_FRONT_AND_BACK, value);
     }
+
     void RHIDeviceVulkan::BindBlendFactor(float r, float g, float b, float a, CommandList cmd)
     {
         float blendConstants[] = { r, g, b, a };
         vkCmdSetBlendConstants(GetCommandList(cmd), blendConstants);
     }
+
     void RHIDeviceVulkan::BindShadingRate(SHADING_RATE rate, CommandList cmd)
     {
         if (CheckCapability(GRAPHICSDEVICE_CAPABILITY_VARIABLE_RATE_SHADING) && prev_shadingrate[cmd] != rate)
@@ -6699,9 +6704,10 @@ namespace Alimer::RHI
         active_pso[cmd] = pso;
         dirty_pso[cmd] = true;
     }
+
     void RHIDeviceVulkan::BindComputeShader(const Shader* cs, CommandList cmd)
     {
-        assert(cs->stage == CS || cs->stage == LIB);
+        assert(cs->stage == ShaderStage::Compute || cs->stage == ShaderStage::Library);
         if (active_cs[cmd] != cs)
         {
             if (active_cs[cmd] == nullptr)
@@ -6721,7 +6727,7 @@ namespace Alimer::RHI
             active_cs[cmd] = cs;
             auto internal_state = to_internal(cs);
 
-            if (cs->stage == CS)
+            if (cs->stage == ShaderStage::Compute)
             {
                 vkCmdBindPipeline(GetCommandList(cmd), VK_PIPELINE_BIND_POINT_COMPUTE, internal_state->pipeline_cs);
 
@@ -6739,7 +6745,7 @@ namespace Alimer::RHI
                     );
                 }
             }
-            else if (cs->stage == LIB)
+            else if (cs->stage == ShaderStage::Library)
             {
                 if (!internal_state->bindlessSets.empty())
                 {
@@ -6937,8 +6943,7 @@ namespace Alimer::RHI
     }
     void RHIDeviceVulkan::UpdateBuffer(const GPUBuffer* buffer, const void* data, CommandList cmd, int dataSize)
     {
-        assert(buffer->desc.Usage != USAGE_IMMUTABLE && "Cannot update IMMUTABLE GPUBuffer!");
-        assert((int)buffer->desc.ByteWidth >= dataSize || dataSize < 0 && "Data size is too big!");
+        ALIMER_ASSERT((int)buffer->desc.ByteWidth >= dataSize || dataSize < 0 && "Data size is too big!");
 
         if (dataSize == 0)
         {
