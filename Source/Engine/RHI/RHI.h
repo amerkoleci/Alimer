@@ -20,14 +20,14 @@
 namespace Alimer
 {
     /* Constants */
-    static constexpr uint32_t kRHIMaxFramesInFlight = 2;
+    static constexpr uint32_t kMaxFramesInFlight = 2;
     static constexpr uint32_t kMaxBackBufferCount = 3;
     static constexpr uint32_t kMaxViewportsAndScissors = 8;
     static constexpr uint32_t kMaxVertexBufferBindings = 4;
     static constexpr uint32_t kMaxVertexAttributes = 16;
-    static constexpr uint32_t kMaxVertexAttributeOffset = 2047u;
-    static constexpr uint32_t kMaxVertexBufferStride = 2048u;
-    static constexpr uint32_t kMaxFrameCommandBuffers = 32u;
+    static constexpr uint32_t kMaxVertexAttributeOffset = 2047;
+    static constexpr uint32_t kMaxVertexBufferStride = 2048;
+    static constexpr uint32_t kMaxFrameCommandBuffers = 32;
     static constexpr uint32_t kRHICubeMapSlices = 6;
     static constexpr uint32_t kInvalidBindlessIndex = static_cast<uint32_t>(-1);
 
@@ -49,13 +49,13 @@ namespace Alimer
         LIB,
         SHADERSTAGE_COUNT,
     };
-    enum SHADERFORMAT
+
+    enum class RHIShaderFormat
     {
-        SHADERFORMAT_NONE,
-        SHADERFORMAT_HLSL5,
-        SHADERFORMAT_HLSL6,
-        SHADERFORMAT_SPIRV,
+        DXIL,
+        SPIRV,
     };
+
     enum SHADERMODEL
     {
         SHADERMODEL_5_0,
@@ -714,7 +714,6 @@ namespace Alimer
         FORMAT format = FORMAT_R10G10B10A2_UNORM;
         bool verticalSync = true;
         bool isFullscreen = false;
-        float clearcolor[4] = { 0,0,0,1 };
     };
 
     struct IndirectDrawArgsInstanced
@@ -787,18 +786,21 @@ namespace Alimer
         std::vector<StaticSampler> auto_samplers; // ability to set static samplers without explicit root signature
     };
 
+    enum class RHIResourceType : uint32_t
+    {
+        Unknown,
+        Buffer,
+        Texture,
+        RayTracingAccelerationStructure,
+    };
+
     struct GPUResource : public GraphicsDeviceChild
     {
-        enum class GPU_RESOURCE_TYPE
-        {
-            BUFFER,
-            TEXTURE,
-            RAYTRACING_ACCELERATION_STRUCTURE,
-            UNKNOWN_TYPE,
-        } type = GPU_RESOURCE_TYPE::UNKNOWN_TYPE;
-        inline bool IsTexture() const { return type == GPU_RESOURCE_TYPE::TEXTURE; }
-        inline bool IsBuffer() const { return type == GPU_RESOURCE_TYPE::BUFFER; }
-        inline bool IsAccelerationStructure() const { return type == GPU_RESOURCE_TYPE::RAYTRACING_ACCELERATION_STRUCTURE; }
+        RHIResourceType type = RHIResourceType::Unknown;
+
+        inline bool IsBuffer() const { return type == RHIResourceType::Buffer; }
+        inline bool IsTexture() const { return type == RHIResourceType::Texture; }
+        inline bool IsAccelerationStructure() const { return type == RHIResourceType::RayTracingAccelerationStructure; }
     };
 
     struct GPUBuffer : public GPUResource
@@ -1457,7 +1459,6 @@ namespace Alimer
     class ALIMER_API RHIDevice
     {
     protected:
-        static const uint32_t BUFFERCOUNT = 2;
         bool DEBUGDEVICE = false;
         uint32_t capabilities = 0;
         size_t SHADER_IDENTIFIER_SIZE = 0;
@@ -1472,7 +1473,7 @@ namespace Alimer
         virtual void Shutdown() = 0;
 
         virtual bool CreateSwapChain(const RHISwapChainDescription* desc, void* window, SwapChain* swapChain) const = 0;
-        virtual bool CreateBuffer(const GPUBufferDesc* pDesc, const SubresourceData* pInitialData, GPUBuffer* pBuffer) const = 0;
+        virtual bool CreateBuffer(const GPUBufferDesc* pDesc, const void* initialData, GPUBuffer* pBuffer) const = 0;
         virtual bool CreateTexture(const TextureDesc* pDesc, const SubresourceData* pInitialData, RHITexture* pTexture) const = 0;
         virtual bool CreateShader(SHADERSTAGE stage, const void* pShaderBytecode, size_t BytecodeLength, Shader* pShader) const = 0;
         virtual bool CreateSampler(const SamplerDesc* pSamplerDesc, Sampler* pSamplerState) const = 0;
@@ -1512,9 +1513,6 @@ namespace Alimer
 
         inline bool CheckCapability(GRAPHICSDEVICE_CAPABILITY capability) const { return capabilities & capability; }
 
-
-        static constexpr uint32_t GetBufferCount() { return BUFFERCOUNT; }
-
         constexpr bool IsDebugDevice() const { return DEBUGDEVICE; }
 
         constexpr size_t GetShaderIdentifierSize() const { return SHADER_IDENTIFIER_SIZE; }
@@ -1522,16 +1520,16 @@ namespace Alimer
         constexpr uint32_t GetVariableRateShadingTileSize() const { return VARIABLE_RATE_SHADING_TILE_SIZE; }
         constexpr uint64_t GetTimestampFrequency() const { return TIMESTAMP_FREQUENCY; }
 
-        virtual SHADERFORMAT GetShaderFormat() const { return SHADERFORMAT_NONE; }
+        virtual RHIShaderFormat GetShaderFormat() const = 0;
 
         virtual RHITexture GetBackBuffer(const SwapChain* swapchain) const = 0;
 
         ///////////////Thread-sensitive////////////////////////
 
         virtual void WaitCommandList(CommandList cmd, CommandList wait_for) {}
-        virtual void RenderPassBegin(const SwapChain* swapchain, CommandList cmd) = 0;
-        virtual void RenderPassBegin(const RenderPass* renderpass, CommandList cmd) = 0;
-        virtual void RenderPassEnd(CommandList cmd) = 0;
+        virtual void BeginRenderPass(CommandList commandList, const SwapChain* swapchain, const RHIColor& clearColor) = 0;
+        virtual void BeginRenderPass(CommandList commandList, const RenderPass* renderpass) = 0;
+        virtual void EndRenderPass(CommandList commandList) = 0;
         virtual void BindScissorRects(uint32_t numRects, const Rect* rects, CommandList cmd) = 0;
         virtual void BindViewport(CommandList commandList, const RHIViewport& viewport) = 0;
         virtual void BindViewports(CommandList commandList, uint32_t viewportCount, const RHIViewport* pViewports) = 0;
@@ -1596,15 +1594,6 @@ namespace Alimer
 
     ALIMER_API bool RHInitialize(RHIValidationMode validationMode, RHIBackendType backendType = RHIBackendType::Count);
     ALIMER_API void RHIShutdown();
-
-    //ALIMER_API RHITextureRef RHICreateTexture(const RHITextureDescription& desc);
-    //ALIMER_API RHIBufferRef RHICreateBuffer(const RHIBufferDescription& desc, const void* initialData = nullptr);
-    //ALIMER_API RHISwapChainRef RHICreateSwapChain(void* window, const RHISwapChainDescription& desc);
-    //
-    //ALIMER_API bool RHIBeginFrame();
-    //ALIMER_API void RHIEndFrame();
-    //
-    //ALIMER_API RHICommandBuffer* RHIBeginCommandBuffer(RHIQueueType type = RHIQueueType::Graphics);
 }
 
 namespace std

@@ -153,10 +153,10 @@ namespace Alimer
 
             //auto view = host->GetMainWindow()->GetRHISwapChain()->GetCurrentTextureView();
 
-            GRHIDevice->RenderPassBegin(host->GetMainWindow()->GetRHISwapChain(), commandBuffer);
+            GRHIDevice->BeginRenderPass(commandBuffer, host->GetMainWindow()->GetRHISwapChain(), Colors::CornflowerBlue);
             //commandBuffer->BeginRenderPass(host->GetMainWindow()->GetRHISwapChain(), Colors::CornflowerBlue);
             //OnDraw(commandBuffer);
-            GRHIDevice->RenderPassEnd(commandBuffer);
+            GRHIDevice->EndRenderPass(commandBuffer);
             //commandBuffer->EndRenderPass();
             EndDraw();
         }

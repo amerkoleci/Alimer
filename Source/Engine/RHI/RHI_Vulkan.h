@@ -272,9 +272,9 @@ namespace Alimer
             };
             ResourceFrameAllocator resourceBuffer[COMMANDLIST_COUNT];
         };
-        FrameResources frames[BUFFERCOUNT];
-        const FrameResources& GetFrameResources() const { return frames[GetFrameCount() % BUFFERCOUNT]; }
-        FrameResources& GetFrameResources() { return frames[GetFrameCount() % BUFFERCOUNT]; }
+        FrameResources frames[kMaxFramesInFlight];
+        const FrameResources& GetFrameResources() const { return frames[GetFrameIndex()]; }
+        FrameResources& GetFrameResources() { return frames[GetFrameIndex()]; }
 
         struct CommandListMetadata
         {
@@ -341,7 +341,7 @@ namespace Alimer
         void Shutdown() override;
 
         bool CreateSwapChain(const RHISwapChainDescription* desc, void* window, SwapChain* swapChain) const override;
-        bool CreateBuffer(const GPUBufferDesc* pDesc, const SubresourceData* pInitialData, GPUBuffer* pBuffer) const override;
+        bool CreateBuffer(const GPUBufferDesc* pDesc, const void* initialData, GPUBuffer* pBuffer) const override;
         bool CreateTexture(const TextureDesc* pDesc, const SubresourceData* pInitialData, RHITexture* pTexture) const override;
         bool CreateShader(SHADERSTAGE stage, const void* pShaderBytecode, size_t BytecodeLength, Shader* pShader) const override;
         bool CreateSampler(const SamplerDesc* pSamplerDesc, Sampler* pSamplerState) const override;
@@ -375,16 +375,16 @@ namespace Alimer
         void WaitForGPU() const override;
         void ClearPipelineStateCache() override;
 
-        SHADERFORMAT GetShaderFormat() const override { return SHADERFORMAT_SPIRV; }
+        RHIShaderFormat GetShaderFormat() const override { return RHIShaderFormat::SPIRV; }
 
         RHITexture GetBackBuffer(const SwapChain* swapchain) const override;
 
         ///////////////Thread-sensitive////////////////////////
 
         void WaitCommandList(CommandList cmd, CommandList wait_for) override;
-        void RenderPassBegin(const SwapChain* swapchain, CommandList cmd) override;
-        void RenderPassBegin(const RenderPass* renderpass, CommandList cmd) override;
-        void RenderPassEnd(CommandList cmd) override;
+        void BeginRenderPass(CommandList commandList, const SwapChain* swapchain, const RHIColor& clearColor) override;
+        void BeginRenderPass(CommandList commandList, const RenderPass* renderpass) override;
+        void EndRenderPass(CommandList commandList) override;
         void BindScissorRects(uint32_t numRects, const Rect* rects, CommandList cmd) override;
         void BindViewport(CommandList commandList, const RHIViewport& viewport) override;
         void BindViewports(CommandList commandList, uint32_t viewportCount, const RHIViewport* pViewports) override;

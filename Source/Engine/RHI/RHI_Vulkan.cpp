@@ -1230,7 +1230,7 @@ namespace Alimer
         dataEnd = dataBegin + size;
 
         // Because the "buffer" is created by hand in this, fill the desc to indicate how it can be used:
-        this->buffer.type = GPUResource::GPU_RESOURCE_TYPE::BUFFER;
+        this->buffer.type = RHIResourceType::Buffer;
         this->buffer.desc.ByteWidth = (uint32_t)((size_t)dataEnd - (size_t)dataBegin);
         this->buffer.desc.Usage = USAGE_DYNAMIC;
         this->buffer.desc.BindFlags = BIND_VERTEX_BUFFER | BIND_INDEX_BUFFER | BIND_SHADER_RESOURCE;
@@ -2582,7 +2582,7 @@ namespace Alimer
         // Create frame resources:
         const VkFenceCreateInfo fenceInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
 
-        for (uint32_t fr = 0; fr < BUFFERCOUNT; ++fr)
+        for (uint32_t fr = 0; fr < kMaxFramesInFlight; ++fr)
         {
             for (uint32_t queue = 0; queue < (uint32_t)RHIQueueType::Count; ++queue)
             {
@@ -3061,12 +3061,7 @@ namespace Alimer
             subpass.colorAttachmentCount = 1;
             subpass.pColorAttachments = &colorAttachmentRef;
 
-            VkRenderPassCreateInfo renderPassInfo = {};
-            renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-            renderPassInfo.attachmentCount = 1;
-            renderPassInfo.pAttachments = &colorAttachment;
-            renderPassInfo.subpassCount = 1;
-            renderPassInfo.pSubpasses = &subpass;
+            
 
             VkSubpassDependency dependency = {};
             dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -3076,16 +3071,13 @@ namespace Alimer
             dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
             dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
+            VkRenderPassCreateInfo renderPassInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
+            renderPassInfo.attachmentCount = 1;
+            renderPassInfo.pAttachments = &colorAttachment;
+            renderPassInfo.subpassCount = 1;
+            renderPassInfo.pSubpasses = &subpass;
             renderPassInfo.dependencyCount = 1;
             renderPassInfo.pDependencies = &dependency;
-
-            {
-                auto renderpass_internal = to_internal(&internal_state->renderPass);
-                if (renderpass_internal != nullptr && renderpass_internal->renderpass != VK_NULL_HANDLE)
-                {
-                    allocationhandler->destroyer_renderpasses.push_back(std::make_pair(renderpass_internal->renderpass, allocationhandler->framecount));
-                }
-            }
 
             internal_state->renderPass = RenderPass();
             HashCombine(internal_state->renderPass.hash, internal_state->swapChainImageFormat);
@@ -3165,16 +3157,17 @@ namespace Alimer
         return true;
         }
 
-    bool RHIDeviceVulkan::CreateBuffer(const GPUBufferDesc* pDesc, const SubresourceData* pInitialData, GPUBuffer* pBuffer) const
+    bool RHIDeviceVulkan::CreateBuffer(const GPUBufferDesc* pDesc, const void* initialData, GPUBuffer* pBuffer) const
     {
         auto internal_state = std::make_shared<Buffer_Vulkan>();
         internal_state->allocationhandler = allocationhandler;
         pBuffer->internal_state = internal_state;
-        pBuffer->type = GPUResource::GPU_RESOURCE_TYPE::BUFFER;
+        pBuffer->type = RHIResourceType::Buffer;
 
         pBuffer->desc = *pDesc;
 
-        if (pDesc->Usage == USAGE_DYNAMIC && pDesc->BindFlags & BIND_CONSTANT_BUFFER)
+        if (pDesc->Usage == USAGE_DYNAMIC
+            && pDesc->BindFlags & BIND_CONSTANT_BUFFER)
         {
             // this special case will use frame allocator
             return true;
@@ -3246,13 +3239,9 @@ namespace Alimer
             bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         }
 
-
-
         VkResult res;
 
         VmaAllocationCreateInfo allocInfo = {};
-        //allocInfo.flags = VMA_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
-        //allocInfo.flags = VMA_ALLOCATION_CREATE_STRATEGY_MIN_FRAGMENTATION_BIT;
         allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
         if (pDesc->Usage == USAGE_STAGING)
         {
@@ -3285,11 +3274,11 @@ namespace Alimer
         }
 
         // Issue data copy on request:
-        if (pInitialData != nullptr)
+        if (initialData != nullptr)
         {
             auto cmd = copyAllocator.allocate(pDesc->ByteWidth);
 
-            memcpy(cmd.data, pInitialData->pSysMem, pBuffer->desc.ByteWidth);
+            memcpy(cmd.data, initialData, pBuffer->desc.ByteWidth);
 
             {
                 auto& frame = GetFrameResources();
@@ -3398,7 +3387,7 @@ namespace Alimer
         auto internal_state = std::make_shared<Texture_Vulkan>();
         internal_state->allocationhandler = allocationhandler;
         pTexture->internal_state = internal_state;
-        pTexture->type = GPUResource::GPU_RESOURCE_TYPE::TEXTURE;
+        pTexture->type = RHIResourceType::Texture;
 
         pTexture->desc = *pDesc;
 
@@ -4948,7 +4937,7 @@ namespace Alimer
         auto internal_state = std::make_shared<BVH_Vulkan>();
         internal_state->allocationhandler = allocationhandler;
         bvh->internal_state = internal_state;
-        bvh->type = GPUResource::GPU_RESOURCE_TYPE::RAYTRACING_ACCELERATION_STRUCTURE;
+        bvh->type = RHIResourceType::RayTracingAccelerationStructure;
 
         bvh->desc = *pDesc;
 
@@ -5772,14 +5761,14 @@ namespace Alimer
     {
         VkDeviceMemory memory = VK_NULL_HANDLE;
 
-        if (resource->type == GPUResource::GPU_RESOURCE_TYPE::BUFFER)
+        if (resource->type == RHIResourceType::Buffer)
         {
             const GPUBuffer* buffer = (const GPUBuffer*)resource;
             auto internal_state = to_internal(buffer);
             memory = internal_state->allocation->GetMemory();
             mapping->rowpitch = (uint32_t)buffer->desc.ByteWidth;
         }
-        else if (resource->type == GPUResource::GPU_RESOURCE_TYPE::TEXTURE)
+        else if (resource->type == RHIResourceType::Texture)
         {
             const RHITexture* texture = (const RHITexture*)resource;
             auto internal_state = to_internal(texture);
@@ -5806,13 +5795,13 @@ namespace Alimer
 
     void RHIDeviceVulkan::Unmap(const GPUResource* resource) const
     {
-        if (resource->type == GPUResource::GPU_RESOURCE_TYPE::BUFFER)
+        if (resource->type == RHIResourceType::Buffer)
         {
             const GPUBuffer* buffer = (const GPUBuffer*)resource;
             auto internal_state = to_internal(buffer);
             vkUnmapMemory(device, internal_state->allocation->GetMemory());
         }
-        else if (resource->type == GPUResource::GPU_RESOURCE_TYPE::TEXTURE)
+        else if (resource->type == RHIResourceType::Texture)
         {
             const RHITexture* texture = (const RHITexture*)resource;
             auto internal_state = to_internal(texture);
@@ -6104,14 +6093,14 @@ namespace Alimer
 
         // From here, we begin a new frame, this affects GetFrameResources()!
         frameCount++;
-        frameIndex = frameCount % kRHIMaxFramesInFlight;
+        frameIndex = frameCount % kMaxFramesInFlight;
 
         // Begin next frame:
         {
             auto& frame = GetFrameResources();
 
             // Initiate stalling CPU when GPU is not yet finished with next frame:
-            if (frameCount >= BUFFERCOUNT)
+            if (frameCount >= kMaxFramesInFlight)
             {
                 for (uint32_t queue = 0; queue < (uint32_t)RHIQueueType::Count; ++queue)
                 {
@@ -6123,7 +6112,7 @@ namespace Alimer
                 }
             }
 
-            allocationhandler->Update(frameCount, kRHIMaxFramesInFlight);
+            allocationhandler->Update(frameCount, kMaxFramesInFlight);
 
             // Restart transition command buffers:
             {
@@ -6185,7 +6174,7 @@ namespace Alimer
         internal_state->resource = swapchain_internal->swapChainImages[swapchain_internal->swapChainImageIndex];
 
         RHITexture result;
-        result.type = GPUResource::GPU_RESOURCE_TYPE::TEXTURE;
+        result.type = RHIResourceType::Texture;
         result.internal_state = internal_state;
         result.desc.type = TextureDesc::TEXTURE_2D;
         result.desc.Width = swapchain_internal->swapChainExtent.width;
@@ -6201,11 +6190,11 @@ namespace Alimer
         cmd_meta[cmd].waits.push_back(wait_for);
     }
 
-    void RHIDeviceVulkan::RenderPassBegin(const SwapChain* swapchain, CommandList cmd)
+    void RHIDeviceVulkan::BeginRenderPass(CommandList commandList, const SwapChain* swapchain, const RHIColor& clearColor)
     {
         auto internal_state = to_internal(swapchain);
-        active_renderpass[cmd] = &internal_state->renderPass;
-        prev_swapchains[cmd].push_back(swapchain);
+        active_renderpass[commandList] = &internal_state->renderPass;
+        prev_swapchains[commandList].push_back(swapchain);
 
         VkResult res = vkAcquireNextImageKHR(
             device,
@@ -6226,13 +6215,13 @@ namespace Alimer
         //		return;
         //	}
         //}
-        barrier_flush(cmd);
+        barrier_flush(commandList);
 
-        VkClearValue clearColor = {
-            swapchain->desc.clearcolor[0],
-            swapchain->desc.clearcolor[1],
-            swapchain->desc.clearcolor[2],
-            swapchain->desc.clearcolor[3],
+        VkClearValue vkClearColor = {
+            clearColor.r,
+            clearColor.g,
+            clearColor.b,
+            clearColor.a,
         };
         VkRenderPassBeginInfo renderPassInfo = {};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -6241,25 +6230,25 @@ namespace Alimer
         renderPassInfo.renderArea.offset = { 0, 0 };
         renderPassInfo.renderArea.extent = internal_state->swapChainExtent;
         renderPassInfo.clearValueCount = 1;
-        renderPassInfo.pClearValues = &clearColor;
-        vkCmdBeginRenderPass(GetCommandList(cmd), &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+        renderPassInfo.pClearValues = &vkClearColor;
+        vkCmdBeginRenderPass(GetCommandList(commandList), &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     }
 
-    void RHIDeviceVulkan::RenderPassBegin(const RenderPass* renderpass, CommandList cmd)
+    void RHIDeviceVulkan::BeginRenderPass(CommandList commandList, const RenderPass* renderpass)
     {
-        barrier_flush(cmd);
+        barrier_flush(commandList);
 
-        active_renderpass[cmd] = renderpass;
+        active_renderpass[commandList] = renderpass;
 
         auto internal_state = to_internal(renderpass);
-        vkCmdBeginRenderPass(GetCommandList(cmd), &internal_state->beginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBeginRenderPass(GetCommandList(commandList), &internal_state->beginInfo, VK_SUBPASS_CONTENTS_INLINE);
     }
 
-    void RHIDeviceVulkan::RenderPassEnd(CommandList cmd)
+    void RHIDeviceVulkan::EndRenderPass(CommandList commandList)
     {
-        vkCmdEndRenderPass(GetCommandList(cmd));
+        vkCmdEndRenderPass(GetCommandList(commandList));
 
-        active_renderpass[cmd] = VK_NULL_HANDLE;
+        active_renderpass[commandList] = VK_NULL_HANDLE;
     }
 
     void RHIDeviceVulkan::BindScissorRects(uint32_t numRects, const Rect* rects, CommandList cmd)
@@ -6669,8 +6658,8 @@ namespace Alimer
     {
         barrier_flush(cmd);
 
-        if (pDst->type == GPUResource::GPU_RESOURCE_TYPE::TEXTURE
-            && pSrc->type == GPUResource::GPU_RESOURCE_TYPE::TEXTURE)
+        if (pDst->type == RHIResourceType::Texture
+            && pSrc->type == RHIResourceType::Texture)
         {
             auto internal_state_src = to_internal((const RHITexture*)pSrc);
             auto internal_state_dst = to_internal((const RHITexture*)pDst);
@@ -6768,8 +6757,8 @@ namespace Alimer
                 );
             }
         }
-        else if (pDst->type == GPUResource::GPU_RESOURCE_TYPE::BUFFER
-            && pSrc->type == GPUResource::GPU_RESOURCE_TYPE::BUFFER)
+        else if (pDst->type == RHIResourceType::Buffer
+            && pSrc->type == RHIResourceType::Buffer)
         {
             auto internal_state_src = to_internal((const GPUBuffer*)pSrc);
             auto internal_state_dst = to_internal((const GPUBuffer*)pDst);

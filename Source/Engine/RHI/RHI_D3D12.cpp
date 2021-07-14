@@ -1829,7 +1829,7 @@ namespace Alimer
         dataEnd = dataBegin + size;
 
         // Because the "buffer" is created by hand in this, fill the desc to indicate how it can be used:
-        buffer.type = GPUResource::GPU_RESOURCE_TYPE::BUFFER;
+        buffer.type = RHIResourceType::Buffer;
         buffer.desc.ByteWidth = (uint32_t)((size_t)dataEnd - (size_t)dataBegin);
         buffer.desc.Usage = USAGE_DYNAMIC;
         buffer.desc.BindFlags = BIND_VERTEX_BUFFER | BIND_INDEX_BUFFER | BIND_SHADER_RESOURCE;
@@ -2822,7 +2822,7 @@ namespace Alimer
         }
 
         // Create frame-resident resources:
-        for (uint32_t fr = 0; fr < BUFFERCOUNT; ++fr)
+        for (uint32_t fr = 0; fr < kMaxFramesInFlight; ++fr)
         {
             for (uint32_t queue = 0; queue < (uint32_t)RHIQueueType::Count; ++queue)
             {
@@ -3206,12 +3206,13 @@ namespace Alimer
 
         return true;
     }
-    bool RHIDeviceD3D12::CreateBuffer(const GPUBufferDesc* pDesc, const SubresourceData* pInitialData, GPUBuffer* pBuffer) const
+
+    bool RHIDeviceD3D12::CreateBuffer(const GPUBufferDesc* pDesc, const void* initialData, GPUBuffer* pBuffer) const
     {
         auto internal_state = std::make_shared<Resource_DX12>();
         internal_state->allocationhandler = allocationhandler;
         pBuffer->internal_state = internal_state;
-        pBuffer->type = GPUResource::GPU_RESOURCE_TYPE::BUFFER;
+        pBuffer->type = RHIResourceType::Buffer;
 
         pBuffer->desc = *pDesc;
 
@@ -3279,11 +3280,11 @@ namespace Alimer
         internal_state->gpu_address = internal_state->resource->GetGPUVirtualAddress();
 
         // Issue data copy on request:
-        if (pInitialData != nullptr)
+        if (initialData != nullptr)
         {
             auto cmd = copyAllocator.allocate(pDesc->ByteWidth);
 
-            memcpy(cmd.data, pInitialData->pSysMem, pDesc->ByteWidth);
+            memcpy(cmd.data, initialData, pDesc->ByteWidth);
 
             cmd.commandList->CopyBufferRegion(
                 internal_state->resource.Get(),
@@ -3319,7 +3320,7 @@ namespace Alimer
         auto internal_state = std::make_shared<Texture_DX12>();
         internal_state->allocationhandler = allocationhandler;
         pTexture->internal_state = internal_state;
-        pTexture->type = GPUResource::GPU_RESOURCE_TYPE::TEXTURE;
+        pTexture->type = RHIResourceType::Texture;
 
         pTexture->desc = *pDesc;
 
@@ -4883,7 +4884,7 @@ namespace Alimer
         auto internal_state = std::make_shared<BVH_DX12>();
         internal_state->allocationhandler = allocationhandler;
         bvh->internal_state = internal_state;
-        bvh->type = GPUResource::GPU_RESOURCE_TYPE::RAYTRACING_ACCELERATION_STRUCTURE;
+        bvh->type = RHIResourceType::RayTracingAccelerationStructure;
 
         bvh->desc = *pDesc;
 
@@ -5758,7 +5759,7 @@ namespace Alimer
         HRESULT hr;
 
         CommandList cmd = cmd_count.fetch_add(1);
-        assert(cmd < COMMANDLIST_COUNT);
+        ALIMER_ASSERT(cmd < kMaxFrameCommandBuffers);
         cmd_meta[cmd].queue = queue;
         cmd_meta[cmd].waits.clear();
 
@@ -5766,7 +5767,7 @@ namespace Alimer
         {
             // need to create one more command list:
 
-            for (uint32_t fr = 0; fr < BUFFERCOUNT; ++fr)
+            for (uint32_t fr = 0; fr < kMaxFramesInFlight; ++fr)
             {
                 hr = device->CreateCommandAllocator(queues[(uint32_t)queue].desc.Type, IID_PPV_ARGS(&frames[fr].commandAllocators[cmd][(uint32_t)queue]));
                 assert(SUCCEEDED(hr));
@@ -5940,7 +5941,7 @@ namespace Alimer
 
         // From here, we begin a new frame, this affects GetFrameResources()!
         frameCount++;
-        frameIndex = frameCount % kRHIMaxFramesInFlight;
+        frameIndex = frameCount % kMaxFramesInFlight;
 
         // Begin next frame:
         {
@@ -5949,7 +5950,7 @@ namespace Alimer
             // Initiate stalling CPU when GPU is not yet finished with next frame:
             for (uint32_t queue = 0; queue < (uint32_t)RHIQueueType::Count; ++queue)
             {
-                if (frameCount >= kRHIMaxFramesInFlight && frame.fence[queue]->GetCompletedValue() < 1)
+                if (frameCount >= kMaxFramesInFlight && frame.fence[queue]->GetCompletedValue() < 1)
                 {
                     // NULL event handle will simply wait immediately:
                     //	https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12fence-seteventoncompletion#remarks
@@ -5970,7 +5971,7 @@ namespace Alimer
             assert(SUCCEEDED(hr));
             descriptorheap_sam.cached_completedValue = descriptorheap_sam.fence->GetCompletedValue();
 
-            allocationhandler->Update(frameCount, kRHIMaxFramesInFlight);
+            allocationhandler->Update(frameCount, kMaxFramesInFlight);
         }
     }
 
@@ -6033,7 +6034,7 @@ namespace Alimer
         device->GetCopyableFootprints(&desc, 0, 1, 0, &internal_state->footprint, nullptr, nullptr, nullptr);
 
         RHITexture result;
-        result.type = GPUResource::GPU_RESOURCE_TYPE::TEXTURE;
+        result.type = RHIResourceType::Texture;
         result.internal_state = internal_state;
         result.desc = _ConvertTextureDesc_Inv(desc);
         return result;
@@ -6044,12 +6045,13 @@ namespace Alimer
         assert(wait_for < cmd); // command list cannot wait for future command list!
         cmd_meta[cmd].waits.push_back(wait_for);
     }
-    void RHIDeviceD3D12::RenderPassBegin(const SwapChain* swapchain, CommandList cmd)
+
+    void RHIDeviceD3D12::BeginRenderPass(CommandList commandList, const SwapChain* swapchain, const RHIColor& clearColor)
     {
-        swapchains[cmd].push_back(swapchain);
+        swapchains[commandList].push_back(swapchain);
         auto internal_state = to_internal(swapchain);
-        active_renderpass[cmd] = &internal_state->renderpass;
-        active_backbuffer[cmd] = internal_state->backBuffers[internal_state->swapChain->GetCurrentBackBufferIndex()];
+        active_renderpass[commandList] = &internal_state->renderpass;
+        active_backbuffer[commandList] = internal_state->backBuffers[internal_state->swapChain->GetCurrentBackBufferIndex()];
 
         D3D12_RESOURCE_BARRIER barrier = {};
         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -6059,82 +6061,83 @@ namespace Alimer
         barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 
-        frame_barriers[cmd].push_back(barrier);
-        barrier_flush(cmd);
+        frame_barriers[commandList].push_back(barrier);
+        barrier_flush(commandList);
 
         D3D12_RENDER_PASS_RENDER_TARGET_DESC RTV = {};
         RTV.cpuDescriptor = internal_state->backbufferRTV[internal_state->swapChain->GetCurrentBackBufferIndex()];
         RTV.BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
-        RTV.BeginningAccess.Clear.ClearValue.Color[0] = swapchain->desc.clearcolor[0];
-        RTV.BeginningAccess.Clear.ClearValue.Color[1] = swapchain->desc.clearcolor[1];
-        RTV.BeginningAccess.Clear.ClearValue.Color[2] = swapchain->desc.clearcolor[2];
-        RTV.BeginningAccess.Clear.ClearValue.Color[3] = swapchain->desc.clearcolor[3];
+        RTV.BeginningAccess.Clear.ClearValue.Color[0] = clearColor.r;
+        RTV.BeginningAccess.Clear.ClearValue.Color[1] = clearColor.g;
+        RTV.BeginningAccess.Clear.ClearValue.Color[2] = clearColor.b;
+        RTV.BeginningAccess.Clear.ClearValue.Color[3] = clearColor.a;
         RTV.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
-        GetCommandList(cmd)->BeginRenderPass(1, &RTV, nullptr, D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES);
-
+        GetCommandList(commandList)->BeginRenderPass(1, &RTV, nullptr, D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES);
     }
-    void RHIDeviceD3D12::RenderPassBegin(const RenderPass* renderpass, CommandList cmd)
-    {
-        active_renderpass[cmd] = renderpass;
 
-        auto internal_state = to_internal(active_renderpass[cmd]);
+    void RHIDeviceD3D12::BeginRenderPass(CommandList commandList, const RenderPass* renderpass)
+    {
+        active_renderpass[commandList] = renderpass;
+
+        auto internal_state = to_internal(active_renderpass[commandList]);
 
         for (uint32_t i = 0; i < internal_state->num_barriers_begin; ++i)
         {
-            frame_barriers[cmd].push_back(internal_state->barrierdescs_begin[i]);
+            frame_barriers[commandList].push_back(internal_state->barrierdescs_begin[i]);
         }
-        barrier_flush(cmd);
+        barrier_flush(commandList);
 
         if (internal_state->shading_rate_image != nullptr)
         {
-            GetCommandList(cmd)->RSSetShadingRateImage(to_internal(internal_state->shading_rate_image)->resource.Get());
+            GetCommandList(commandList)->RSSetShadingRateImage(to_internal(internal_state->shading_rate_image)->resource.Get());
         }
 
-        GetCommandList(cmd)->BeginRenderPass(
+        GetCommandList(commandList)->BeginRenderPass(
             internal_state->rt_count,
             internal_state->RTVs,
             internal_state->DSV.cpuDescriptor.ptr == 0 ? nullptr : &internal_state->DSV,
             internal_state->flags
         );
-
     }
-    void RHIDeviceD3D12::RenderPassEnd(CommandList cmd)
-    {
-        GetCommandList(cmd)->EndRenderPass();
 
-        auto internal_state = to_internal(active_renderpass[cmd]);
+    void RHIDeviceD3D12::EndRenderPass(CommandList commandList)
+    {
+        GetCommandList(commandList)->EndRenderPass();
+
+        auto internal_state = to_internal(active_renderpass[commandList]);
 
         if (internal_state != nullptr)
         {
             if (internal_state->shading_rate_image != nullptr)
             {
-                GetCommandList(cmd)->RSSetShadingRateImage(nullptr);
+                GetCommandList(commandList)->RSSetShadingRateImage(nullptr);
             }
 
             for (uint32_t i = 0; i < internal_state->num_barriers_end; ++i)
             {
-                frame_barriers[cmd].push_back(internal_state->barrierdescs_end[i]);
+                frame_barriers[commandList].push_back(internal_state->barrierdescs_end[i]);
             }
         }
 
-        active_renderpass[cmd] = nullptr;
+        active_renderpass[commandList] = nullptr;
 
-        query_flush(cmd);
+        query_flush(commandList);
 
-        if (active_backbuffer[cmd])
+        if (active_backbuffer[commandList])
         {
             D3D12_RESOURCE_BARRIER barrier = {};
             barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-            barrier.Transition.pResource = active_backbuffer[cmd].Get();
+            barrier.Transition.pResource = active_backbuffer[commandList].Get();
             barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
             barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
             barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            frame_barriers[cmd].push_back(barrier);
+            frame_barriers[commandList].push_back(barrier);
 
-            active_backbuffer[cmd] = nullptr;
+            active_backbuffer[commandList] = nullptr;
         }
     }
+
     void RHIDeviceD3D12::BindScissorRects(uint32_t numRects, const Rect* rects, CommandList cmd)
     {
         ALIMER_ASSERT(rects != nullptr);
