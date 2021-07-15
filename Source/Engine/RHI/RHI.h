@@ -157,12 +157,15 @@ namespace Alimer::RHI
         INPUT_PER_VERTEX_DATA,
         INPUT_PER_INSTANCE_DATA,
     };
-    enum USAGE
+
+    enum class ResourceUsage : uint32_t
     {
-        USAGE_DEFAULT,
-        USAGE_DYNAMIC,
-        USAGE_STAGING,
+        Default,
+        Dynamic,
+        StagingUpload,
+        StagingReadback,
     };
+
     enum TEXTURE_ADDRESS_MODE
     {
         TEXTURE_ADDRESS_WRAP,
@@ -359,11 +362,7 @@ namespace Alimer::RHI
         BIND_DEPTH_STENCIL = 1 << 6,
         BIND_UNORDERED_ACCESS = 1 << 7,
     };
-    enum CPU_ACCESS
-    {
-        CPU_ACCESS_WRITE = 1 << 0,
-        CPU_ACCESS_READ = 1 << 1,
-    };
+
     enum RESOURCE_MISC_FLAG
     {
         RESOURCE_MISC_SHARED = 1 << 0,
@@ -443,6 +442,7 @@ namespace Alimer::RHI
             uint32_t stencil;
         } depthstencil;
     };
+
     struct TextureDesc
     {
         enum TEXTURE_TYPE
@@ -458,13 +458,13 @@ namespace Alimer::RHI
         uint32_t MipLevels = 1;
         FORMAT Format = FORMAT_UNKNOWN;
         uint32_t SampleCount = 1;
-        USAGE Usage = USAGE_DEFAULT;
+        ResourceUsage resourceUsage = ResourceUsage::Default;
         uint32_t BindFlags = 0;
-        uint32_t CPUAccessFlags = 0;
         uint32_t MiscFlags = 0;
         ClearValue clear = {};
         IMAGE_LAYOUT layout = IMAGE_LAYOUT_SHADER_RESOURCE;
     };
+
     struct SamplerDesc
     {
         FILTER Filter = FILTER_MIN_MAG_MIP_POINT;
@@ -529,16 +529,17 @@ namespace Alimer::RHI
         };
         RenderTargetBlendState RenderTarget[8];
     };
+
     struct GPUBufferDesc
     {
         uint32_t ByteWidth = 0;
-        USAGE Usage = USAGE_DEFAULT;
+        ResourceUsage resourceUsage = ResourceUsage::Default;
         uint32_t BindFlags = 0;
-        uint32_t CPUAccessFlags = 0;
         uint32_t MiscFlags = 0;
         uint32_t StructureByteStride = 0; // needed for typed and structured buffer types!
         FORMAT Format = FORMAT_UNKNOWN; // only needed for typed buffer!
     };
+
     struct GPUQueryHeapDesc
     {
         GPU_QUERY_TYPE type = GPU_QUERY_TYPE_TIMESTAMP;

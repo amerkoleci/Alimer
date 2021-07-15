@@ -1254,10 +1254,10 @@ namespace Alimer::RHI
         // If no buffer was found that fits the data, create one:
         if (cmd.uploadbuffer.desc.ByteWidth < staging_size)
         {
-            GPUBufferDesc uploaddesc;
-            uploaddesc.ByteWidth = NextPowerOfTwo(staging_size);
-            uploaddesc.Usage = USAGE_STAGING;
-            bool upload_success = device->CreateBuffer(&uploaddesc, nullptr, &cmd.uploadbuffer);
+            GPUBufferDesc uploadBufferDesc;
+            uploadBufferDesc.ByteWidth = NextPowerOfTwo(staging_size);
+            uploadBufferDesc.resourceUsage = ResourceUsage::StagingUpload;
+            bool upload_success = device->CreateBuffer(&uploadBufferDesc, nullptr, &cmd.uploadbuffer);
             assert(upload_success);
 
             VmaAllocation upload_allocation = to_internal(&cmd.uploadbuffer)->allocation;
@@ -1280,6 +1280,7 @@ namespace Alimer::RHI
 
         return cmd;
     }
+
     void RHIDeviceVulkan::CopyAllocator::submit(CopyCMD cmd)
     {
         VkResult res = vkEndCommandBuffer(cmd.commandBuffer);
@@ -1295,6 +1296,7 @@ namespace Alimer::RHI
         submit_wait = std::max(submit_wait, cmd.target);
         locker.unlock();
     }
+
     uint64_t RHIDeviceVulkan::CopyAllocator::flush()
     {
         locker.lock();
@@ -1390,7 +1392,7 @@ namespace Alimer::RHI
         // Because the "buffer" is created by hand in this, fill the desc to indicate how it can be used:
         this->buffer.type = RHIResourceType::Buffer;
         this->buffer.desc.ByteWidth = (uint32_t)((size_t)dataEnd - (size_t)dataBegin);
-        this->buffer.desc.Usage = USAGE_DYNAMIC;
+        this->buffer.desc.resourceUsage = ResourceUsage::Dynamic;
         this->buffer.desc.BindFlags = BIND_VERTEX_BUFFER | BIND_INDEX_BUFFER | BIND_SHADER_RESOURCE;
         this->buffer.desc.MiscFlags = RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
 
@@ -1762,7 +1764,7 @@ namespace Alimer::RHI
                         else
                         {
                             auto internal_state = to_internal(buffer);
-                            if (buffer->desc.Usage == USAGE_DYNAMIC)
+                            if (buffer->desc.resourceUsage == ResourceUsage::Dynamic)
                             {
                                 const GPUAllocation& allocation = internal_state->dynamic[cmd];
                                 bufferInfos.back().buffer = to_internal(allocation.buffer)->resource;
@@ -3322,15 +3324,14 @@ namespace Alimer::RHI
 
         pBuffer->desc = *pDesc;
 
-        if (pDesc->Usage == USAGE_DYNAMIC
+        if (pDesc->resourceUsage == ResourceUsage::Dynamic
             && pDesc->BindFlags & BIND_CONSTANT_BUFFER)
         {
             // this special case will use frame allocator
             return true;
         }
 
-        VkBufferCreateInfo bufferInfo = {};
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
         bufferInfo.size = pBuffer->desc.ByteWidth;
         bufferInfo.usage = 0;
         if (pBuffer->desc.BindFlags & BIND_VERTEX_BUFFER)
@@ -3395,31 +3396,49 @@ namespace Alimer::RHI
             bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         }
 
-        VkResult res;
+        
 
         VmaAllocationCreateInfo allocInfo = {};
         allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-        if (pDesc->Usage == USAGE_STAGING)
+        switch (pDesc->resourceUsage)
         {
-            if (pDesc->CPUAccessFlags & CPU_ACCESS_READ)
-            {
-                allocInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU;
-                bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-            }
-            else
-            {
+            case ResourceUsage::Dynamic:
+                bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+                allocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+                allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+                allocInfo.requiredFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+                allocInfo.requiredFlags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+                break;
+            case ResourceUsage::StagingUpload:
+                bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
                 allocInfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
                 allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
-                bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-            }
-        }
-        if (pDesc->Usage == USAGE_DYNAMIC)
-        {
-            allocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+                allocInfo.requiredFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+                allocInfo.requiredFlags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+                break;
+            case ResourceUsage::StagingReadback:
+                allocInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU;
+                allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+                allocInfo.requiredFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+                break;
+            default:
+                bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+                allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+                allocInfo.requiredFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+                break;
         }
 
-        res = vmaCreateBuffer(allocationhandler->allocator, &bufferInfo, &allocInfo, &internal_state->resource, &internal_state->allocation, nullptr);
-        assert(res == VK_SUCCESS);
+        VkResult result = vmaCreateBuffer(allocationhandler->allocator,
+            &bufferInfo, &allocInfo,
+            &internal_state->resource,
+            &internal_state->allocation,
+            nullptr);
+
+        if (result != VK_SUCCESS)
+        {
+            VK_LOG_ERROR(result, "Failed to create buffer.");
+            return false;
+        }
 
         if (bufferInfo.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
         {
@@ -3520,7 +3539,6 @@ namespace Alimer::RHI
             internal_state->is_typedbuffer = true;
         }
 
-
         // Create resource views if needed
         if (pDesc->BindFlags & BIND_CONSTANT_BUFFER)
         {
@@ -3535,7 +3553,7 @@ namespace Alimer::RHI
             CreateSubresource(pBuffer, UAV, 0);
         }
 
-        return res == VK_SUCCESS;
+        return true;
     }
 
     bool RHIDeviceVulkan::CreateTexture(const TextureDesc* pDesc, const SubresourceData* pInitialData, RHITexture* pTexture) const
@@ -3626,14 +3644,15 @@ namespace Alimer::RHI
 
         VkResult res;
 
-        if (pTexture->desc.Usage == USAGE_STAGING)
+        if (pTexture->desc.resourceUsage == ResourceUsage::StagingUpload
+            || pTexture->desc.resourceUsage == ResourceUsage::StagingReadback)
         {
             VkBufferCreateInfo bufferInfo = {};
             bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
             bufferInfo.size = imageInfo.extent.width * imageInfo.extent.height * imageInfo.extent.depth * imageInfo.arrayLayers *
                 GetFormatStride(pTexture->desc.Format);
 
-            if (pDesc->CPUAccessFlags & CPU_ACCESS_READ)
+            if (pDesc->resourceUsage == ResourceUsage::StagingReadback)
             {
                 allocInfo.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT; // I don't know why but consecutive resource downloads could fail without this
                 allocInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU;
@@ -6514,14 +6533,17 @@ namespace Alimer::RHI
     }
     void RHIDeviceVulkan::BindConstantBuffer(ShaderStage stage, const GPUBuffer* buffer, uint32_t slot, CommandList cmd)
     {
-        assert(slot < GPU_RESOURCE_HEAP_CBV_COUNT);
+        ALIMER_ASSERT(slot < GPU_RESOURCE_HEAP_CBV_COUNT);
+
         auto& descriptors = GetFrameResources().descriptors[cmd];
-        if (buffer->desc.Usage == USAGE_DYNAMIC || descriptors.CBV[slot] != buffer)
+        if (buffer->desc.resourceUsage == ResourceUsage::Dynamic
+            || descriptors.CBV[slot] != buffer)
         {
             descriptors.CBV[slot] = buffer;
             descriptors.dirty = true;
         }
     }
+
     void RHIDeviceVulkan::BindVertexBuffers(const GPUBuffer* const* vertexBuffers, uint32_t slot, uint32_t count, const uint32_t* strides, const uint32_t* offsets, CommandList cmd)
     {
         size_t hash = 0;
@@ -6830,7 +6852,8 @@ namespace Alimer::RHI
             const TextureDesc& src_desc = ((const RHITexture*)pSrc)->GetDesc();
             const TextureDesc& dst_desc = ((const RHITexture*)pDst)->GetDesc();
 
-            if (src_desc.Usage & USAGE_STAGING)
+            if (src_desc.resourceUsage == ResourceUsage::StagingUpload
+                || src_desc.resourceUsage == ResourceUsage::StagingReadback)
             {
                 VkBufferImageCopy copy = {};
                 copy.imageExtent.width = dst_desc.Width;
@@ -6848,7 +6871,8 @@ namespace Alimer::RHI
                     &copy
                 );
             }
-            else if (dst_desc.Usage & USAGE_STAGING)
+            else if (dst_desc.resourceUsage == ResourceUsage::StagingUpload
+                || dst_desc.resourceUsage == ResourceUsage::StagingReadback)
             {
                 VkBufferImageCopy copy = {};
                 copy.imageExtent.width = src_desc.Width;
@@ -6950,7 +6974,7 @@ namespace Alimer::RHI
             return;
         }
 
-        dataSize = std::min((int)buffer->desc.ByteWidth, dataSize);
+        dataSize = Min((int)buffer->desc.ByteWidth, dataSize);
         dataSize = (dataSize >= 0 ? dataSize : buffer->desc.ByteWidth);
 
         auto internal_state_dst = to_internal(buffer);
@@ -6958,7 +6982,8 @@ namespace Alimer::RHI
         GPUAllocation allocation = AllocateGPU(dataSize, cmd);
         memcpy(allocation.data, data, dataSize);
 
-        if (buffer->desc.Usage == USAGE_DYNAMIC && buffer->desc.BindFlags & BIND_CONSTANT_BUFFER)
+        if (buffer->desc.resourceUsage == ResourceUsage::Dynamic
+            && buffer->desc.BindFlags & BIND_CONSTANT_BUFFER)
         {
             // Dynamic buffer will be used from host memory directly:
             internal_state_dst->dynamic[cmd] = allocation;

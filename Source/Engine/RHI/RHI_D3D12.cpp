@@ -1759,7 +1759,7 @@ namespace Alimer::RHI
         {
             GPUBufferDesc uploaddesc;
             uploaddesc.ByteWidth = NextPowerOfTwo(staging_size);
-            uploaddesc.Usage = USAGE_STAGING;
+            uploaddesc.resourceUsage = ResourceUsage::StagingUpload;
             bool upload_success = device->CreateBuffer(&uploaddesc, nullptr, &cmd.uploadbuffer);
             assert(upload_success);
 
@@ -1831,7 +1831,7 @@ namespace Alimer::RHI
         // Because the "buffer" is created by hand in this, fill the desc to indicate how it can be used:
         buffer.type = RHIResourceType::Buffer;
         buffer.desc.ByteWidth = (uint32_t)((size_t)dataEnd - (size_t)dataBegin);
-        buffer.desc.Usage = USAGE_DYNAMIC;
+        buffer.desc.resourceUsage = ResourceUsage::Dynamic;
         buffer.desc.BindFlags = BIND_VERTEX_BUFFER | BIND_INDEX_BUFFER | BIND_SHADER_RESOURCE;
         buffer.desc.MiscFlags = RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
 
@@ -1934,7 +1934,7 @@ namespace Alimer::RHI
                 {
                     auto internal_state = to_internal(buffer);
 
-                    if (buffer->desc.Usage == USAGE_DYNAMIC)
+                    if (buffer->desc.resourceUsage == ResourceUsage::Dynamic)
                     {
                         GPUAllocation allocation = internal_state->dynamic[cmd];
                         address = to_internal(allocation.buffer)->gpu_address;
@@ -2158,7 +2158,7 @@ namespace Alimer::RHI
                             {
                                 auto internal_state = to_internal(buffer);
 
-                                if (buffer->desc.Usage == USAGE_DYNAMIC)
+                                if (buffer->desc.resourceUsage == ResourceUsage::Dynamic)
                                 {
                                     GPUAllocation allocation = internal_state->dynamic[cmd];
                                     D3D12_CONSTANT_BUFFER_VIEW_DESC cbv;
@@ -3256,7 +3256,8 @@ namespace Alimer::RHI
 
         pBuffer->desc = *pDesc;
 
-        if (pDesc->Usage == USAGE_DYNAMIC && pDesc->BindFlags & BIND_CONSTANT_BUFFER)
+        if (pDesc->resourceUsage == ResourceUsage::Dynamic
+            && pDesc->BindFlags & BIND_CONSTANT_BUFFER)
         {
             // this special case will use frame allocator
             return true;
@@ -3290,19 +3291,19 @@ namespace Alimer::RHI
         D3D12_RESOURCE_STATES resourceState = D3D12_RESOURCE_STATE_COMMON;
 
         D3D12MA::ALLOCATION_DESC allocationDesc = {};
-        allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
-        if (pDesc->Usage == USAGE_STAGING)
+        switch (pDesc->resourceUsage)
         {
-            if (pDesc->CPUAccessFlags & CPU_ACCESS_READ)
-            {
-                allocationDesc.HeapType = D3D12_HEAP_TYPE_READBACK;
-                resourceState = D3D12_RESOURCE_STATE_COPY_DEST;
-            }
-            else
-            {
+            case ResourceUsage::StagingUpload:
                 allocationDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
                 resourceState = D3D12_RESOURCE_STATE_GENERIC_READ;
-            }
+                break;
+            case ResourceUsage::StagingReadback:
+                allocationDesc.HeapType = D3D12_HEAP_TYPE_READBACK;
+                resourceState = D3D12_RESOURCE_STATE_COPY_DEST;
+                break;
+            default:
+                allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+                break;
         }
 
         device->GetCopyableFootprints(&desc, 0, 1, 0, &internal_state->footprint, nullptr, nullptr, nullptr);
@@ -3451,7 +3452,8 @@ namespace Alimer::RHI
             resourceState = D3D12_RESOURCE_STATE_COMMON;
         }
 
-        if (pTexture->desc.Usage == USAGE_STAGING)
+        if (pTexture->desc.resourceUsage == ResourceUsage::StagingUpload
+            || pTexture->desc.resourceUsage == ResourceUsage::StagingReadback)
         {
             UINT64 RequiredSize = 0;
             device->GetCopyableFootprints(&desc, 0, 1, 0, &internal_state->footprint, nullptr, nullptr, &RequiredSize);
@@ -3463,7 +3465,7 @@ namespace Alimer::RHI
             desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
             desc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
-            if (pTexture->desc.CPUAccessFlags & CPU_ACCESS_READ)
+            if (pTexture->desc.resourceUsage == ResourceUsage::StagingReadback)
             {
                 allocationDesc.HeapType = D3D12_HEAP_TYPE_READBACK;
                 resourceState = D3D12_RESOURCE_STATE_COPY_DEST;
@@ -6260,8 +6262,10 @@ namespace Alimer::RHI
     }
     void RHIDeviceD3D12::BindConstantBuffer(ShaderStage stage, const GPUBuffer* buffer, uint32_t slot, CommandList cmd)
     {
-        assert(slot < GPU_RESOURCE_HEAP_CBV_COUNT);
-        if (buffer->desc.Usage == USAGE_DYNAMIC || descriptors[cmd].CBV[slot] != buffer)
+        ALIMER_ASSERT(slot < GPU_RESOURCE_HEAP_CBV_COUNT);
+
+        if (buffer->desc.resourceUsage == ResourceUsage::Dynamic
+            || descriptors[cmd].CBV[slot] != buffer)
         {
             descriptors[cmd].CBV[slot] = buffer;
             descriptors[cmd].dirty_res = true;
@@ -6545,7 +6549,8 @@ namespace Alimer::RHI
         GPUAllocation allocation = AllocateGPU(dataSize, cmd);
         memcpy(allocation.data, data, dataSize);
 
-        if (buffer->desc.Usage == USAGE_DYNAMIC && buffer->desc.BindFlags & BIND_CONSTANT_BUFFER)
+        if (buffer->desc.resourceUsage == ResourceUsage::Dynamic
+            && buffer->desc.BindFlags & BIND_CONSTANT_BUFFER)
         {
             // Dynamic buffer will be used from host memory directly:
             internal_state_dst->dynamic[cmd] = allocation;
@@ -6558,7 +6563,7 @@ namespace Alimer::RHI
         else
         {
             // Contents will be transferred to device memory:
-            assert(active_renderpass[cmd] == nullptr);
+            ALIMER_ASSERT(active_renderpass[cmd] == nullptr);
 
             auto internal_state_src = to_internal(&GetFrameResources().resourceBuffer[cmd].buffer);
 
