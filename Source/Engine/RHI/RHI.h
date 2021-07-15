@@ -17,7 +17,7 @@
 #define GPU_RESOURCE_HEAP_UAV_COUNT		16
 #define GPU_SAMPLER_HEAP_COUNT			16
 
-namespace Alimer::RHI
+namespace Alimer
 {
     /* Constants */
     static constexpr uint32_t kMaxFramesInFlight = 2;
@@ -148,17 +148,25 @@ namespace Alimer::RHI
         Max
     };
 
-    enum FILL_MODE
+    enum class FillMode : uint32_t
     {
-        FILL_WIREFRAME,
-        FILL_SOLID,
+        Solid,
+        Wireframe,
     };
-    enum CULL_MODE
+
+    enum class CullMode : uint32_t
     {
-        CULL_NONE,
-        CULL_FRONT,
-        CULL_BACK,
+        None,
+        Front,
+        Back
     };
+
+    enum class FaceWinding : uint32_t
+    {
+        Clockwise,
+        CounterClockwise,
+    };
+
     enum INPUT_CLASSIFICATION
     {
         INPUT_PER_VERTEX_DATA,
@@ -494,9 +502,9 @@ namespace Alimer::RHI
     };
     struct RasterizerState
     {
-        FILL_MODE FillMode = FILL_SOLID;
-        CULL_MODE CullMode = CULL_NONE;
-        bool FrontCounterClockwise = false;
+        CullMode cullMode = CullMode::Back;
+        FaceWinding frontFace = FaceWinding::Clockwise;
+        FillMode fillMode = FillMode::Solid;
         int32_t DepthBias = 0;
         float DepthBiasClamp = 0.0f;
         float SlopeScaledDepthBias = 0.0f;
@@ -1470,17 +1478,17 @@ namespace Alimer::RHI
 
     extern ALIMER_API RHIDevice* GDevice;
 
-    ALIMER_API bool Initialize(ValidationMode validationMode, BackendType backendType = BackendType::Count);
-    ALIMER_API void Shutdown();
-    ALIMER_API void WaitForGPU();
+    ALIMER_API bool RHIInitialize(ValidationMode validationMode, BackendType backendType = BackendType::Count);
+    ALIMER_API void RHIShutdown();
+    ALIMER_API void RHIWaitForGPU();
 }
 
 namespace std
 {
     template<>
-    struct hash<Alimer::RHI::RHITextureViewDescription>
+    struct hash<Alimer::RHITextureViewDescription>
     {
-        size_t operator()(const Alimer::RHI::RHITextureViewDescription& desc) const
+        size_t operator()(const Alimer::RHITextureViewDescription& desc) const
         {
             size_t hash = 0;
             Alimer::HashCombine(hash, (uint32_t)desc.format);
@@ -1493,6 +1501,6 @@ namespace std
     };
 }
 
-ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(Alimer::RHI::RHITextureUsage);
-ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(Alimer::RHI::BufferUsage);
-ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(Alimer::RHI::ColorWriteMask);
+ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(Alimer::RHITextureUsage);
+ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(Alimer::BufferUsage);
+ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(Alimer::ColorWriteMask);

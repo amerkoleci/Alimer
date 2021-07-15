@@ -2,6 +2,8 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repository root for more information.
 
 #include "Assets/ShaderCompiler.h"
+#include "IO/FileStream.h"
+#include "IO/FileSystem.h"
 #include "Core/Log.h"
 #include <spdlog/fmt/fmt.h>
 
@@ -14,18 +16,18 @@ namespace Alimer::ShaderCompiler
 {
     DxcCreateInstanceProc DxcCreateInstance = nullptr;
 
-    [[nodiscard]] constexpr uint32_t GetMajor(RHI::ShaderModel shaderModel)
+    [[nodiscard]] constexpr uint32_t GetMajor(ShaderModel shaderModel)
     {
         switch (shaderModel)
         {
-            case RHI::ShaderModel::Model6_0:
-            case RHI::ShaderModel::Model6_1:
-            case RHI::ShaderModel::Model6_2:
-            case RHI::ShaderModel::Model6_3:
-            case RHI::ShaderModel::Model6_4:
-            case RHI::ShaderModel::Model6_5:
-            case RHI::ShaderModel::Model6_6:
-            case RHI::ShaderModel::Model6_7:
+            case ShaderModel::Model6_0:
+            case ShaderModel::Model6_1:
+            case ShaderModel::Model6_2:
+            case ShaderModel::Model6_3:
+            case ShaderModel::Model6_4:
+            case ShaderModel::Model6_5:
+            case ShaderModel::Model6_6:
+            case ShaderModel::Model6_7:
                 return 6;
 
             default:
@@ -34,27 +36,26 @@ namespace Alimer::ShaderCompiler
         }
     }
 
-    [[nodiscard]] constexpr uint32_t GetMinor(RHI::ShaderModel shaderModel)
+    [[nodiscard]] constexpr uint32_t GetMinor(ShaderModel shaderModel)
     {
         switch (shaderModel)
         {
-            case RHI::ShaderModel::Model6_0:
+            case ShaderModel::Model6_0:
                 return 0;
-            case RHI::ShaderModel::Model6_1:
+            case ShaderModel::Model6_1:
                 return 1;
-            case RHI::ShaderModel::Model6_2:
+            case ShaderModel::Model6_2:
                 return 2;
-            case RHI::ShaderModel::Model6_3:
+            case ShaderModel::Model6_3:
                 return 3;
-            case RHI::ShaderModel::Model6_4:
+            case ShaderModel::Model6_4:
                 return 4;
-            case RHI::ShaderModel::Model6_5:
+            case ShaderModel::Model6_5:
                 return 5;
-            case RHI::ShaderModel::Model6_6:
+            case ShaderModel::Model6_6:
                 return 6;
-            case RHI::ShaderModel::Model6_7:
+            case ShaderModel::Model6_7:
                 return 7;
-                return 6;
 
             default:
                 return 0;
@@ -62,7 +63,7 @@ namespace Alimer::ShaderCompiler
         }
     }
 
-    std::wstring ShaderProfileName(RHI::ShaderStage stage, RHI::ShaderModel shaderModel)
+    std::wstring ShaderProfileName(ShaderStage stage, ShaderModel shaderModel)
     {
         uint32_t major = GetMajor(shaderModel);
         uint32_t minor = GetMinor(shaderModel);
@@ -70,43 +71,43 @@ namespace Alimer::ShaderCompiler
         std::wstring shaderProfile;
         switch (stage)
         {
-            case RHI::ShaderStage::Vertex:
+            case ShaderStage::Vertex:
                 shaderProfile = L"vs";
                 break;
-            case RHI::ShaderStage::Hull:
+            case ShaderStage::Hull:
                 shaderProfile = L"hs";
                 break;
-            case RHI::ShaderStage::Domain:
+            case ShaderStage::Domain:
                 shaderProfile = L"ds";
                 break;
-            case RHI::ShaderStage::Geometry:
+            case ShaderStage::Geometry:
                 shaderProfile = L"gs";
                 break;
-            case RHI::ShaderStage::Pixel:
+            case ShaderStage::Pixel:
                 shaderProfile = L"ps";
                 break;
-            case RHI::ShaderStage::Compute:
+            case ShaderStage::Compute:
                 shaderProfile = L"cs";
                 break;
-            case RHI::ShaderStage::Mesh:
+            case ShaderStage::Mesh:
                 shaderProfile = L"ms";
-                if (shaderModel < RHI::ShaderModel::Model6_5)
+                if (shaderModel < ShaderModel::Model6_5)
                 {
-                    minor = GetMinor(RHI::ShaderModel::Model6_5);
+                    minor = GetMinor(ShaderModel::Model6_5);
                 }
                 break;
-            case RHI::ShaderStage::Amplification:
+            case ShaderStage::Amplification:
                 shaderProfile = L"as";
-                if (shaderModel < RHI::ShaderModel::Model6_5)
+                if (shaderModel < ShaderModel::Model6_5)
                 {
-                    minor = GetMinor(RHI::ShaderModel::Model6_5);
+                    minor = GetMinor(ShaderModel::Model6_5);
                 }
                 break;
-            case RHI::ShaderStage::Library:
+            case ShaderStage::Library:
                 shaderProfile = L"lib";
-                if (shaderModel < RHI::ShaderModel::Model6_5)
+                if (shaderModel < ShaderModel::Model6_5)
                 {
-                    minor = GetMinor(RHI::ShaderModel::Model6_5);
+                    minor = GetMinor(ShaderModel::Model6_5);
                 }
                 break;
 
@@ -140,11 +141,11 @@ namespace Alimer::ShaderCompiler
             _COM_Outptr_result_maybenull_ IDxcBlob** ppIncludeSource) override
         {
             // TODO: pFileName is different when in RELEASE
-            auto filePath = ToUtf8(pFilename); // Path::Join(fullPath, FileNameAndExtension(ToUtf8(pFilename)));
-            //if (!File::Exists(filePath))
-            //{
-            //    return S_FALSE;
-            //}
+            auto filePath = Path::Join(fullPath, GetFileNameAndExtension(ToUtf8(pFilename)));
+            if (!File::Exists(filePath))
+            {
+                return S_FALSE;
+            }
 
             CComPtr<IDxcBlobEncoding> pEncoding;
             HRESULT hr = utils->LoadFile(ToUtf16(filePath).c_str(), DXC_CP_ACP, &pEncoding);
@@ -161,15 +162,14 @@ namespace Alimer::ShaderCompiler
         ULONG STDMETHODCALLTYPE Release() override { return E_NOTIMPL; }
     };
 
-#if TODO
-    ShaderRef Compile(const std::string& fileName, ShaderBlobType blobType)
+    bool Compile(const std::string& fileName, Shader* shader)
     {
         ShaderCompileOptions options{};
         options.source = File::ReadAllText(fileName);
-        return Compile(options, blobType);
+        return Compile(options, shader);
     }
 
-    ShaderRef Compile(ShaderStage stage, const std::string& fileName, ShaderBlobType blobType)
+    bool Compile(ShaderStage stage, const std::string& fileName, Shader* shader)
     {
         ShaderCompileOptions options{};
         options.source = File::ReadAllText(fileName);
@@ -184,12 +184,10 @@ namespace Alimer::ShaderCompiler
 
         options.fileName = fileName;
         options.stage = stage;
-        return Compile(options, blobType);
+        return Compile(options, shader);
     }
 
-#endif
-
-    bool Compile(const ShaderCompileOptions& options, RHI::Shader* shader)
+    bool Compile(const ShaderCompileOptions& options, Shader* shader)
     {
         if (DxcCreateInstance == nullptr)
         {
@@ -252,17 +250,17 @@ namespace Alimer::ShaderCompiler
             args.push_back(L"-D"); args.push_back(wDefine.c_str());
         }
 
-        if (RHI::GDevice->CheckCapability(RHI::GRAPHICSDEVICE_CAPABILITY_BINDLESS_DESCRIPTORS))
+        if (GDevice->CheckCapability(GRAPHICSDEVICE_CAPABILITY_BINDLESS_DESCRIPTORS))
         {
             args.push_back(L"-D"); args.push_back(L"BINDLESS");
         }
 
-        switch (RHI::GDevice->GetShaderFormat())
+        switch (GDevice->GetShaderFormat())
         {
-            case RHI::ShaderFormat::DXIL:
+            case ShaderFormat::DXIL:
                 args.push_back(L"-D"); args.push_back(L"DXIL");
                 break;
-            case RHI::ShaderFormat::SPIRV:
+            case ShaderFormat::SPIRV:
                 args.push_back(L"-D"); args.push_back(L"SPIRV");
                 args.push_back(L"-spirv");
                 args.push_back(L"-fspv-target-env=vulkan1.2");
@@ -270,16 +268,16 @@ namespace Alimer::ShaderCompiler
                 args.push_back(L"-fvk-use-dx-position-w");
 
                 //args.push_back(L"-fvk-b-shift"); args.push_back(L"0"); args.push_back(L"0");
-                //args.push_back(L"-fvk-t-shift"); args.push_back(L"1000"); args.push_back(L"0");
-                //args.push_back(L"-fvk-u-shift"); args.push_back(L"2000"); args.push_back(L"0");
-                //args.push_back(L"-fvk-s-shift"); args.push_back(L"3000"); args.push_back(L"0");
+                args.push_back(L"-fvk-t-shift"); args.push_back(L"1000"); args.push_back(L"0");
+                args.push_back(L"-fvk-u-shift"); args.push_back(L"2000"); args.push_back(L"0");
+                args.push_back(L"-fvk-s-shift"); args.push_back(L"3000"); args.push_back(L"0");
                 break;
         }
 
-        std::string fullPath; // = GetPath(options.fileName);
+        std::string fullPath = GetPath(options.fileName);
         if (!fullPath.empty())
         {
-            //fullPath = Path::Join(Directory::GetCurrent(), fullPath);
+            fullPath = Path::Join(Directory::GetCurrent(), fullPath);
             //std::wstring wFullPath = StringUtils::ToUtf16(fullPath);
             //args.push_back(L"-I");
             //args.push_back(wFullPath.c_str());
@@ -341,7 +339,7 @@ namespace Alimer::ShaderCompiler
 
         std::vector<uint8_t> bytecode(pShader->GetBufferSize());
         memcpy(bytecode.data(), pShader->GetBufferPointer(), pShader->GetBufferSize());
-        return RHI::GDevice->CreateShader(options.stage, bytecode.data(), bytecode.size(), shader);
+        return GDevice->CreateShader(options.stage, bytecode.data(), bytecode.size(), shader);
     }
 }
 

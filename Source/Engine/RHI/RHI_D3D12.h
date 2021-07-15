@@ -23,7 +23,7 @@
 
 struct IDxcUtils;
 
-namespace Alimer::RHI
+namespace Alimer
 {
     class RHIDeviceD3D12 final : public RHIDevice
     {

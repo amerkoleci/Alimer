@@ -17,6 +17,11 @@
 #include "Math/Rect.h"
 #include "Math/Matrix4x4.h"
 
+// IO
+#include "IO/FileStream.h"
+#include "IO/MemoryStream.h"
+#include "IO/FileSystem.h"
+
 // Assets
 #include "Assets/Asset.h"
 #include "Assets/AssetManager.h"

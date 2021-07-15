@@ -21,7 +21,7 @@
 #define VULKAN_BINDING_SHIFT_U 2000
 #define VULKAN_BINDING_SHIFT_S 3000
 
-namespace Alimer::RHI
+namespace Alimer
 {
     namespace
     {
@@ -627,28 +627,28 @@ namespace Alimer::RHI
         {
             switch (value)
             {
-                case Alimer::RHI::STENCIL_OP_KEEP:
+                case Alimer::STENCIL_OP_KEEP:
                     return VK_STENCIL_OP_KEEP;
                     break;
-                case Alimer::RHI::STENCIL_OP_ZERO:
+                case Alimer::STENCIL_OP_ZERO:
                     return VK_STENCIL_OP_ZERO;
                     break;
-                case Alimer::RHI::STENCIL_OP_REPLACE:
+                case Alimer::STENCIL_OP_REPLACE:
                     return VK_STENCIL_OP_REPLACE;
                     break;
-                case Alimer::RHI::STENCIL_OP_INCR_SAT:
+                case Alimer::STENCIL_OP_INCR_SAT:
                     return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
                     break;
-                case Alimer::RHI::STENCIL_OP_DECR_SAT:
+                case Alimer::STENCIL_OP_DECR_SAT:
                     return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
                     break;
-                case Alimer::RHI::STENCIL_OP_INVERT:
+                case Alimer::STENCIL_OP_INVERT:
                     return VK_STENCIL_OP_INVERT;
                     break;
-                case Alimer::RHI::STENCIL_OP_INCR:
+                case Alimer::STENCIL_OP_INCR:
                     return VK_STENCIL_OP_INCREMENT_AND_WRAP;
                     break;
-                case Alimer::RHI::STENCIL_OP_DECR:
+                case Alimer::STENCIL_OP_DECR:
                     return VK_STENCIL_OP_DECREMENT_AND_WRAP;
                     break;
                 default:
@@ -660,24 +660,24 @@ namespace Alimer::RHI
         {
             switch (value)
             {
-                case Alimer::RHI::IMAGE_LAYOUT_UNDEFINED:
+                case Alimer::IMAGE_LAYOUT_UNDEFINED:
                     return VK_IMAGE_LAYOUT_UNDEFINED;
-                case Alimer::RHI::IMAGE_LAYOUT_RENDERTARGET:
+                case Alimer::IMAGE_LAYOUT_RENDERTARGET:
                     return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                case Alimer::RHI::IMAGE_LAYOUT_DEPTHSTENCIL:
+                case Alimer::IMAGE_LAYOUT_DEPTHSTENCIL:
                     return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-                case Alimer::RHI::IMAGE_LAYOUT_DEPTHSTENCIL_READONLY:
+                case Alimer::IMAGE_LAYOUT_DEPTHSTENCIL_READONLY:
                     return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-                case Alimer::RHI::IMAGE_LAYOUT_SHADER_RESOURCE:
-                case Alimer::RHI::IMAGE_LAYOUT_SHADER_RESOURCE_COMPUTE:
+                case Alimer::IMAGE_LAYOUT_SHADER_RESOURCE:
+                case Alimer::IMAGE_LAYOUT_SHADER_RESOURCE_COMPUTE:
                     return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                case Alimer::RHI::IMAGE_LAYOUT_UNORDERED_ACCESS:
+                case Alimer::IMAGE_LAYOUT_UNORDERED_ACCESS:
                     return VK_IMAGE_LAYOUT_GENERAL;
-                case Alimer::RHI::IMAGE_LAYOUT_COPY_SRC:
+                case Alimer::IMAGE_LAYOUT_COPY_SRC:
                     return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-                case Alimer::RHI::IMAGE_LAYOUT_COPY_DST:
+                case Alimer::IMAGE_LAYOUT_COPY_DST:
                     return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-                case Alimer::RHI::IMAGE_LAYOUT_SHADING_RATE_SOURCE:
+                case Alimer::IMAGE_LAYOUT_SHADING_RATE_SOURCE:
                     return VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
             }
             return VK_IMAGE_LAYOUT_UNDEFINED;
@@ -714,29 +714,29 @@ namespace Alimer::RHI
 
             switch (value)
             {
-                case Alimer::RHI::IMAGE_LAYOUT_UNDEFINED:
+                case Alimer::IMAGE_LAYOUT_UNDEFINED:
                     break;
-                case Alimer::RHI::IMAGE_LAYOUT_RENDERTARGET:
+                case Alimer::IMAGE_LAYOUT_RENDERTARGET:
                     flags |= VK_ACCESS_SHADER_WRITE_BIT;
                     break;
-                case Alimer::RHI::IMAGE_LAYOUT_DEPTHSTENCIL:
+                case Alimer::IMAGE_LAYOUT_DEPTHSTENCIL:
                     flags |= VK_ACCESS_SHADER_WRITE_BIT;
                     break;
-                case Alimer::RHI::IMAGE_LAYOUT_DEPTHSTENCIL_READONLY:
+                case Alimer::IMAGE_LAYOUT_DEPTHSTENCIL_READONLY:
                     flags |= VK_ACCESS_SHADER_READ_BIT;
                     break;
-                case Alimer::RHI::IMAGE_LAYOUT_SHADER_RESOURCE:
-                case Alimer::RHI::IMAGE_LAYOUT_SHADER_RESOURCE_COMPUTE:
+                case Alimer::IMAGE_LAYOUT_SHADER_RESOURCE:
+                case Alimer::IMAGE_LAYOUT_SHADER_RESOURCE_COMPUTE:
                     flags |= VK_ACCESS_SHADER_READ_BIT;
                     break;
-                case Alimer::RHI::IMAGE_LAYOUT_UNORDERED_ACCESS:
+                case Alimer::IMAGE_LAYOUT_UNORDERED_ACCESS:
                     flags |= VK_ACCESS_SHADER_READ_BIT;
                     flags |= VK_ACCESS_SHADER_WRITE_BIT;
                     break;
-                case Alimer::RHI::IMAGE_LAYOUT_COPY_SRC:
+                case Alimer::IMAGE_LAYOUT_COPY_SRC:
                     flags |= VK_ACCESS_TRANSFER_READ_BIT;
                     break;
-                case Alimer::RHI::IMAGE_LAYOUT_COPY_DST:
+                case Alimer::IMAGE_LAYOUT_COPY_DST:
                     flags |= VK_ACCESS_TRANSFER_WRITE_BIT;
                     break;
             }
@@ -4679,32 +4679,45 @@ namespace Alimer::RHI
         {
             const RasterizerState& desc = *pso->desc.rs;
 
-            switch (desc.FillMode)
+            switch (desc.fillMode)
             {
-                case FILL_WIREFRAME:
+                case FillMode::Wireframe:
                     rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
                     break;
-                case FILL_SOLID:
                 default:
+                case FillMode::Solid:
                     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
                     break;
             }
 
-            switch (desc.CullMode)
+            switch (desc.cullMode)
             {
-                case CULL_BACK:
-                    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+                case CullMode::None:
+                    rasterizer.cullMode = VK_CULL_MODE_NONE;
                     break;
-                case CULL_FRONT:
+
+                case CullMode::Front:
                     rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
                     break;
-                case CULL_NONE:
+
                 default:
-                    rasterizer.cullMode = VK_CULL_MODE_NONE;
+                case CullMode::Back:
+                    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
                     break;
             }
 
-            rasterizer.frontFace = desc.FrontCounterClockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
+            switch (desc.frontFace)
+            {
+                default:
+                case FaceWinding::Clockwise:
+                    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+                    break;
+
+                case FaceWinding::CounterClockwise:
+                    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+                    break;
+            }
+
             rasterizer.depthBiasEnable = desc.DepthBias != 0 || desc.SlopeScaledDepthBias != 0;
             rasterizer.depthBiasConstantFactor = static_cast<float>(desc.DepthBias);
             rasterizer.depthBiasClamp = desc.DepthBiasClamp;
@@ -5449,7 +5462,7 @@ namespace Alimer::RHI
 
         switch (type)
         {
-            case Alimer::RHI::SRV:
+            case Alimer::SRV:
             {
                 switch (texture->desc.Format)
                 {
@@ -5509,7 +5522,7 @@ namespace Alimer::RHI
                 }
             }
             break;
-            case Alimer::RHI::UAV:
+            case Alimer::UAV:
             {
                 if (view_desc.viewType == VK_IMAGE_VIEW_TYPE_CUBE || view_desc.viewType == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)
                 {
@@ -5554,7 +5567,7 @@ namespace Alimer::RHI
                 }
             }
             break;
-            case Alimer::RHI::RTV:
+            case Alimer::RTV:
             {
                 VkImageView rtv;
                 view_desc.subresourceRange.levelCount = 1;
@@ -5578,7 +5591,7 @@ namespace Alimer::RHI
                 }
             }
             break;
-            case Alimer::RHI::DSV:
+            case Alimer::DSV:
             {
                 view_desc.subresourceRange.levelCount = 1;
                 view_desc.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
@@ -5635,7 +5648,7 @@ namespace Alimer::RHI
 
         switch (type)
         {
-            case Alimer::RHI::CBV:
+            case Alimer::CBV:
             {
                 int index = allocationhandler->bindlessUniformBuffers.allocate();
                 if (index >= 0)
@@ -5659,8 +5672,8 @@ namespace Alimer::RHI
             }
             break;
 
-            case Alimer::RHI::SRV:
-            case Alimer::RHI::UAV:
+            case Alimer::SRV:
+            case Alimer::UAV:
             {
                 if (desc.Format == FORMAT_UNKNOWN)
                 {
@@ -5794,14 +5807,14 @@ namespace Alimer::RHI
         switch (type)
         {
             default:
-            case Alimer::RHI::CBV:
+            case Alimer::CBV:
                 if (resource->IsBuffer())
                 {
                     auto internal_state = to_internal((const GPUBuffer*)resource);
                     return internal_state->cbv_index;
                 }
                 break;
-            case Alimer::RHI::SRV:
+            case Alimer::SRV:
                 if (resource->IsBuffer())
                 {
                     auto internal_state = to_internal((const GPUBuffer*)resource);
@@ -5832,7 +5845,7 @@ namespace Alimer::RHI
                     return internal_state->index;
                 }
                 break;
-            case Alimer::RHI::UAV:
+            case Alimer::UAV:
                 if (resource->IsBuffer())
                 {
                     auto internal_state = to_internal((const GPUBuffer*)resource);
@@ -6397,6 +6410,16 @@ namespace Alimer::RHI
         renderPassInfo.clearValueCount = 1;
         renderPassInfo.pClearValues = &vkClearColor;
         vkCmdBeginRenderPass(GetCommandList(commandList), &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+        // The viewport and scissor default to cover all of the attachments
+        VkViewport viewport;
+        viewport.x = 0.0f;
+        viewport.y = static_cast<float>(swapchain->extent.height);
+        viewport.width = static_cast<float>(swapchain->extent.width);
+        viewport.height = -static_cast<float>(swapchain->extent.height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(GetCommandList(commandList), 0, 1, &viewport);
     }
 
     void RHIDeviceVulkan::BeginRenderPass(CommandList commandList, const RenderPass* renderpass)

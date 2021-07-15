@@ -2,12 +2,17 @@
 // Distributed under the MIT license. See the LICENSE file in the project root for more information.
 
 #include <Alimer.h>
+#include <Assets/ShaderCompiler.h>
 using namespace Alimer;
 
 class TriangleGame final : public Game
 {
 private:
-    RHI::GPUBuffer vertexBuffer;
+    GPUBuffer vertexBuffer;
+    Shader vertexShader;
+    Shader pixelShader;
+    InputLayout inputLayout;
+    PipelineState renderPipeline;
 
 public:
     TriangleGame()
@@ -44,15 +49,40 @@ public:
             -0.5f, -0.5f, 0.5f,     0.0f, 0.0f, 1.0f, 1.0f
         };
 
-        RHI::BufferDescriptor bufferDesc = {};
+        BufferDescriptor bufferDesc = {};
         bufferDesc.label = "Triangle VertexBuffer";
         bufferDesc.size = sizeof(vertices);
-        bufferDesc.usage = RHI::BufferUsage::Vertex;
-        ALIMER_ASSERT(RHI::GDevice->CreateBuffer(&bufferDesc, vertices, &vertexBuffer));
+        bufferDesc.usage = BufferUsage::Vertex;
+        ALIMER_ASSERT(GDevice->CreateBuffer(&bufferDesc, vertices, &vertexBuffer));
+
+        ShaderCompiler::Compile(ShaderStage::Vertex, "Assets/Shaders/triangle.hlsl", &vertexShader);
+        ShaderCompiler::Compile(ShaderStage::Pixel, "Assets/Shaders/triangle.hlsl", &pixelShader);
+
+        inputLayout.elements =
+        {
+            { "ATTRIBUTE", 0, FORMAT_R32G32B32_FLOAT, 0, InputLayout::APPEND_ALIGNED_ELEMENT, INPUT_PER_VERTEX_DATA },
+            { "ATTRIBUTE", 1, FORMAT_R32G32B32A32_FLOAT, 0, InputLayout::APPEND_ALIGNED_ELEMENT, INPUT_PER_VERTEX_DATA },
+        };
+
+        PipelineStateDesc renderPipelineDesc;
+        renderPipelineDesc.vs = &vertexShader;
+        renderPipelineDesc.ps = &pixelShader;
+        renderPipelineDesc.il = &inputLayout;
+        ALIMER_ASSERT(GDevice->CreatePipelineState(&renderPipelineDesc, &renderPipeline));
     }
 
-    void OnDraw([[maybe_unused]] RHI::RHICommandBuffer* commandBuffer) override
+    void OnDraw([[maybe_unused]] CommandList& commandBuffer) override
     {
+        const GPUBuffer* vbs[] = {
+            &vertexBuffer,
+        };
+        const uint32_t strides[] = {
+            28,
+        };
+
+        GDevice->BindVertexBuffers(vbs, 0, 1, strides, nullptr, commandBuffer);
+        GDevice->BindPipelineState(&renderPipeline, commandBuffer);
+        GDevice->Draw(3, 0, commandBuffer);
     }
 };
 

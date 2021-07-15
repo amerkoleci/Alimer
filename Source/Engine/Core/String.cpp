@@ -9,6 +9,14 @@
 
 namespace Alimer
 {
+    namespace
+    {
+        bool EndsWithSuffix(const char* str, const size_t strLen, const char* suffix, const size_t suffixLen)
+        {
+            return suffixLen <= strLen && strncmp(str + strLen - suffixLen, suffix, suffixLen) == 0;
+        }
+    }
+
     const String kEmptyString{};
 
     size_t CStringLength(const char* str)
@@ -70,6 +78,69 @@ namespace Alimer
         return result;
     }
 
+    bool EndsWith(const String& str, const String& suffix)
+    {
+        return EndsWithSuffix(str.c_str(), str.length(), suffix.c_str(), suffix.length());
+    }
+
+    bool EndsWith(const String& str, const char* suffix)
+    {
+        return EndsWithSuffix(str.c_str(), str.length(), suffix, strlen(suffix));
+    }
+
+    bool EndsWith(const char* str, const char* suffix)
+    {
+        return EndsWithSuffix(str, strlen(str), suffix, strlen(suffix));
+    }
+
+    std::vector<String> Split(const char* str, char separator)
+    {
+        Vector<String> ret;
+        size_t pos = 0;
+        size_t length = CStringLength(str);
+
+        while (pos < length)
+        {
+            if (str[pos] != separator)
+                break;
+            ++pos;
+        }
+
+        while (pos < length)
+        {
+            size_t start = pos;
+
+            while (start < length)
+            {
+                if (str[start] == separator)
+                    break;
+
+                ++start;
+            }
+
+            if (start == length)
+            {
+                ret.push_back(String(&str[pos]));
+                break;
+            }
+
+            size_t end = start;
+
+            while (end < length)
+            {
+                if (str[end] != separator)
+                    break;
+
+                ++end;
+            }
+
+            ret.push_back(String(&str[pos], start - pos));
+            pos = end;
+        }
+
+        return ret;
+    }
+
 #ifdef _WIN32
     String ToUtf8(const wchar_t* wstr, size_t len)
     {
@@ -83,7 +154,7 @@ namespace Alimer
         return std::string(char_buffer.data(), static_cast<uint32_t>(char_buffer.size()));
     }
 
-    String ToUtf8(const std::wstring& str)
+    String ToUtf8(const WString& str)
     {
         return ToUtf8(str.data(), str.length());
     }

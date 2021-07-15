@@ -13,11 +13,11 @@ namespace Alimer::ShaderCompiler
         std::string entryPoint = "main";
         std::string fileName = "";
         std::vector<std::string> defines;
-        RHI::ShaderStage stage;
-        RHI::ShaderModel shaderModel = RHI::ShaderModel::Model6_0;
+        ShaderStage stage;
+        ShaderModel shaderModel = ShaderModel::Model6_0;
     };
 
-    //ALIMER_API ShaderRef Compile(const std::string& fileName, ShaderBlobType blobType);
-    //ALIMER_API ShaderRef Compile(ShaderStage stage, const std::string& fileName, ShaderBlobType blobType);
-    ALIMER_API bool Compile(const ShaderCompileOptions& options, RHI::Shader* shader);
+    ALIMER_API bool Compile(const std::string& fileName, Shader* shader);
+    ALIMER_API bool Compile(ShaderStage stage, const std::string& fileName, Shader* shader);
+    ALIMER_API bool Compile(const ShaderCompileOptions& options, Shader* shader);
 }

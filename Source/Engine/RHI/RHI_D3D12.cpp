@@ -31,7 +31,7 @@
 #define CONSTANT_BUFFER_AUTO_PLACEMENT_IN_ROOT 4
 static_assert(GPU_RESOURCE_HEAP_CBV_COUNT < 32, "cbv root mask must fit into uint32_t!");
 
-namespace Alimer::RHI
+namespace Alimer
 {
     using Microsoft::WRL::ComPtr;
 
@@ -243,39 +243,34 @@ namespace Alimer::RHI
             }
             return D3D12_COMPARISON_FUNC_NEVER;
         }
-        constexpr D3D12_FILL_MODE _ConvertFillMode(FILL_MODE value)
+
+        constexpr D3D12_FILL_MODE _ConvertFillMode(FillMode value)
         {
             switch (value)
             {
-                case FILL_WIREFRAME:
+                case FillMode::Wireframe:
                     return D3D12_FILL_MODE_WIREFRAME;
-                    break;
-                case FILL_SOLID:
-                    return D3D12_FILL_MODE_SOLID;
-                    break;
                 default:
-                    break;
+                case FillMode::Solid:
+                    return D3D12_FILL_MODE_SOLID;
             }
-            return D3D12_FILL_MODE_WIREFRAME;
         }
-        constexpr D3D12_CULL_MODE _ConvertCullMode(CULL_MODE value)
+
+        constexpr D3D12_CULL_MODE _ConvertCullMode(CullMode value)
         {
             switch (value)
             {
-                case CULL_NONE:
+                case CullMode::None:
                     return D3D12_CULL_MODE_NONE;
-                    break;
-                case CULL_FRONT:
+                case CullMode::Front:
                     return D3D12_CULL_MODE_FRONT;
-                    break;
-                case CULL_BACK:
-                    return D3D12_CULL_MODE_BACK;
-                    break;
+
                 default:
-                    break;
+                case CullMode::Back:
+                    return D3D12_CULL_MODE_BACK;
             }
-            return D3D12_CULL_MODE_NONE;
         }
+
         constexpr D3D12_DEPTH_WRITE_MASK _ConvertDepthWriteMask(DEPTH_WRITE_MASK value)
         {
             switch (value)
@@ -640,25 +635,25 @@ namespace Alimer::RHI
         {
             switch (value)
             {
-                case Alimer::RHI::IMAGE_LAYOUT_UNDEFINED:
+                case Alimer::IMAGE_LAYOUT_UNDEFINED:
                     return D3D12_RESOURCE_STATE_COMMON;
-                case Alimer::RHI::IMAGE_LAYOUT_RENDERTARGET:
+                case Alimer::IMAGE_LAYOUT_RENDERTARGET:
                     return D3D12_RESOURCE_STATE_RENDER_TARGET;
-                case Alimer::RHI::IMAGE_LAYOUT_DEPTHSTENCIL:
+                case Alimer::IMAGE_LAYOUT_DEPTHSTENCIL:
                     return D3D12_RESOURCE_STATE_DEPTH_WRITE;
-                case Alimer::RHI::IMAGE_LAYOUT_DEPTHSTENCIL_READONLY:
+                case Alimer::IMAGE_LAYOUT_DEPTHSTENCIL_READONLY:
                     return D3D12_RESOURCE_STATE_DEPTH_READ;
-                case Alimer::RHI::IMAGE_LAYOUT_SHADER_RESOURCE:
+                case Alimer::IMAGE_LAYOUT_SHADER_RESOURCE:
                     return D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-                case Alimer::RHI::IMAGE_LAYOUT_SHADER_RESOURCE_COMPUTE:
+                case Alimer::IMAGE_LAYOUT_SHADER_RESOURCE_COMPUTE:
                     return D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-                case Alimer::RHI::IMAGE_LAYOUT_UNORDERED_ACCESS:
+                case Alimer::IMAGE_LAYOUT_UNORDERED_ACCESS:
                     return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-                case Alimer::RHI::IMAGE_LAYOUT_COPY_SRC:
+                case Alimer::IMAGE_LAYOUT_COPY_SRC:
                     return D3D12_RESOURCE_STATE_COPY_SOURCE;
-                case Alimer::RHI::IMAGE_LAYOUT_COPY_DST:
+                case Alimer::IMAGE_LAYOUT_COPY_DST:
                     return D3D12_RESOURCE_STATE_COPY_DEST;
-                case Alimer::RHI::IMAGE_LAYOUT_SHADING_RATE_SOURCE:
+                case Alimer::IMAGE_LAYOUT_SHADING_RATE_SOURCE:
                     return D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE;
             }
 
@@ -3204,8 +3199,7 @@ namespace Alimer::RHI
             device->CreateRenderTargetView(internal_state->backBuffers[i].Get(), &rtvDesc, internal_state->backbufferRTV[i]);
         }
 
-        // TODO
-        //internal_state->dummyTexture.desc.Format = pDesc->format;
+        internal_state->dummyTexture.desc.Format = FORMAT_B8G8R8A8_UNORM; // pDesc->format;
         internal_state->renderpass = RenderPass();
         HashCombine(internal_state->renderpass.hash, pDesc->format);
         internal_state->renderpass.desc.attachments.push_back(RenderPassAttachment::RenderTarget(&internal_state->dummyTexture));
@@ -4564,9 +4558,9 @@ namespace Alimer::RHI
 
         RasterizerState pRasterizerStateDesc = pso->desc.rs != nullptr ? *pso->desc.rs : RasterizerState();
         CD3DX12_RASTERIZER_DESC rs = {};
-        rs.FillMode = _ConvertFillMode(pRasterizerStateDesc.FillMode);
-        rs.CullMode = _ConvertCullMode(pRasterizerStateDesc.CullMode);
-        rs.FrontCounterClockwise = pRasterizerStateDesc.FrontCounterClockwise;
+        rs.FillMode = _ConvertFillMode(pRasterizerStateDesc.fillMode);
+        rs.CullMode = _ConvertCullMode(pRasterizerStateDesc.cullMode);
+        rs.FrontCounterClockwise = (pRasterizerStateDesc.frontFace == FaceWinding::CounterClockwise) ? TRUE : FALSE;
         rs.DepthBias = pRasterizerStateDesc.DepthBias;
         rs.DepthBiasClamp = pRasterizerStateDesc.DepthBiasClamp;
         rs.SlopeScaledDepthBias = pRasterizerStateDesc.SlopeScaledDepthBias;
@@ -5152,7 +5146,7 @@ namespace Alimer::RHI
 
         switch (type)
         {
-            case Alimer::RHI::SRV:
+            case Alimer::SRV:
             {
                 D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
                 srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -5266,7 +5260,7 @@ namespace Alimer::RHI
                 return int(internal_state->subresources_srv.size() - 1);
             }
             break;
-            case Alimer::RHI::UAV:
+            case Alimer::UAV:
             {
                 D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc = {};
 
@@ -5340,7 +5334,7 @@ namespace Alimer::RHI
                 return int(internal_state->subresources_uav.size() - 1);
             }
             break;
-            case Alimer::RHI::RTV:
+            case Alimer::RTV:
             {
                 D3D12_RENDER_TARGET_VIEW_DESC rtv_desc = {};
 
@@ -5430,7 +5424,7 @@ namespace Alimer::RHI
                 return int(internal_state->subresources_rtv.size() - 1);
             }
             break;
-            case Alimer::RHI::DSV:
+            case Alimer::DSV:
             {
                 D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc = {};
 
@@ -5526,7 +5520,7 @@ namespace Alimer::RHI
 
         switch (type)
         {
-            case Alimer::RHI::CBV:
+            case Alimer::CBV:
             {
                 size = Min(size, buffer->desc.size);
                 D3D12_CONSTANT_BUFFER_VIEW_DESC cbv_desc = {};
@@ -5537,7 +5531,7 @@ namespace Alimer::RHI
             }
             break;
 
-            case Alimer::RHI::SRV:
+            case Alimer::SRV:
             {
                 D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
                 srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -5585,7 +5579,7 @@ namespace Alimer::RHI
                 return int(internal_state->subresources_srv.size() - 1);
             }
             break;
-            case Alimer::RHI::UAV:
+            case Alimer::UAV:
             {
                 D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc = {};
                 uav_desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
@@ -5649,10 +5643,10 @@ namespace Alimer::RHI
         switch (type)
         {
             default:
-            case Alimer::RHI::CBV:
+            case Alimer::CBV:
                 return internal_state->cbv.index;
                 break;
-            case Alimer::RHI::SRV:
+            case Alimer::SRV:
                 if (subresource < 0)
                 {
                     return internal_state->srv.index;
@@ -5662,7 +5656,7 @@ namespace Alimer::RHI
                     return internal_state->subresources_srv[subresource].index;
                 }
                 break;
-            case Alimer::RHI::UAV:
+            case Alimer::UAV:
                 if (subresource < 0)
                 {
                     return internal_state->uav.index;
@@ -6099,6 +6093,13 @@ namespace Alimer::RHI
         RTV.BeginningAccess.Clear.ClearValue.Color[3] = clearColor[3];
         RTV.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
         GetCommandList(commandList)->BeginRenderPass(1, &RTV, nullptr, D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES);
+
+        // The viewport and scissor default to cover all of the attachments
+        uint32_t width = swapchain->extent.width;
+        uint32_t height = swapchain->extent.height;
+        D3D12_VIEWPORT viewport = { 0.f, 0.f, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f };
+        GetCommandList(commandList)->RSSetViewports(1, &viewport);
+        //SetScissorRect(Rect(width, height));
     }
 
     void RHIDeviceD3D12::BeginRenderPass(CommandList commandList, const RenderPass* renderpass)

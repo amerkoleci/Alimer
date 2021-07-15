@@ -16,7 +16,7 @@
 
 #include <deque>
 
-namespace Alimer::RHI
+namespace Alimer
 {
     constexpr const char* ToString(VkResult result)
     {

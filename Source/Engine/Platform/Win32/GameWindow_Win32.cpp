@@ -31,7 +31,7 @@ namespace Alimer
 
     GameWindowWin32::~GameWindowWin32()
     {
-        RHI::WaitForGPU();
+        RHIWaitForGPU();
         swapChain = {};
 
         if (handle)

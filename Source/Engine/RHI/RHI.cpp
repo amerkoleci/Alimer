@@ -15,7 +15,7 @@
 #   include "RHI_Vulkan.h"
 #endif
 
-namespace Alimer::RHI
+namespace Alimer
 {
     /* RHICommandBuffer */
     void RHICommandBuffer::SetIndexBuffer(const GPUBuffer* buffer, RHIIndexType indexType, uint32_t offset)
@@ -184,7 +184,7 @@ namespace Alimer::RHI
     /* RHIDevice */
     RHIDevice* GDevice = nullptr;
 
-    bool Initialize(ValidationMode validationMode, BackendType backendType)
+    bool RHIInitialize(ValidationMode validationMode, BackendType backendType)
     {
         if (GDevice != nullptr)
             return true;
@@ -227,7 +227,7 @@ namespace Alimer::RHI
         return GDevice->Initialize();
     }
 
-    void Shutdown()
+    void RHIShutdown()
     {
         if (GDevice != nullptr)
         {
@@ -237,7 +237,7 @@ namespace Alimer::RHI
         }
     }
 
-    void WaitForGPU()
+    void RHIWaitForGPU()
     {
         GDevice->WaitForGPU();
     }
