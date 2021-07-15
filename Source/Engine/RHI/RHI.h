@@ -58,16 +58,18 @@ namespace Alimer::RHI
         SPIRV,
     };
 
-    enum SHADERMODEL
+    enum class ShaderModel
     {
-        SHADERMODEL_5_0,
-        SHADERMODEL_6_0,
-        SHADERMODEL_6_1,
-        SHADERMODEL_6_2,
-        SHADERMODEL_6_3,
-        SHADERMODEL_6_4,
-        SHADERMODEL_6_5,
+        Model6_0,
+        Model6_1,
+        Model6_2,
+        Model6_3,
+        Model6_4,
+        Model6_5,
+        Model6_6,
+        Model6_7,
     };
+
     enum PRIMITIVETOPOLOGY
     {
         UNDEFINED,
