@@ -1501,13 +1501,13 @@ namespace Alimer::RHI
 
     namespace
     {
-        static_assert(sizeof(RHIViewport) == sizeof(D3D12_VIEWPORT), "Size mismatch");
-        static_assert(offsetof(RHIViewport, x) == offsetof(D3D12_VIEWPORT, TopLeftX), "Layout mismatch");
-        static_assert(offsetof(RHIViewport, y) == offsetof(D3D12_VIEWPORT, TopLeftY), "Layout mismatch");
-        static_assert(offsetof(RHIViewport, width) == offsetof(D3D12_VIEWPORT, Width), "Layout mismatch");
-        static_assert(offsetof(RHIViewport, height) == offsetof(D3D12_VIEWPORT, Height), "Layout mismatch");
-        static_assert(offsetof(RHIViewport, minDepth) == offsetof(D3D12_VIEWPORT, MinDepth), "Layout mismatch");
-        static_assert(offsetof(RHIViewport, maxDepth) == offsetof(D3D12_VIEWPORT, MaxDepth), "Layout mismatch");
+        static_assert(sizeof(Viewport) == sizeof(D3D12_VIEWPORT), "Size mismatch");
+        static_assert(offsetof(Viewport, x) == offsetof(D3D12_VIEWPORT, TopLeftX), "Layout mismatch");
+        static_assert(offsetof(Viewport, y) == offsetof(D3D12_VIEWPORT, TopLeftY), "Layout mismatch");
+        static_assert(offsetof(Viewport, width) == offsetof(D3D12_VIEWPORT, Width), "Layout mismatch");
+        static_assert(offsetof(Viewport, height) == offsetof(D3D12_VIEWPORT, Height), "Layout mismatch");
+        static_assert(offsetof(Viewport, minDepth) == offsetof(D3D12_VIEWPORT, MinDepth), "Layout mismatch");
+        static_assert(offsetof(Viewport, maxDepth) == offsetof(D3D12_VIEWPORT, MaxDepth), "Layout mismatch");
 
         [[nodiscard]] constexpr DXGI_FORMAT ToDXGIFormat(PixelFormat format)
         {
@@ -1757,10 +1757,10 @@ namespace Alimer::RHI
         // If no buffer was found that fits the data, create one:
         if (cmd.uploadbuffer.desc.ByteWidth < staging_size)
         {
-            GPUBufferDesc uploaddesc;
-            uploaddesc.ByteWidth = NextPowerOfTwo(staging_size);
-            uploaddesc.resourceUsage = ResourceUsage::StagingUpload;
-            bool upload_success = device->CreateBuffer(&uploaddesc, nullptr, &cmd.uploadbuffer);
+            BufferDescriptor uploadBufferDesc;
+            uploadBufferDesc.ByteWidth = NextPowerOfTwo(staging_size);
+            uploadBufferDesc.resourceUsage = ResourceUsage::StagingUpload;
+            bool upload_success = device->CreateBuffer(&uploadBufferDesc, nullptr, &cmd.uploadbuffer);
             assert(upload_success);
 
             cmd.upload_resource = to_internal(&cmd.uploadbuffer)->resource.Get();
@@ -1777,6 +1777,7 @@ namespace Alimer::RHI
 
         return cmd;
     }
+
     void RHIDeviceD3D12::CopyAllocator::submit(CopyCMD cmd)
     {
         HRESULT hr;
@@ -1832,7 +1833,7 @@ namespace Alimer::RHI
         buffer.type = RHIResourceType::Buffer;
         buffer.desc.ByteWidth = (uint32_t)((size_t)dataEnd - (size_t)dataBegin);
         buffer.desc.resourceUsage = ResourceUsage::Dynamic;
-        buffer.desc.BindFlags = BIND_VERTEX_BUFFER | BIND_INDEX_BUFFER | BIND_SHADER_RESOURCE;
+        buffer.desc.usage = BufferUsage::Vertex | BufferUsage::Index | BufferUsage::ShaderRead;
         buffer.desc.MiscFlags = RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
 
         internal_state->gpu_address = internal_state->resource->GetGPUVirtualAddress();
@@ -3247,7 +3248,7 @@ namespace Alimer::RHI
         return true;
     }
 
-    bool RHIDeviceD3D12::CreateBuffer(const GPUBufferDesc* pDesc, const void* initialData, GPUBuffer* pBuffer) const
+    bool RHIDeviceD3D12::CreateBuffer(const BufferDescriptor* pDesc, const void* initialData, GPUBuffer* pBuffer) const
     {
         auto internal_state = std::make_shared<Resource_DX12>();
         internal_state->allocationhandler = allocationhandler;
@@ -3257,31 +3258,29 @@ namespace Alimer::RHI
         pBuffer->desc = *pDesc;
 
         if (pDesc->resourceUsage == ResourceUsage::Dynamic
-            && pDesc->BindFlags & BIND_CONSTANT_BUFFER)
+            && Any(pDesc->usage, BufferUsage::Uniform))
         {
             // this special case will use frame allocator
             return true;
         }
 
-        HRESULT hr = E_FAIL;
-
-        size_t alignedSize = pDesc->ByteWidth;
-        if (pDesc->BindFlags & BIND_CONSTANT_BUFFER)
+        UINT64 alignedSize = pDesc->ByteWidth;
+        if (Any(pDesc->usage, BufferUsage::Uniform))
         {
-            alignedSize = Align(alignedSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+            alignedSize = AlignTo(alignedSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
         }
 
         D3D12_RESOURCE_DESC desc;
         desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
         desc.Format = DXGI_FORMAT_UNKNOWN;
-        desc.Width = (UINT64)alignedSize;
+        desc.Width = alignedSize;
         desc.Height = 1;
         desc.MipLevels = 1;
         desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
         desc.DepthOrArraySize = 1;
         desc.Alignment = 0;
         desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-        if (pDesc->BindFlags & BIND_UNORDERED_ACCESS)
+        if (Any(pDesc->usage, BufferUsage::ShaderWrite))
         {
             desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
         }
@@ -3306,9 +3305,9 @@ namespace Alimer::RHI
                 break;
         }
 
-        device->GetCopyableFootprints(&desc, 0, 1, 0, &internal_state->footprint, nullptr, nullptr, nullptr);
+        device->GetCopyableFootprints(&desc, 0, 1, 0, &internal_state->footprint, nullptr, nullptr, &pBuffer->allocatedSize);
 
-        hr = allocationhandler->allocator->CreateResource(
+        HRESULT result = allocationhandler->allocator->CreateResource(
             &allocationDesc,
             &desc,
             resourceState,
@@ -3316,7 +3315,12 @@ namespace Alimer::RHI
             &internal_state->allocation,
             IID_PPV_ARGS(&internal_state->resource)
         );
-        assert(SUCCEEDED(hr));
+
+        if (FAILED(result))
+        {
+            LOGE("Direct3D12: Could not create buffer: {}", std::to_string(result));
+            return false;
+        }
 
         internal_state->gpu_address = internal_state->resource->GetGPUVirtualAddress();
 
@@ -3340,20 +3344,20 @@ namespace Alimer::RHI
 
 
         // Create resource views if needed
-        if (pDesc->BindFlags & BIND_CONSTANT_BUFFER)
+        if (Any(pDesc->usage, BufferUsage::Uniform))
         {
             CreateSubresource(pBuffer, CBV, 0);
         }
-        if (pDesc->BindFlags & BIND_SHADER_RESOURCE)
+        if (Any(pDesc->usage, BufferUsage::ShaderRead))
         {
             CreateSubresource(pBuffer, SRV, 0);
         }
-        if (pDesc->BindFlags & BIND_UNORDERED_ACCESS)
+        if (Any(pDesc->usage, BufferUsage::ShaderWrite))
         {
             CreateSubresource(pBuffer, UAV, 0);
         }
 
-        return SUCCEEDED(hr);
+        return true;
     }
 
     bool RHIDeviceD3D12::CreateTexture(const TextureDesc* pDesc, const SubresourceData* pInitialData, RHITexture* pTexture) const
@@ -4972,9 +4976,9 @@ namespace Alimer::RHI
                         geometry.Triangles.VertexBuffer.StrideInBytes = (UINT64)x.triangles.vertexStride;
                         geometry.Triangles.VertexCount = x.triangles.vertexCount;
                         geometry.Triangles.VertexFormat = _ConvertFormat(x.triangles.vertexFormat);
-                        geometry.Triangles.IndexFormat = (x.triangles.indexFormat == INDEXBUFFER_FORMAT::INDEXFORMAT_16BIT ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT);
+                        geometry.Triangles.IndexFormat = (x.triangles.indexFormat == IndexType::UInt16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT);
                         geometry.Triangles.IndexBuffer = to_internal(&x.triangles.indexBuffer)->gpu_address +
-                            (D3D12_GPU_VIRTUAL_ADDRESS)x.triangles.indexOffset * (x.triangles.indexFormat == INDEXBUFFER_FORMAT::INDEXFORMAT_16BIT ? sizeof(uint16_t) : sizeof(uint32_t));
+                            (D3D12_GPU_VIRTUAL_ADDRESS)x.triangles.indexOffset * (x.triangles.indexFormat == IndexType::UInt16 ? sizeof(uint16_t) : sizeof(uint32_t));
                         geometry.Triangles.IndexCount = x.triangles.indexCount;
 
                         if (x._flags & RaytracingAccelerationStructureDesc::BottomLevel::Geometry::FLAG_USE_TRANSFORM)
@@ -5052,11 +5056,12 @@ namespace Alimer::RHI
 
         internal_state->srv.init(this, srv_desc, nullptr);
 
-        GPUBufferDesc scratch_desc;
-        scratch_desc.ByteWidth = (uint32_t)std::max(internal_state->info.ScratchDataSizeInBytes, internal_state->info.UpdateScratchDataSizeInBytes);
+        BufferDescriptor scratch_desc;
+        scratch_desc.ByteWidth = (uint32_t)Max(internal_state->info.ScratchDataSizeInBytes, internal_state->info.UpdateScratchDataSizeInBytes);
 
         return CreateBuffer(&scratch_desc, nullptr, &internal_state->scratch);
     }
+
     bool RHIDeviceD3D12::CreateRaytracingPipelineState(const RaytracingPipelineStateDesc* pDesc, RaytracingPipelineState* rtpso) const
     {
         auto internal_state = std::make_shared<RTPipelineState_DX12>();
@@ -5546,7 +5551,7 @@ namespace Alimer::RHI
     int RHIDeviceD3D12::CreateSubresource(GPUBuffer* buffer, SUBRESOURCE_TYPE type, uint64_t offset, uint64_t size) const
     {
         auto internal_state = to_internal(buffer);
-        const GPUBufferDesc& desc = buffer->GetDesc();
+        const BufferDescriptor& desc = buffer->GetDesc();
 
         switch (type)
         {
@@ -5573,7 +5578,7 @@ namespace Alimer::RHI
                     srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
                     srv_desc.Buffer.FirstElement = (UINT)offset / sizeof(uint32_t);
                     srv_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
-                    srv_desc.Buffer.NumElements = std::min((UINT)size, desc.ByteWidth - (UINT)offset) / sizeof(uint32_t);
+                    srv_desc.Buffer.NumElements = Min((UINT)size, desc.ByteWidth - (UINT)offset) / sizeof(uint32_t);
                 }
                 else if (desc.MiscFlags & RESOURCE_MISC_BUFFER_STRUCTURED)
                 {
@@ -5581,7 +5586,7 @@ namespace Alimer::RHI
                     srv_desc.Format = DXGI_FORMAT_UNKNOWN;
                     srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
                     srv_desc.Buffer.FirstElement = (UINT)offset / desc.StructureByteStride;
-                    srv_desc.Buffer.NumElements = std::min((UINT)size, desc.ByteWidth - (UINT)offset) / desc.StructureByteStride;
+                    srv_desc.Buffer.NumElements = Min((UINT)size, desc.ByteWidth - (UINT)offset) / desc.StructureByteStride;
                     srv_desc.Buffer.StructureByteStride = desc.StructureByteStride;
                 }
                 else
@@ -6182,31 +6187,33 @@ namespace Alimer::RHI
         }
     }
 
-    void RHIDeviceD3D12::BindScissorRects(uint32_t numRects, const Rect* rects, CommandList cmd)
+    void RHIDeviceD3D12::BindScissorRects(CommandList commandList, uint32_t scissorCount, const Rect* pScissorRects)
     {
-        ALIMER_ASSERT(rects != nullptr);
-        ALIMER_ASSERT(numRects <= D3D12_VIEWPORT_AND_SCISSORRECT_MAX_INDEX);
+        ALIMER_ASSERT(pScissorRects != nullptr);
+        ALIMER_ASSERT(scissorCount <= kMaxViewportsAndScissors);
+
         D3D12_RECT pRects[D3D12_VIEWPORT_AND_SCISSORRECT_MAX_INDEX];
-        for (uint32_t i = 0; i < numRects; ++i)
+        for (uint32_t i = 0; i < scissorCount; ++i)
         {
-            pRects[i].left = LONG(rects[i].x);
-            pRects[i].top = LONG(rects[i].y);
-            pRects[i].right = LONG(rects[i].Right());
-            pRects[i].bottom = LONG(rects[i].Bottom());
+            pRects[i].left = LONG(pScissorRects[i].x);
+            pRects[i].top = LONG(pScissorRects[i].y);
+            pRects[i].right = LONG(pScissorRects[i].Right());
+            pRects[i].bottom = LONG(pScissorRects[i].Bottom());
         }
 
-        GetCommandList(cmd)->RSSetScissorRects(numRects, pRects);
+        GetCommandList(commandList)->RSSetScissorRects(scissorCount, pRects);
     }
 
-    void RHIDeviceD3D12::BindViewport(CommandList commandList, const RHIViewport& viewport)
+    void RHIDeviceD3D12::BindViewport(CommandList commandList, const Viewport& viewport)
     {
         GetCommandList(commandList)->RSSetViewports(1, (D3D12_VIEWPORT*)&viewport);
     }
 
-    void RHIDeviceD3D12::BindViewports(CommandList commandList, uint32_t viewportCount, const RHIViewport* pViewports)
+    void RHIDeviceD3D12::BindViewports(CommandList commandList, uint32_t viewportCount, const Viewport* pViewports)
     {
         ALIMER_ASSERT(pViewports != nullptr);
         ALIMER_ASSERT(viewportCount <= kMaxViewportsAndScissors);
+
         GetCommandList(commandList)->RSSetViewports(viewportCount, (D3D12_VIEWPORT*)pViewports);
     }
 
@@ -6251,13 +6258,14 @@ namespace Alimer::RHI
         }
     }
 
-    void RHIDeviceD3D12::BindSampler(ShaderStage stage, const Sampler* sampler, uint32_t slot, CommandList cmd)
+    void RHIDeviceD3D12::BindSampler(CommandList commandList, uint32_t slot, const Sampler* sampler)
     {
-        assert(slot < GPU_SAMPLER_HEAP_COUNT);
-        if (descriptors[cmd].SAM[slot] != sampler)
+        ALIMER_ASSERT(slot < GPU_SAMPLER_HEAP_COUNT);
+
+        if (descriptors[commandList].SAM[slot] != sampler)
         {
-            descriptors[cmd].SAM[slot] = sampler;
-            descriptors[cmd].dirty_sam = true;
+            descriptors[commandList].SAM[slot] = sampler;
+            descriptors[commandList].dirty_sam = true;
         }
     }
     void RHIDeviceD3D12::BindConstantBuffer(ShaderStage stage, const GPUBuffer* buffer, uint32_t slot, CommandList cmd)
@@ -6315,23 +6323,27 @@ namespace Alimer::RHI
         }
         GetCommandList(cmd)->IASetVertexBuffers(static_cast<uint32_t>(slot), static_cast<uint32_t>(count), res);
     }
-    void RHIDeviceD3D12::BindIndexBuffer(const GPUBuffer* indexBuffer, const INDEXBUFFER_FORMAT format, uint32_t offset, CommandList cmd)
+
+    void RHIDeviceD3D12::BindIndexBuffer(CommandList commandList, const GPUBuffer* indexBuffer, uint64_t offset, IndexType indexType)
     {
-        D3D12_INDEX_BUFFER_VIEW res = {};
+        D3D12_INDEX_BUFFER_VIEW view = {};
         if (indexBuffer != nullptr)
         {
             auto internal_state = to_internal(indexBuffer);
 
-            res.BufferLocation = internal_state->gpu_address + (D3D12_GPU_VIRTUAL_ADDRESS)offset;
-            res.Format = (format == INDEXBUFFER_FORMAT::INDEXFORMAT_16BIT ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT);
-            res.SizeInBytes = indexBuffer->desc.ByteWidth - offset;
+            view.BufferLocation = internal_state->gpu_address + offset;
+            view.Format = (indexType == IndexType::UInt16) ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+            view.SizeInBytes = (UINT)(indexBuffer->desc.ByteWidth - offset);
         }
-        GetCommandList(cmd)->IASetIndexBuffer(&res);
+
+        GetCommandList(commandList)->IASetIndexBuffer(&view);
     }
-    void RHIDeviceD3D12::BindStencilRef(uint32_t value, CommandList cmd)
+
+    void RHIDeviceD3D12::BindStencilRef(CommandList commandList, uint32_t value)
     {
-        GetCommandList(cmd)->OMSetStencilRef(value);
+        GetCommandList(commandList)->OMSetStencilRef(value);
     }
+
     void RHIDeviceD3D12::BindBlendFactor(float r, float g, float b, float a, CommandList cmd)
     {
         const float blendFactor[4] = { r, g, b, a };
@@ -6550,7 +6562,7 @@ namespace Alimer::RHI
         memcpy(allocation.data, data, dataSize);
 
         if (buffer->desc.resourceUsage == ResourceUsage::Dynamic
-            && buffer->desc.BindFlags & BIND_CONSTANT_BUFFER)
+            && Any(buffer->desc.usage, BufferUsage::Uniform))
         {
             // Dynamic buffer will be used from host memory directly:
             internal_state_dst->dynamic[cmd] = allocation;
@@ -6571,14 +6583,17 @@ namespace Alimer::RHI
             barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
             barrier.Transition.pResource = internal_state_dst->resource.Get();
             barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
-            if (buffer->desc.BindFlags & BIND_CONSTANT_BUFFER || buffer->desc.BindFlags & BIND_VERTEX_BUFFER)
+
+            if (Any(buffer->desc.usage, BufferUsage::Uniform)
+                || Any(buffer->desc.usage, BufferUsage::Vertex))
             {
                 barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
             }
-            else if (buffer->desc.BindFlags & BIND_INDEX_BUFFER)
+            else if (Any(buffer->desc.usage, BufferUsage::Index))
             {
                 barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_INDEX_BUFFER;
             }
+
             barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
             barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
             barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -6787,7 +6802,7 @@ namespace Alimer::RHI
                         geometry.Triangles.VertexBuffer.StartAddress = to_internal(&x.triangles.vertexBuffer)->gpu_address +
                             (D3D12_GPU_VIRTUAL_ADDRESS)x.triangles.vertexByteOffset;
                         geometry.Triangles.IndexBuffer = to_internal(&x.triangles.indexBuffer)->gpu_address +
-                            (D3D12_GPU_VIRTUAL_ADDRESS)x.triangles.indexOffset * (x.triangles.indexFormat == INDEXBUFFER_FORMAT::INDEXFORMAT_16BIT ? sizeof(uint16_t) : sizeof(uint32_t));
+                            (D3D12_GPU_VIRTUAL_ADDRESS)x.triangles.indexOffset * (x.triangles.indexFormat == IndexType::UInt16 ? sizeof(uint16_t) : sizeof(uint32_t));
 
                         if (x._flags & RaytracingAccelerationStructureDesc::BottomLevel::Geometry::FLAG_USE_TRANSFORM)
                         {

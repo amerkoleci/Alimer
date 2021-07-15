@@ -110,19 +110,11 @@ namespace Alimer::RHI
 
 #endif // TODO
 
-    /* RHIBuffer */
-    RHIBuffer::RHIBuffer(const RHIBufferDescription& desc)
-        : size(desc.size)
-        , usage(desc.usage)
-    {
-
-    }
-
     /* RHICommandBuffer */
-    void RHICommandBuffer::SetIndexBuffer(const RHIBuffer* buffer, RHIIndexType indexType, uint32_t offset)
+    void RHICommandBuffer::SetIndexBuffer(const GPUBuffer* buffer, RHIIndexType indexType, uint32_t offset)
     {
         ALIMER_ASSERT(buffer != nullptr);
-        ALIMER_ASSERT_MSG(Any(buffer->GetUsage(), RHIBufferUsage::Index), "Buffer created without Index usage");
+        //ALIMER_ASSERT_MSG(Any(buffer->GetUsage(), RHIBufferUsage::Index), "Buffer created without Index usage");
 
         SetIndexBufferCore(buffer, indexType, offset);
     }

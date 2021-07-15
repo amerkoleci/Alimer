@@ -20,7 +20,7 @@ namespace Alimer::Assert
 	ALIMER_API AssertFn GetHandler();
 	ALIMER_API void SetHandler(AssertFn newHandler);
 
-	FailBehavior ReportFailure(const char* condition, const char* file, int line, const std::string& message);
+    ALIMER_API FailBehavior ReportFailure(const char* condition, const char* file, int line, const std::string& message);
 }
 
 #ifndef ALIMER_ENABLE_ASSERT

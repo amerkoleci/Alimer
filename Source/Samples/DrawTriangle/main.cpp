@@ -7,6 +7,8 @@ using namespace Alimer;
 class TriangleGame final : public Game
 {
 private:
+    RHI::GPUBuffer vertexBuffer;
+
 public:
     TriangleGame()
     {
@@ -33,6 +35,7 @@ public:
         descriptor.name = "CUBEMAP";
         auto texture = RHICreateTexture(descriptor);
         auto view = texture->GetView({});
+#endif // TODO
 
         float vertices[] = {
             /* positions        colors */
@@ -41,12 +44,10 @@ public:
             -0.5f, -0.5f, 0.5f,     0.0f, 0.0f, 1.0f, 1.0f
         };
 
-        RHIBufferDescription bufferDesc = {};
-        bufferDesc.size = sizeof(vertices);
-        bufferDesc.usage = RHIBufferUsage::Vertex;
-        auto vertexBuffer = RHICreateBuffer(bufferDesc, vertices);
-#endif // TODO
-
+        RHI::BufferDescriptor bufferDesc = {};
+        bufferDesc.ByteWidth = sizeof(vertices);
+        bufferDesc.usage = RHI::BufferUsage::Vertex;
+        ALIMER_ASSERT(RHI::GDevice->CreateBuffer(&bufferDesc, vertices, &vertexBuffer));
     }
 
     void OnDraw([[maybe_unused]] RHI::RHICommandBuffer* commandBuffer) override

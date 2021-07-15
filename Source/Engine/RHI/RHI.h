@@ -297,11 +297,25 @@ namespace Alimer::RHI
         GPU_QUERY_TYPE_OCCLUSION,			// how many samples passed depth test?
         GPU_QUERY_TYPE_OCCLUSION_BINARY,	// depth test passed or not?
     };
-    enum INDEXBUFFER_FORMAT
+
+    enum class BufferUsage : uint32_t
     {
-        INDEXFORMAT_16BIT,
-        INDEXFORMAT_32BIT,
+        None = 0,
+        Vertex = 1 << 0,
+        Index = 1 << 1,
+        Uniform = 1 << 2,
+        ShaderRead = 1 << 3,
+        ShaderWrite = 1 << 4,
+        ShaderReadWrite = ShaderRead | ShaderWrite,
+        Indirect = 1 << 5,
     };
+
+    enum class IndexType : uint32_t
+    {
+        UInt16 = 0,
+        UInt32 = 1
+    };
+
     enum SUBRESOURCE_TYPE
     {
         CBV, // constant buffer view
@@ -353,14 +367,10 @@ namespace Alimer::RHI
     // Flags ////////////////////////////////////////////
     enum BIND_FLAG
     {
-        BIND_VERTEX_BUFFER = 1 << 0,
-        BIND_INDEX_BUFFER = 1 << 1,
-        BIND_CONSTANT_BUFFER = 1 << 2,
-        BIND_SHADER_RESOURCE = 1 << 3,
-        BIND_STREAM_OUTPUT = 1 << 4,
-        BIND_RENDER_TARGET = 1 << 5,
-        BIND_DEPTH_STENCIL = 1 << 6,
-        BIND_UNORDERED_ACCESS = 1 << 7,
+        BIND_SHADER_RESOURCE = 1 << 0,
+        BIND_RENDER_TARGET = 1 << 1,
+        BIND_DEPTH_STENCIL = 1 << 2,
+        BIND_UNORDERED_ACCESS = 1 << 3,
     };
 
     enum RESOURCE_MISC_FLAG
@@ -408,7 +418,7 @@ namespace Alimer::RHI
         uint32_t depth = 1;
     };
 
-    struct RHIViewport
+    struct Viewport
     {
         float x;
         float y;
@@ -530,11 +540,11 @@ namespace Alimer::RHI
         RenderTargetBlendState RenderTarget[8];
     };
 
-    struct GPUBufferDesc
+    struct BufferDescriptor
     {
         uint32_t ByteWidth = 0;
+        BufferUsage usage = BufferUsage::None;
         ResourceUsage resourceUsage = ResourceUsage::Default;
-        uint32_t BindFlags = 0;
         uint32_t MiscFlags = 0;
         uint32_t StructureByteStride = 0; // needed for typed and structured buffer types!
         FORMAT Format = FORMAT_UNKNOWN; // only needed for typed buffer!
@@ -828,9 +838,10 @@ namespace Alimer::RHI
 
     struct GPUBuffer : public GPUResource
     {
-        GPUBufferDesc desc;
+        uint64_t allocatedSize = 0;
+        BufferDescriptor desc;
 
-        const GPUBufferDesc& GetDesc() const { return desc; }
+        const BufferDescriptor& GetDesc() const { return desc; }
     };
 
     struct RHITexture : public GPUResource
@@ -919,7 +930,7 @@ namespace Alimer::RHI
                     uint32_t vertexCount = 0;
                     uint32_t vertexByteOffset = 0;
                     uint32_t vertexStride = 0;
-                    INDEXBUFFER_FORMAT indexFormat = INDEXFORMAT_32BIT;
+                    IndexType indexFormat = IndexType::UInt32;
                     FORMAT vertexFormat = FORMAT_R32G32B32_FLOAT;
                     GPUBuffer transform3x4Buffer;
                     uint32_t transform3x4BufferOffset = 0;
@@ -1082,20 +1093,6 @@ namespace Alimer::RHI
         Count8,
         Count16,
         Count32,
-    };
-
-    enum class RHIBufferUsage : uint32_t
-    {
-        None = 0,
-        MapRead = 1 << 0,
-        MapWrite = 1 << 1,
-        CopySource = 1 << 2,
-        CopyDestination = 1 << 3,
-        Index = 1 << 4,
-        Vertex = 1 << 5,
-        Uniform = 1 << 6,
-        Storage = 1 << 7,
-        Indirect = 1 << 8,
     };
 
     enum class RHICompareFunction : uint32_t
@@ -1262,13 +1259,6 @@ namespace Alimer::RHI
         uint32_t arrayLayers = 0;
     };
 
-    struct RHIBufferDescription
-    {
-        StringView name;
-        uint32_t size = 0;
-        RHIBufferUsage usage = RHIBufferUsage::None;
-    };
-
     struct RHISamplerDescription
     {
         RHISamplerFilter minFilter = RHISamplerFilter::Nearest;
@@ -1347,29 +1337,6 @@ namespace Alimer::RHI
         uint32_t arrayLayers;
     };
 
-    class ALIMER_API RHIBuffer : public RHIResource
-    {
-    public:
-        uint32_t GetSize() const noexcept { return size; }
-        RHIBufferUsage GetUsage() const noexcept { return usage; }
-
-    protected:
-        RHIBuffer(const RHIBufferDescription& desc);
-
-        uint32_t size;
-        RHIBufferUsage usage;
-    };
-
-    struct RHIObject2
-    {
-        std::shared_ptr<void> state;
-        inline bool IsValid() const { return state.get() != nullptr; }
-    };
-
-    struct RHISampler : public RHIObject2
-    {
-    };
-
     class ALIMER_API RHICommandBuffer
     {
     public:
@@ -1382,8 +1349,8 @@ namespace Alimer::RHI
         //virtual void BeginRenderPass(RHISwapChain* swapChain, const RHIColor& clearColor) = 0;
         //virtual void EndRenderPass() = 0;
 
-        virtual void SetViewport(const RHIViewport& viewport) = 0;
-        virtual void SetViewports(const RHIViewport* viewports, uint32_t count) = 0;
+        virtual void SetViewport(const Viewport& viewport) = 0;
+        virtual void SetViewports(const Viewport* viewports, uint32_t count) = 0;
 
         //virtual void SetScissorRect(const Rect& rect) = 0;
         //virtual void SetScissorRects(const Rect* rects, uint32_t count) = 0;
@@ -1391,10 +1358,10 @@ namespace Alimer::RHI
         virtual void SetStencilReference(uint32_t value) = 0;
         virtual void SetBlendColor(const float blendColor[4]) = 0;
 
-        void SetIndexBuffer(const RHIBuffer* buffer, RHIIndexType indexType, uint32_t offset = 0);
+        void SetIndexBuffer(const GPUBuffer* buffer, RHIIndexType indexType, uint32_t offset = 0);
 
     private:
-        virtual void SetIndexBufferCore(const RHIBuffer* buffer, RHIIndexType indexType, uint32_t offset) = 0;
+        virtual void SetIndexBufferCore(const GPUBuffer* buffer, RHIIndexType indexType, uint32_t offset) = 0;
 
     protected:
         RHICommandBuffer() = default;
@@ -1441,7 +1408,7 @@ namespace Alimer::RHI
         virtual void Shutdown() = 0;
 
         virtual bool CreateSwapChain(const SwapChainDescriptor* descriptor, void* window, SwapChain* swapChain) const = 0;
-        virtual bool CreateBuffer(const GPUBufferDesc* pDesc, const void* initialData, GPUBuffer* pBuffer) const = 0;
+        virtual bool CreateBuffer(const BufferDescriptor* descriptor, const void* initialData, GPUBuffer* pBuffer) const = 0;
         virtual bool CreateTexture(const TextureDesc* pDesc, const SubresourceData* pInitialData, RHITexture* pTexture) const = 0;
         virtual bool CreateShader(ShaderStage stage, const void* pShaderBytecode, size_t BytecodeLength, Shader* pShader) const = 0;
         virtual bool CreateSampler(const SamplerDesc* pSamplerDesc, Sampler* pSamplerState) const = 0;
@@ -1498,18 +1465,18 @@ namespace Alimer::RHI
         virtual void BeginRenderPass(CommandList commandList, const SwapChain* swapchain, const float clearColor[4]) = 0;
         virtual void BeginRenderPass(CommandList commandList, const RenderPass* renderpass) = 0;
         virtual void EndRenderPass(CommandList commandList) = 0;
-        virtual void BindScissorRects(uint32_t numRects, const Rect* rects, CommandList cmd) = 0;
-        virtual void BindViewport(CommandList commandList, const RHIViewport& viewport) = 0;
-        virtual void BindViewports(CommandList commandList, uint32_t viewportCount, const RHIViewport* pViewports) = 0;
+        virtual void BindScissorRects(CommandList commandList, uint32_t scissorCount, const Rect* pScissorRects) = 0;
+        virtual void BindViewport(CommandList commandList, const Viewport& viewport) = 0;
+        virtual void BindViewports(CommandList commandList, uint32_t viewportCount, const Viewport* pViewports) = 0;
         virtual void BindResource(ShaderStage stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource = -1) = 0;
         virtual void BindResources(ShaderStage stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd) = 0;
         virtual void BindUAV(ShaderStage stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource = -1) = 0;
         virtual void BindUAVs(ShaderStage stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd) = 0;
-        virtual void BindSampler(ShaderStage stage, const Sampler* sampler, uint32_t slot, CommandList cmd) = 0;
+        virtual void BindSampler(CommandList commandList, uint32_t slot, const Sampler* sampler) = 0;
         virtual void BindConstantBuffer(ShaderStage stage, const GPUBuffer* buffer, uint32_t slot, CommandList cmd) = 0;
         virtual void BindVertexBuffers(const GPUBuffer* const* vertexBuffers, uint32_t slot, uint32_t count, const uint32_t* strides, const uint32_t* offsets, CommandList cmd) = 0;
-        virtual void BindIndexBuffer(const GPUBuffer* indexBuffer, const INDEXBUFFER_FORMAT format, uint32_t offset, CommandList cmd) = 0;
-        virtual void BindStencilRef(uint32_t value, CommandList cmd) = 0;
+        virtual void BindIndexBuffer(CommandList commandList, const GPUBuffer* indexBuffer, uint64_t offset, IndexType indexType) = 0;
+        virtual void BindStencilRef(CommandList commandList, uint32_t value) = 0;
         virtual void BindBlendFactor(float r, float g, float b, float a, CommandList cmd) = 0;
         virtual void BindShadingRate(SHADING_RATE rate, CommandList cmd) {}
         virtual void BindPipelineState(const PipelineState* pso, CommandList cmd) = 0;
@@ -1584,4 +1551,4 @@ namespace std
 }
 
 ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(Alimer::RHI::RHITextureUsage);
-ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(Alimer::RHI::RHIBufferUsage);
+ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(Alimer::RHI::BufferUsage);

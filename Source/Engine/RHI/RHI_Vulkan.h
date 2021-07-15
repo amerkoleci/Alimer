@@ -341,7 +341,7 @@ namespace Alimer::RHI
         void Shutdown() override;
 
         bool CreateSwapChain(const SwapChainDescriptor* desc, void* window, SwapChain* swapChain) const override;
-        bool CreateBuffer(const GPUBufferDesc* pDesc, const void* initialData, GPUBuffer* pBuffer) const override;
+        bool CreateBuffer(const BufferDescriptor* descriptor, const void* initialData, GPUBuffer* pBuffer) const override;
         bool CreateTexture(const TextureDesc* pDesc, const SubresourceData* pInitialData, RHITexture* pTexture) const override;
         bool CreateShader(ShaderStage stage, const void* pShaderBytecode, size_t BytecodeLength, Shader* pShader) const override;
         bool CreateSampler(const SamplerDesc* pSamplerDesc, Sampler* pSamplerState) const override;
@@ -385,18 +385,18 @@ namespace Alimer::RHI
         void BeginRenderPass(CommandList commandList, const SwapChain* swapchain, const float clearColor[4]) override;
         void BeginRenderPass(CommandList commandList, const RenderPass* renderpass) override;
         void EndRenderPass(CommandList commandList) override;
-        void BindScissorRects(uint32_t numRects, const Rect* rects, CommandList cmd) override;
-        void BindViewport(CommandList commandList, const RHIViewport& viewport) override;
-        void BindViewports(CommandList commandList, uint32_t viewportCount, const RHIViewport* pViewports) override;
+        void BindScissorRects(CommandList commandList, uint32_t scissorCount, const Rect* pScissorRects) override;
+        void BindViewport(CommandList commandList, const Viewport& viewport) override;
+        void BindViewports(CommandList commandList, uint32_t viewportCount, const Viewport* pViewports) override;
         void BindResource(ShaderStage stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource = -1) override;
         void BindResources(ShaderStage stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd) override;
         void BindUAV(ShaderStage stage, const GPUResource* resource, uint32_t slot, CommandList cmd, int subresource = -1) override;
         void BindUAVs(ShaderStage stage, const GPUResource* const* resources, uint32_t slot, uint32_t count, CommandList cmd) override;
-        void BindSampler(ShaderStage stage, const Sampler* sampler, uint32_t slot, CommandList cmd) override;
+        void BindSampler(CommandList commandList, uint32_t slot, const Sampler* sampler) override;
         void BindConstantBuffer(ShaderStage stage, const GPUBuffer* buffer, uint32_t slot, CommandList cmd) override;
         void BindVertexBuffers(const GPUBuffer* const* vertexBuffers, uint32_t slot, uint32_t count, const uint32_t* strides, const uint32_t* offsets, CommandList cmd) override;
-        void BindIndexBuffer(const GPUBuffer* indexBuffer, const INDEXBUFFER_FORMAT format, uint32_t offset, CommandList cmd) override;
-        void BindStencilRef(uint32_t value, CommandList cmd) override;
+        void BindIndexBuffer(CommandList commandList, const GPUBuffer* indexBuffer, uint64_t offset, IndexType indexType) override;
+        void BindStencilRef(CommandList commandList, uint32_t value) override;
         void BindBlendFactor(float r, float g, float b, float a, CommandList cmd) override;
         void BindShadingRate(SHADING_RATE rate, CommandList cmd) override;
         void BindPipelineState(const PipelineState* pso, CommandList cmd) override;
