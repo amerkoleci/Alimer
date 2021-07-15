@@ -45,7 +45,8 @@ public:
         };
 
         RHI::BufferDescriptor bufferDesc = {};
-        bufferDesc.ByteWidth = sizeof(vertices);
+        bufferDesc.label = "Triangle VertexBuffer";
+        bufferDesc.size = sizeof(vertices);
         bufferDesc.usage = RHI::BufferUsage::Vertex;
         ALIMER_ASSERT(RHI::GDevice->CreateBuffer(&bufferDesc, vertices, &vertexBuffer));
     }

@@ -23,7 +23,7 @@ namespace Alimer::RHI
     static constexpr uint32_t kMaxFramesInFlight = 2;
     static constexpr uint32_t kMaxBackBufferCount = 3;
     static constexpr uint32_t kMaxViewportsAndScissors = 8;
-    static constexpr uint32_t kMaxVertexBufferBindings = 4;
+    static constexpr uint32_t kMaxVertexBufferBindings = 8;
     static constexpr uint32_t kMaxVertexAttributes = 16;
     static constexpr uint32_t kMaxVertexAttributeOffset = 2047;
     static constexpr uint32_t kMaxVertexBufferStride = 2048;
@@ -308,6 +308,7 @@ namespace Alimer::RHI
         ShaderWrite = 1 << 4,
         ShaderReadWrite = ShaderRead | ShaderWrite,
         Indirect = 1 << 5,
+        RayTracingAccelerationStructure = 1 << 6,
     };
 
     enum class IndexType : uint32_t
@@ -375,14 +376,9 @@ namespace Alimer::RHI
 
     enum RESOURCE_MISC_FLAG
     {
-        RESOURCE_MISC_SHARED = 1 << 0,
-        RESOURCE_MISC_TEXTURECUBE = 1 << 1,
-        RESOURCE_MISC_INDIRECT_ARGS = 1 << 2,
-        RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS = 1 << 3,
-        RESOURCE_MISC_BUFFER_STRUCTURED = 1 << 4,
-        RESOURCE_MISC_TILED = 1 << 5,
-        RESOURCE_MISC_RAY_TRACING = 1 << 6,
+        RESOURCE_MISC_TEXTURECUBE = 1 << 0
     };
+
     enum GRAPHICSDEVICE_CAPABILITY
     {
         GRAPHICSDEVICE_CAPABILITY_TESSELLATION = 1 << 0,
@@ -542,11 +538,11 @@ namespace Alimer::RHI
 
     struct BufferDescriptor
     {
-        uint32_t ByteWidth = 0;
+        const char* label = nullptr;
+        uint64_t size = 0;
         BufferUsage usage = BufferUsage::None;
         ResourceUsage resourceUsage = ResourceUsage::Default;
-        uint32_t MiscFlags = 0;
-        uint32_t StructureByteStride = 0; // needed for typed and structured buffer types!
+        uint32_t StructureByteStride = 0; // needed for untyped structured buffer types!
         FORMAT Format = FORMAT_UNKNOWN; // only needed for typed buffer!
     };
 
@@ -829,6 +825,7 @@ namespace Alimer::RHI
 
     struct GPUResource : public GraphicsDeviceChild
     {
+        uint64_t allocatedSize = 0;
         RHIResourceType type = RHIResourceType::Unknown;
 
         inline bool IsBuffer() const { return type == RHIResourceType::Buffer; }
@@ -838,7 +835,6 @@ namespace Alimer::RHI
 
     struct GPUBuffer : public GPUResource
     {
-        uint64_t allocatedSize = 0;
         BufferDescriptor desc;
 
         const BufferDescriptor& GetDesc() const { return desc; }
@@ -1274,69 +1270,6 @@ namespace Alimer::RHI
         float lodMaxClamp = FLT_MAX;
     };
 
-    class ALIMER_API RHIObject
-    {
-    public:
-        virtual ~RHIObject() = default;
-
-        /// Unconditionally destroy the GPU resource.
-        virtual void Destroy() = 0;
-
-        const String& GetName() const { return name; }
-
-        void SetName(const String& newName);
-        void SetName(const StringView& newName);
-
-    protected:
-        RHIObject() = default;
-
-    private:
-        ALIMER_DISABLE_COPY_MOVE(RHIObject);
-
-        virtual void ApiSetName(const StringView& name) = 0;
-
-        String name;
-    };
-
-    class ALIMER_API RHIResource : public RHIObject
-    {
-    public:
-
-    protected:
-        uint64_t allocatedSize = 0;
-
-        //mutable std::unordered_map<size_t, std::unique_ptr<RHIResourceView>> resourceViewCache;
-        //mutable std::mutex resourceViewCacheMutex;
-    };
-
-    class ALIMER_API RHIResourceView
-    {
-    public:
-        virtual ~RHIResourceView() = default;
-
-        const RHIResource* GetResource() const;
-
-    protected:
-        RHIResourceView(const RHIResource* resource);
-
-    private:
-        ALIMER_DISABLE_COPY_MOVE(RHIResourceView);
-
-        const RHIResource* resource;
-    };
-
-    class ALIMER_API RHITextureView : public RHIResourceView
-    {
-    protected:
-        RHITextureView(const RHITexture* resource, const RHITextureViewDescription& description);
-
-        PixelFormat format;
-        uint32_t baseMipLevel;
-        uint32_t mipLevels;
-        uint32_t baseArrayLayer;
-        uint32_t arrayLayers;
-    };
-
     class ALIMER_API RHICommandBuffer
     {
     public:
@@ -1434,7 +1367,7 @@ namespace Alimer::RHI
 
         virtual void SetCommonSampler(const StaticSampler* sam) = 0;
 
-        virtual void SetName(GPUResource* pResource, const StringView& name) = 0;
+        virtual void SetName(const GPUResource* pResource, const StringView& name) const = 0;
 
         // Begin a new command list for GPU command recording.
         //	This will be valid until SubmitCommandLists() is called.
@@ -1492,7 +1425,7 @@ namespace Alimer::RHI
         virtual void DispatchMesh(uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ, CommandList cmd) {}
         virtual void DispatchMeshIndirect(const GPUBuffer* args, uint32_t args_offset, CommandList cmd) {}
         virtual void CopyResource(const GPUResource* pDst, const GPUResource* pSrc, CommandList cmd) = 0;
-        virtual void UpdateBuffer(const GPUBuffer* buffer, const void* data, CommandList cmd, int dataSize = -1) = 0;
+        virtual void UpdateBuffer(CommandList commandList, const GPUBuffer* buffer, const void* data, uint64_t size = 0) = 0;
         virtual void QueryBegin(const GPUQueryHeap* heap, uint32_t index, CommandList cmd) = 0;
         virtual void QueryEnd(const GPUQueryHeap* heap, uint32_t index, CommandList cmd) = 0;
         virtual void QueryResolve(const GPUQueryHeap* heap, uint32_t index, uint32_t count, CommandList cmd) {}

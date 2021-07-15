@@ -95,12 +95,12 @@ namespace Alimer::RHI
                 void* data = nullptr;
                 ID3D12Resource* upload_resource = nullptr;
             };
-            std::vector<CopyCMD> freelist;
+            std::vector<CopyCMD> freeList;
 
-            void init(RHIDeviceD3D12* device);
-            void destroy();
-            CopyCMD allocate(uint32_t staging_size);
-            void submit(CopyCMD cmd);
+            void Initialize(RHIDeviceD3D12* device);
+            void Shutdown();
+            CopyCMD Allocate(uint64_t size);
+            void Submit(CopyCMD cmd);
         };
         mutable CopyAllocator copyAllocator;
 
@@ -250,7 +250,7 @@ namespace Alimer::RHI
 
         void SetCommonSampler(const StaticSampler* sam) override;
 
-        void SetName(GPUResource* pResource, const StringView& name) override;
+        void SetName(const GPUResource* pResource, const StringView& name) const override;
 
         CommandList BeginCommandList(RHIQueueType queueType = RHIQueueType::Graphics) override;
         void SubmitCommandLists() override;
@@ -295,7 +295,7 @@ namespace Alimer::RHI
         void DispatchMesh(uint32_t threadGroupCountX, uint32_t threadGroupCountY, uint32_t threadGroupCountZ, CommandList cmd) override;
         void DispatchMeshIndirect(const GPUBuffer* args, uint32_t args_offset, CommandList cmd) override;
         void CopyResource(const GPUResource* pDst, const GPUResource* pSrc, CommandList cmd) override;
-        void UpdateBuffer(const GPUBuffer* buffer, const void* data, CommandList cmd, int dataSize = -1) override;
+        void UpdateBuffer(CommandList commandList, const GPUBuffer* buffer, const void* data, uint64_t size) override;
         void QueryBegin(const GPUQueryHeap* heap, uint32_t index, CommandList cmd) override;
         void QueryEnd(const GPUQueryHeap* heap, uint32_t index, CommandList cmd) override;
         void QueryResolve(const GPUQueryHeap* heap, uint32_t index, uint32_t count, CommandList cmd) override;

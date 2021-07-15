@@ -1193,9 +1193,9 @@ namespace Alimer::RHI
         createInfo.pNext = &timelineCreateInfo;
         createInfo.flags = 0;
 
-        VkResult res = vkCreateSemaphore(device->device, &createInfo, nullptr, &semaphore);
-        assert(res == VK_SUCCESS);
+        VK_CHECK(vkCreateSemaphore(device->device, &createInfo, nullptr, &semaphore));
     }
+
     void RHIDeviceVulkan::CopyAllocator::destroy()
     {
         vkQueueWaitIdle(device->copyQueue);
@@ -1205,7 +1205,8 @@ namespace Alimer::RHI
         }
         vkDestroySemaphore(device->device, semaphore, nullptr);
     }
-    RHIDeviceVulkan::CopyAllocator::CopyCMD RHIDeviceVulkan::CopyAllocator::allocate(uint32_t staging_size)
+
+    RHIDeviceVulkan::CopyAllocator::CopyCMD RHIDeviceVulkan::CopyAllocator::allocate(uint64_t size)
     {
         locker.lock();
 
@@ -1235,12 +1236,12 @@ namespace Alimer::RHI
         }
 
         CopyCMD cmd = freelist.back();
-        if (cmd.uploadbuffer.desc.ByteWidth < staging_size)
+        if (cmd.uploadbuffer.desc.size < size)
         {
             // Try to search for a staging buffer that can fit the request:
             for (size_t i = 0; i < freelist.size(); ++i)
             {
-                if (freelist[i].uploadbuffer.desc.ByteWidth >= staging_size)
+                if (freelist[i].uploadbuffer.desc.size >= size)
                 {
                     cmd = freelist[i];
                     std::swap(freelist[i], freelist.back());
@@ -1252,10 +1253,10 @@ namespace Alimer::RHI
         locker.unlock();
 
         // If no buffer was found that fits the data, create one:
-        if (cmd.uploadbuffer.desc.ByteWidth < staging_size)
+        if (cmd.uploadbuffer.desc.size < size)
         {
             BufferDescriptor uploadBufferDesc;
-            uploadBufferDesc.ByteWidth = NextPowerOfTwo(staging_size);
+            uploadBufferDesc.size = NextPowerOfTwo((uint32_t)size);
             uploadBufferDesc.resourceUsage = ResourceUsage::StagingUpload;
             bool upload_success = device->CreateBuffer(&uploadBufferDesc, nullptr, &cmd.uploadbuffer);
             assert(upload_success);
@@ -1391,10 +1392,9 @@ namespace Alimer::RHI
 
         // Because the "buffer" is created by hand in this, fill the desc to indicate how it can be used:
         this->buffer.type = RHIResourceType::Buffer;
-        this->buffer.desc.ByteWidth = (uint32_t)((size_t)dataEnd - (size_t)dataBegin);
+        this->buffer.desc.size = (uint64_t)((size_t)dataEnd - (size_t)dataBegin);
         this->buffer.desc.resourceUsage = ResourceUsage::Dynamic;
         this->buffer.desc.usage = BufferUsage::Vertex | BufferUsage::Index | BufferUsage::ShaderRead;
-        this->buffer.desc.MiscFlags = RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
 
         int index = device->allocationhandler->bindlessStorageBuffers.allocate();
         if (index >= 0)
@@ -1769,13 +1769,13 @@ namespace Alimer::RHI
                                 const GPUAllocation& allocation = internal_state->dynamic[cmd];
                                 bufferInfos.back().buffer = to_internal(allocation.buffer)->resource;
                                 bufferInfos.back().offset = allocation.offset;
-                                bufferInfos.back().range = buffer->desc.ByteWidth;
+                                bufferInfos.back().range = buffer->desc.size;
                             }
                             else
                             {
                                 bufferInfos.back().buffer = internal_state->resource;
                                 bufferInfos.back().offset = 0;
-                                bufferInfos.back().range = buffer->desc.ByteWidth;
+                                bufferInfos.back().range = buffer->desc.size;
                             }
                         }
                     }
@@ -1858,7 +1858,7 @@ namespace Alimer::RHI
                                 int subresource = SRV_index[original_binding];
                                 const GPUBuffer* buffer = (const GPUBuffer*)resource;
                                 bufferInfos.back().buffer = to_internal(buffer)->resource;
-                                bufferInfos.back().range = buffer->desc.ByteWidth;
+                                bufferInfos.back().range = buffer->desc.size;
                             }
                         }
                         else
@@ -1876,7 +1876,7 @@ namespace Alimer::RHI
                                 int subresource = UAV_index[original_binding];
                                 const GPUBuffer* buffer = (const GPUBuffer*)resource;
                                 bufferInfos.back().buffer = to_internal(buffer)->resource;
-                                bufferInfos.back().range = buffer->desc.ByteWidth;
+                                bufferInfos.back().range = buffer->desc.size;
                             }
                         }
                     }
@@ -3219,7 +3219,7 @@ namespace Alimer::RHI
             subpass.colorAttachmentCount = 1;
             subpass.pColorAttachments = &colorAttachmentRef;
 
-            
+
 
             VkSubpassDependency dependency = {};
             dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -3313,26 +3313,27 @@ namespace Alimer::RHI
         }
 
         return true;
-        }
+    }
 
-    bool RHIDeviceVulkan::CreateBuffer(const BufferDescriptor* pDesc, const void* initialData, GPUBuffer* pBuffer) const
+    bool RHIDeviceVulkan::CreateBuffer(const BufferDescriptor* descriptor, const void* initialData, GPUBuffer* pBuffer) const
     {
+        ALIMER_ASSERT(descriptor);
+
         auto internal_state = std::make_shared<Buffer_Vulkan>();
         internal_state->allocationhandler = allocationhandler;
         pBuffer->internal_state = internal_state;
         pBuffer->type = RHIResourceType::Buffer;
+        pBuffer->desc = *descriptor;
 
-        pBuffer->desc = *pDesc;
-
-        if (pDesc->resourceUsage == ResourceUsage::Dynamic
-            && Any(pDesc->usage, BufferUsage::Uniform))
+        if (descriptor->resourceUsage == ResourceUsage::Dynamic
+            && Any(descriptor->usage, BufferUsage::Uniform))
         {
             // this special case will use frame allocator
             return true;
         }
 
         VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-        bufferInfo.size = pBuffer->desc.ByteWidth;
+        bufferInfo.size = pBuffer->desc.size;
         bufferInfo.usage = 0;
         if (Any(pBuffer->desc.usage, BufferUsage::Vertex))
         {
@@ -3344,6 +3345,7 @@ namespace Alimer::RHI
         }
         if (Any(pBuffer->desc.usage, BufferUsage::Uniform))
         {
+            bufferInfo.size = AlignTo(bufferInfo.size, properties2.properties.limits.minUniformBufferOffsetAlignment);
             bufferInfo.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
         }
         if (Any(pBuffer->desc.usage, BufferUsage::ShaderRead))
@@ -3368,12 +3370,13 @@ namespace Alimer::RHI
                 bufferInfo.usage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
             }
         }
-        if (pBuffer->desc.MiscFlags & RESOURCE_MISC_INDIRECT_ARGS)
+        if (Any(pBuffer->desc.usage, BufferUsage::Indirect))
         {
             bufferInfo.usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
         }
-        if (pBuffer->desc.MiscFlags & RESOURCE_MISC_RAY_TRACING)
+        if (Any(pBuffer->desc.usage, BufferUsage::RayTracingAccelerationStructure))
         {
+            bufferInfo.usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
             bufferInfo.usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
         }
         if (features_1_2.bufferDeviceAddress == VK_TRUE)
@@ -3398,7 +3401,7 @@ namespace Alimer::RHI
 
         VmaAllocationCreateInfo allocInfo = {};
         allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-        switch (pDesc->resourceUsage)
+        switch (descriptor->resourceUsage)
         {
             case ResourceUsage::Dynamic:
                 bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -3439,6 +3442,11 @@ namespace Alimer::RHI
             return false;
         }
 
+        if (descriptor->label != nullptr)
+        {
+            SetName(pBuffer, descriptor->label);
+        }
+
         pBuffer->allocatedSize = allocationInfo.size;
 
         if (bufferInfo.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
@@ -3452,9 +3460,8 @@ namespace Alimer::RHI
         // Issue data copy on request:
         if (initialData != nullptr)
         {
-            auto cmd = copyAllocator.allocate(pDesc->ByteWidth);
-
-            memcpy(cmd.data, initialData, pBuffer->desc.ByteWidth);
+            auto cmd = copyAllocator.allocate(descriptor->size);
+            memcpy(cmd.data, initialData, pBuffer->desc.size);
 
             {
                 auto& frame = GetFrameResources();
@@ -3480,7 +3487,7 @@ namespace Alimer::RHI
                 );
 
                 VkBufferCopy copyRegion = {};
-                copyRegion.size = pBuffer->desc.ByteWidth;
+                copyRegion.size = pBuffer->desc.size;
                 copyRegion.srcOffset = 0;
                 copyRegion.dstOffset = 0;
 
@@ -3516,6 +3523,11 @@ namespace Alimer::RHI
                 {
                     barrier.dstAccessMask |= VK_ACCESS_SHADER_WRITE_BIT;
                 }
+                if (Any(pBuffer->desc.usage, BufferUsage::ShaderWrite))
+                {
+                    barrier.dstAccessMask |= VK_ACCESS_SHADER_READ_BIT;
+                    barrier.dstAccessMask |= VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+                }
 
                 vkCmdPipelineBarrier(
                     cmd.commandBuffer,
@@ -3531,7 +3543,7 @@ namespace Alimer::RHI
             }
         }
 
-        if (pDesc->Format == FORMAT_UNKNOWN)
+        if (descriptor->Format == FORMAT_UNKNOWN)
         {
             internal_state->is_typedbuffer = false;
         }
@@ -3541,15 +3553,15 @@ namespace Alimer::RHI
         }
 
         // Create resource views if needed
-        if (Any(pDesc->usage, BufferUsage::Uniform))
+        if (Any(descriptor->usage, BufferUsage::Uniform))
         {
             CreateSubresource(pBuffer, CBV, 0);
         }
-        if (Any(pDesc->usage, BufferUsage::ShaderRead))
+        if (Any(descriptor->usage, BufferUsage::ShaderRead))
         {
             CreateSubresource(pBuffer, SRV, 0);
         }
-        if (Any(pDesc->usage, BufferUsage::ShaderWrite))
+        if (Any(descriptor->usage, BufferUsage::ShaderWrite))
         {
             CreateSubresource(pBuffer, UAV, 0);
         }
@@ -5286,8 +5298,8 @@ namespace Alimer::RHI
                 write.dstSet = allocationhandler->bindlessAccelerationStructures.descriptorSet;
                 write.pNext = &acc;
                 vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+            }
         }
-    }
 
 #if 0
         buildAccelerationStructuresKHR(
@@ -5682,8 +5694,8 @@ namespace Alimer::RHI
                         bufferInfo.buffer = internal_state->resource;
                         bufferInfo.offset = offset;
                         bufferInfo.range = size;
-                        VkWriteDescriptorSet write = {};
-                        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+
+                        VkWriteDescriptorSet write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
                         write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
                         write.dstBinding = 0;
                         write.dstArrayElement = index;
@@ -5717,14 +5729,12 @@ namespace Alimer::RHI
                 else
                 {
                     // Typed buffer
-
-                    VkBufferViewCreateInfo srv_desc = {};
-                    srv_desc.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+                    VkBufferViewCreateInfo srv_desc = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO };
                     srv_desc.buffer = internal_state->resource;
                     srv_desc.flags = 0;
                     srv_desc.format = _ConvertFormat(desc.Format);
                     srv_desc.offset = AlignTo(offset, properties2.properties.limits.minTexelBufferOffsetAlignment); // damn, if this needs alignment, that could break a lot of things! (index buffer, index offset?)
-                    srv_desc.range = std::min(size, (uint64_t)desc.ByteWidth - srv_desc.offset);
+                    srv_desc.range = Min(size, desc.size - srv_desc.offset);
 
                     VkBufferView view;
                     res = vkCreateBufferView(device, &srv_desc, nullptr, &view);
@@ -5786,13 +5796,13 @@ namespace Alimer::RHI
                     }
                     else
                     {
-                        assert(0);
+                        ALIMER_UNREACHABLE();
                     }
                 }
             }
             break;
             default:
-                assert(0);
+                ALIMER_UNREACHABLE();
                 break;
         }
         return -1;
@@ -5943,7 +5953,7 @@ namespace Alimer::RHI
             const GPUBuffer* buffer = (const GPUBuffer*)resource;
             auto internal_state = to_internal(buffer);
             memory = internal_state->allocation->GetMemory();
-            mapping->rowpitch = (uint32_t)buffer->desc.ByteWidth;
+            mapping->rowpitch = (uint32_t)buffer->desc.size;
         }
         else if (resource->type == RHIResourceType::Texture)
         {
@@ -6017,37 +6027,35 @@ namespace Alimer::RHI
         common_samplers.push_back(*sam);
     }
 
-    void RHIDeviceVulkan::SetName(GPUResource* pResource, const StringView& name)
+    void RHIDeviceVulkan::SetName(const GPUResource* pResource, const StringView& name) const
     {
-        if (vkSetDebugUtilsObjectNameEXT != nullptr)
+        if (!debugUtils)
+            return;
+
+        VkDebugUtilsObjectNameInfoEXT info = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT };
+        info.pObjectName = name.data();
+        if (pResource->IsTexture())
         {
-            VkDebugUtilsObjectNameInfoEXT info = {};
-            info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-            info.pObjectName = name.data();
-            if (pResource->IsTexture())
-            {
-                info.objectType = VK_OBJECT_TYPE_IMAGE;
-                info.objectHandle = (uint64_t)to_internal((const RHITexture*)pResource)->resource;
-            }
-            else if (pResource->IsBuffer())
-            {
-                info.objectType = VK_OBJECT_TYPE_BUFFER;
-                info.objectHandle = (uint64_t)to_internal((const GPUBuffer*)pResource)->resource;
-            }
-            else if (pResource->IsAccelerationStructure())
-            {
-                info.objectType = VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR;
-                info.objectHandle = (uint64_t)to_internal((const RaytracingAccelerationStructure*)pResource)->resource;
-            }
-
-            if (info.objectHandle == (uint64_t)VK_NULL_HANDLE)
-            {
-                return;
-            }
-
-            VkResult res = vkSetDebugUtilsObjectNameEXT(device, &info);
-            assert(res == VK_SUCCESS);
+            info.objectType = VK_OBJECT_TYPE_IMAGE;
+            info.objectHandle = (uint64_t)to_internal((const RHITexture*)pResource)->resource;
         }
+        else if (pResource->IsBuffer())
+        {
+            info.objectType = VK_OBJECT_TYPE_BUFFER;
+            info.objectHandle = (uint64_t)to_internal((const GPUBuffer*)pResource)->resource;
+        }
+        else if (pResource->IsAccelerationStructure())
+        {
+            info.objectType = VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR;
+            info.objectHandle = (uint64_t)to_internal((const RaytracingAccelerationStructure*)pResource)->resource;
+        }
+
+        if (info.objectHandle == (uint64_t)VK_NULL_HANDLE)
+        {
+            return;
+        }
+
+        VK_CHECK(vkSetDebugUtilsObjectNameEXT(device, &info));
     }
 
     CommandList RHIDeviceVulkan::BeginCommandList(RHIQueueType queue)
@@ -6550,11 +6558,12 @@ namespace Alimer::RHI
 
     void RHIDeviceVulkan::BindVertexBuffers(const GPUBuffer* const* vertexBuffers, uint32_t slot, uint32_t count, const uint32_t* strides, const uint32_t* offsets, CommandList cmd)
     {
+        ALIMER_ASSERT(count <= kMaxVertexBufferBindings);
+
         size_t hash = 0;
 
         VkDeviceSize voffsets[8] = {};
         VkBuffer vbuffers[8] = {};
-        assert(count <= 8);
         for (uint32_t i = 0; i < count; ++i)
         {
             HashCombine(hash, strides[i]);
@@ -6793,32 +6802,38 @@ namespace Alimer::RHI
             }
         }
     }
+
     void RHIDeviceVulkan::Draw(uint32_t vertexCount, uint32_t startVertexLocation, CommandList cmd)
     {
         predraw(cmd);
-        vkCmdDraw(GetCommandList(cmd), static_cast<uint32_t>(vertexCount), 1, startVertexLocation, 0);
+        vkCmdDraw(GetCommandList(cmd), vertexCount, 1, startVertexLocation, 0);
     }
+
     void RHIDeviceVulkan::DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, CommandList cmd)
     {
         predraw(cmd);
-        vkCmdDrawIndexed(GetCommandList(cmd), static_cast<uint32_t>(indexCount), 1, startIndexLocation, baseVertexLocation, 0);
+        vkCmdDrawIndexed(GetCommandList(cmd), indexCount, 1, startIndexLocation, baseVertexLocation, 0);
     }
+
     void RHIDeviceVulkan::DrawInstanced(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation, CommandList cmd)
     {
         predraw(cmd);
-        vkCmdDraw(GetCommandList(cmd), static_cast<uint32_t>(vertexCount), static_cast<uint32_t>(instanceCount), startVertexLocation, startInstanceLocation);
+        vkCmdDraw(GetCommandList(cmd), vertexCount, instanceCount, startVertexLocation, startInstanceLocation);
     }
+
     void RHIDeviceVulkan::DrawIndexedInstanced(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, uint32_t startInstanceLocation, CommandList cmd)
     {
         predraw(cmd);
-        vkCmdDrawIndexed(GetCommandList(cmd), static_cast<uint32_t>(indexCount), static_cast<uint32_t>(instanceCount), startIndexLocation, baseVertexLocation, startInstanceLocation);
+        vkCmdDrawIndexed(GetCommandList(cmd), indexCount, instanceCount, startIndexLocation, baseVertexLocation, startInstanceLocation);
     }
+
     void RHIDeviceVulkan::DrawInstancedIndirect(const GPUBuffer* args, uint32_t args_offset, CommandList cmd)
     {
         predraw(cmd);
         auto internal_state = to_internal(args);
         vkCmdDrawIndirect(GetCommandList(cmd), internal_state->resource, (VkDeviceSize)args_offset, 1, (uint32_t)sizeof(IndirectDrawArgsInstanced));
     }
+
     void RHIDeviceVulkan::DrawIndexedInstancedIndirect(const GPUBuffer* args, uint32_t args_offset, CommandList cmd)
     {
         predraw(cmd);
@@ -6964,7 +6979,7 @@ namespace Alimer::RHI
             VkBufferCopy copy = {};
             copy.srcOffset = 0;
             copy.dstOffset = 0;
-            copy.size = (VkDeviceSize)Min(src_desc.ByteWidth, dst_desc.ByteWidth);
+            copy.size = (VkDeviceSize)Min(src_desc.size, dst_desc.size);
 
             vkCmdCopyBuffer(GetCommandList(cmd),
                 internal_state_src->resource,
@@ -6973,36 +6988,34 @@ namespace Alimer::RHI
             );
         }
     }
-    void RHIDeviceVulkan::UpdateBuffer(const GPUBuffer* buffer, const void* data, CommandList cmd, int dataSize)
+    void RHIDeviceVulkan::UpdateBuffer(CommandList commandList, const GPUBuffer* buffer, const void* data, uint64_t size)
     {
-        ALIMER_ASSERT((int)buffer->desc.ByteWidth >= dataSize || dataSize < 0 && "Data size is too big!");
-
-        if (dataSize == 0)
+        const uint64_t offset = 0;
+        if (size == 0)
         {
-            return;
+            size = buffer->desc.size - offset;
         }
 
-        dataSize = Min((int)buffer->desc.ByteWidth, dataSize);
-        dataSize = (dataSize >= 0 ? dataSize : buffer->desc.ByteWidth);
+        ALIMER_ASSERT_MSG(buffer->desc.size >= size, "Data size is too big!");
 
         auto internal_state_dst = to_internal(buffer);
 
-        GPUAllocation allocation = AllocateGPU(dataSize, cmd);
-        memcpy(allocation.data, data, dataSize);
+        GPUAllocation allocation = AllocateGPU(size, commandList);
+        memcpy(allocation.data, data, size);
 
         if (buffer->desc.resourceUsage == ResourceUsage::Dynamic
             && Any(buffer->desc.usage, BufferUsage::Uniform))
         {
             // Dynamic buffer will be used from host memory directly:
-            internal_state_dst->dynamic[cmd] = allocation;
-            GetFrameResources().descriptors[cmd].dirty = true;
+            internal_state_dst->dynamic[commandList] = allocation;
+            GetFrameResources().descriptors[commandList].dirty = true;
         }
         else
         {
             // Contents will be transferred to device memory:
-            assert(active_renderpass[cmd] == nullptr); // must not be inside render pass
+            assert(active_renderpass[commandList] == nullptr); // must not be inside render pass
 
-            auto internal_state_src = to_internal(&GetFrameResources().resourceBuffer[cmd].buffer);
+            auto internal_state_src = to_internal(&GetFrameResources().resourceBuffer[commandList].buffer);
 
             VkBufferMemoryBarrier barrier = {};
             barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -7028,8 +7041,9 @@ namespace Alimer::RHI
             {
                 barrier.srcAccessMask |= VK_ACCESS_SHADER_WRITE_BIT;
             }
-            if (buffer->desc.MiscFlags & RESOURCE_MISC_RAY_TRACING)
+            if (Any(buffer->desc.usage, BufferUsage::RayTracingAccelerationStructure))
             {
+                barrier.srcAccessMask |= VK_ACCESS_SHADER_READ_BIT;
                 barrier.srcAccessMask |= VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
             }
             barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -7037,16 +7051,16 @@ namespace Alimer::RHI
             barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             barrier.size = VK_WHOLE_SIZE;
 
-            frame_bufferBarriers[cmd].push_back(barrier);
-            barrier_flush(cmd);
+            frame_bufferBarriers[commandList].push_back(barrier);
+            barrier_flush(commandList);
 
             VkBufferCopy copyRegion = {};
-            copyRegion.size = dataSize;
+            copyRegion.size = commandList;
             copyRegion.srcOffset = (VkDeviceSize)allocation.offset;
             copyRegion.dstOffset = 0;
 
             vkCmdCopyBuffer(
-                GetCommandList(cmd),
+                GetCommandList(commandList),
                 internal_state_src->resource,
                 internal_state_dst->resource,
                 1,
@@ -7055,11 +7069,10 @@ namespace Alimer::RHI
 
             // reverse barrier:
             std::swap(barrier.srcAccessMask, barrier.dstAccessMask);
-            frame_bufferBarriers[cmd].push_back(barrier);
-
+            frame_bufferBarriers[commandList].push_back(barrier);
         }
-
     }
+
     void RHIDeviceVulkan::QueryBegin(const GPUQueryHeap* heap, uint32_t index, CommandList cmd)
     {
         auto internal_state = to_internal(heap);
@@ -7192,7 +7205,7 @@ namespace Alimer::RHI
                     barrierdesc.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
                     barrierdesc.pNext = nullptr;
                     barrierdesc.buffer = internal_state->resource;
-                    barrierdesc.size = barrier.buffer.buffer->GetDesc().ByteWidth;
+                    barrierdesc.size = barrier.buffer.buffer->GetDesc().size;
                     barrierdesc.offset = 0;
                     barrierdesc.srcAccessMask = _ParseBufferState(barrier.buffer.state_before);
                     barrierdesc.dstAccessMask = _ParseBufferState(barrier.buffer.state_after);
@@ -7223,6 +7236,7 @@ namespace Alimer::RHI
             }
         }
     }
+
     void RHIDeviceVulkan::BuildRaytracingAccelerationStructure(const RaytracingAccelerationStructure* dst, CommandList cmd, const RaytracingAccelerationStructure* src)
     {
         barrier_flush(cmd);
@@ -7390,7 +7404,7 @@ namespace Alimer::RHI
         }
 
         FrameResources::ResourceFrameAllocator& allocator = GetFrameResources().resourceBuffer[cmd];
-        uint8_t* dest = allocator.allocate(dataSize, 256);
+        uint8_t* dest = allocator.allocate(dataSize, properties2.properties.limits.minUniformBufferOffsetAlignment);
         assert(dest != nullptr);
 
         result.buffer = &allocator.buffer;
