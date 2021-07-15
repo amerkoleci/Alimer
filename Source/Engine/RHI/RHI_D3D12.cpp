@@ -63,27 +63,13 @@ namespace Alimer::RHI
 
         // Engine -> Native converters
 
-        inline uint32_t _ParseColorWriteMask(uint32_t value)
+        [[nodiscard]] constexpr uint8_t D3D12RenderTargetWriteMask(ColorWriteMask mask)
         {
-            uint32_t _flag = 0;
-
-            if (value == D3D12_COLOR_WRITE_ENABLE_ALL)
-            {
-                return D3D12_COLOR_WRITE_ENABLE_ALL;
-            }
-            else
-            {
-                if (value & COLOR_WRITE_ENABLE_RED)
-                    _flag |= D3D12_COLOR_WRITE_ENABLE_RED;
-                if (value & COLOR_WRITE_ENABLE_GREEN)
-                    _flag |= D3D12_COLOR_WRITE_ENABLE_GREEN;
-                if (value & COLOR_WRITE_ENABLE_BLUE)
-                    _flag |= D3D12_COLOR_WRITE_ENABLE_BLUE;
-                if (value & COLOR_WRITE_ENABLE_ALPHA)
-                    _flag |= D3D12_COLOR_WRITE_ENABLE_ALPHA;
-            }
-
-            return _flag;
+            static_assert(static_cast<D3D12_COLOR_WRITE_ENABLE>(ColorWriteMask::Red) == D3D12_COLOR_WRITE_ENABLE_RED, "ColorWriteMask mismatch");
+            static_assert(static_cast<D3D12_COLOR_WRITE_ENABLE>(ColorWriteMask::Green) == D3D12_COLOR_WRITE_ENABLE_GREEN, "ColorWriteMask mismatch");
+            static_assert(static_cast<D3D12_COLOR_WRITE_ENABLE>(ColorWriteMask::Blue) == D3D12_COLOR_WRITE_ENABLE_BLUE, "ColorWriteMask mismatch");
+            static_assert(static_cast<D3D12_COLOR_WRITE_ENABLE>(ColorWriteMask::Alpha) == D3D12_COLOR_WRITE_ENABLE_ALPHA, "ColorWriteMask mismatch");
+            return static_cast<uint8_t>(mask);
         }
 
         constexpr D3D12_FILTER _ConvertFilter(FILTER value)
@@ -338,90 +324,89 @@ namespace Alimer::RHI
             }
             return D3D12_STENCIL_OP_KEEP;
         }
-        constexpr D3D12_BLEND _ConvertBlend(BLEND value)
+
+        [[nodiscard]] constexpr D3D12_BLEND D3D12Blend(BlendFactor factor)
         {
-            switch (value)
-            {
-                case BLEND_ZERO:
+            switch (factor) {
+                case BlendFactor::Zero:
                     return D3D12_BLEND_ZERO;
-                    break;
-                case BLEND_ONE:
+                case BlendFactor::One:
                     return D3D12_BLEND_ONE;
-                    break;
-                case BLEND_SRC_COLOR:
+                case BlendFactor::SourceColor:
                     return D3D12_BLEND_SRC_COLOR;
-                    break;
-                case BLEND_INV_SRC_COLOR:
+                case BlendFactor::OneMinusSourceColor:
                     return D3D12_BLEND_INV_SRC_COLOR;
-                    break;
-                case BLEND_SRC_ALPHA:
+                case BlendFactor::SourceAlpha:
                     return D3D12_BLEND_SRC_ALPHA;
-                    break;
-                case BLEND_INV_SRC_ALPHA:
+                case BlendFactor::OneMinusSourceAlpha:
                     return D3D12_BLEND_INV_SRC_ALPHA;
-                    break;
-                case BLEND_DEST_ALPHA:
-                    return D3D12_BLEND_DEST_ALPHA;
-                    break;
-                case BLEND_INV_DEST_ALPHA:
-                    return D3D12_BLEND_INV_DEST_ALPHA;
-                    break;
-                case BLEND_DEST_COLOR:
+                case BlendFactor::DestinationColor:
                     return D3D12_BLEND_DEST_COLOR;
-                    break;
-                case BLEND_INV_DEST_COLOR:
+                case BlendFactor::OneMinusDestinationColor:
                     return D3D12_BLEND_INV_DEST_COLOR;
-                    break;
-                case BLEND_SRC_ALPHA_SAT:
+                case BlendFactor::DestinationAlpha:
+                    return D3D12_BLEND_DEST_ALPHA;
+                case BlendFactor::OneMinusDestinationAlpha:
+                    return D3D12_BLEND_INV_DEST_ALPHA;
+                case BlendFactor::SourceAlphaSaturated:
                     return D3D12_BLEND_SRC_ALPHA_SAT;
-                    break;
-                case BLEND_BLEND_FACTOR:
+                case BlendFactor::BlendColor:
                     return D3D12_BLEND_BLEND_FACTOR;
-                    break;
-                case BLEND_INV_BLEND_FACTOR:
+                case BlendFactor::OneMinusBlendColor:
                     return D3D12_BLEND_INV_BLEND_FACTOR;
-                    break;
-                case BLEND_SRC1_COLOR:
+                case BlendFactor::Source1Color:
                     return D3D12_BLEND_SRC1_COLOR;
-                    break;
-                case BLEND_INV_SRC1_COLOR:
+                case BlendFactor::OneMinusSource1Color:
                     return D3D12_BLEND_INV_SRC1_COLOR;
-                    break;
-                case BLEND_SRC1_ALPHA:
+                case BlendFactor::Source1Alpha:
                     return D3D12_BLEND_SRC1_ALPHA;
-                    break;
-                case BLEND_INV_SRC1_ALPHA:
+                case BlendFactor::OneMinusSource1Alpha:
                     return D3D12_BLEND_INV_SRC1_ALPHA;
-                    break;
                 default:
-                    break;
+                    ALIMER_UNREACHABLE();
             }
-            return D3D12_BLEND_ZERO;
         }
-        constexpr D3D12_BLEND_OP _ConvertBlendOp(BLEND_OP value)
+
+        [[nodiscard]] constexpr D3D12_BLEND D3D12AlphaBlend(BlendFactor factor)
         {
-            switch (value)
-            {
-                case BLEND_OP_ADD:
-                    return D3D12_BLEND_OP_ADD;
-                    break;
-                case BLEND_OP_SUBTRACT:
-                    return D3D12_BLEND_OP_SUBTRACT;
-                    break;
-                case BLEND_OP_REV_SUBTRACT:
-                    return D3D12_BLEND_OP_REV_SUBTRACT;
-                    break;
-                case BLEND_OP_MIN:
-                    return D3D12_BLEND_OP_MIN;
-                    break;
-                case BLEND_OP_MAX:
-                    return D3D12_BLEND_OP_MAX;
-                    break;
+            switch (factor) {
+                case BlendFactor::SourceColor:
+                    return D3D12_BLEND_SRC_ALPHA;
+                case BlendFactor::OneMinusSourceColor:
+                    return D3D12_BLEND_INV_SRC_ALPHA;
+                case BlendFactor::DestinationColor:
+                    return D3D12_BLEND_DEST_ALPHA;
+                case BlendFactor::OneMinusDestinationColor:
+                    return D3D12_BLEND_INV_DEST_ALPHA;
+                case BlendFactor::Source1Color:
+                    return D3D12_BLEND_SRC1_ALPHA;
+                case BlendFactor::OneMinusSource1Color:
+                    return D3D12_BLEND_INV_SRC1_ALPHA;
                 default:
-                    break;
+                    // Other blend factors translate to the same D3D12 enum as the color blend factors.
+                    return D3D12Blend(factor);
             }
-            return D3D12_BLEND_OP_ADD;
         }
+
+        [[nodiscard]] constexpr D3D12_BLEND_OP D3D12BlendOp(BlendOperation operation)
+        {
+            switch (operation)
+            {
+                case BlendOperation::Add:
+                    return D3D12_BLEND_OP_ADD;
+                case BlendOperation::Subtract:
+                    return D3D12_BLEND_OP_SUBTRACT;
+                case BlendOperation::ReverseSubtract:
+                    return D3D12_BLEND_OP_REV_SUBTRACT;
+                case BlendOperation::Min:
+                    return D3D12_BLEND_OP_MIN;
+                case BlendOperation::Max:
+                    return D3D12_BLEND_OP_MAX;
+                default:
+                    ALIMER_UNREACHABLE();
+            }
+        }
+
         constexpr D3D12_INPUT_CLASSIFICATION _ConvertInputClassification(INPUT_CLASSIFICATION value)
         {
             switch (value)
@@ -679,31 +664,31 @@ namespace Alimer::RHI
 
             return D3D12_RESOURCE_STATE_COMMON;
         }
-        constexpr D3D12_RESOURCE_STATES _ConvertBufferState(BUFFER_STATE value)
+        constexpr D3D12_RESOURCE_STATES _ConvertBufferState(BufferState value)
         {
             switch (value)
             {
-                case Alimer::RHI::BUFFER_STATE_UNDEFINED:
+                case BufferState::Undefined:
                     return D3D12_RESOURCE_STATE_COMMON;
-                case Alimer::RHI::BUFFER_STATE_VERTEX_BUFFER:
+                case BufferState::Vertex:
                     return D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-                case Alimer::RHI::BUFFER_STATE_INDEX_BUFFER:
+                case BufferState::Index:
                     return D3D12_RESOURCE_STATE_INDEX_BUFFER;
-                case Alimer::RHI::BUFFER_STATE_CONSTANT_BUFFER:
+                case BufferState::Constant:
                     return D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-                case Alimer::RHI::BUFFER_STATE_INDIRECT_ARGUMENT:
+                case BufferState::IndirectArgument:
                     return D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
-                case Alimer::RHI::BUFFER_STATE_SHADER_RESOURCE:
+                case BufferState::ShaderRead:
                     return D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-                case Alimer::RHI::BUFFER_STATE_SHADER_RESOURCE_COMPUTE:
+                case BufferState::ShaderReadCompute:
                     return D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-                case Alimer::RHI::BUFFER_STATE_UNORDERED_ACCESS:
+                case BufferState::ShaderWrite:
                     return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-                case Alimer::RHI::BUFFER_STATE_COPY_SRC:
+                case BufferState::CopySrc:
                     return D3D12_RESOURCE_STATE_COPY_SOURCE;
-                case Alimer::RHI::BUFFER_STATE_COPY_DST:
+                case BufferState::CopyDst:
                     return D3D12_RESOURCE_STATE_COPY_DEST;
-                case Alimer::RHI::BUFFER_STATE_RAYTRACING_ACCELERATION_STRUCTURE:
+                case BufferState::RayTracingAccelerationStructure:
                     return D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
             }
 
@@ -732,29 +717,31 @@ namespace Alimer::RHI
             }
             return D3D12_SHADER_VISIBILITY_ALL;
         }
-        constexpr D3D12_SHADING_RATE _ConvertShadingRate(SHADING_RATE value)
+
+        [[nodiscard]] constexpr D3D12_SHADING_RATE D3D12ShadingRate(ShadingRate value)
         {
             switch (value)
             {
-                case Alimer::RHI::SHADING_RATE_1X1:
+                case ShadingRate::Rate1x1:
                     return D3D12_SHADING_RATE_1X1;
-                case Alimer::RHI::SHADING_RATE_1X2:
+                case ShadingRate::Rate1x2:
                     return D3D12_SHADING_RATE_1X2;
-                case Alimer::RHI::SHADING_RATE_2X1:
+                case ShadingRate::Rate2x1:
                     return D3D12_SHADING_RATE_2X1;
-                case Alimer::RHI::SHADING_RATE_2X2:
+                case ShadingRate::Rate2x2:
                     return D3D12_SHADING_RATE_2X2;
-                case Alimer::RHI::SHADING_RATE_2X4:
+                case ShadingRate::Rate2x4:
                     return D3D12_SHADING_RATE_2X4;
-                case Alimer::RHI::SHADING_RATE_4X2:
+                case ShadingRate::Rate4x2:
                     return D3D12_SHADING_RATE_4X2;
-                case Alimer::RHI::SHADING_RATE_4X4:
+                case ShadingRate::Rate4x4:
                     return D3D12_SHADING_RATE_4X4;
                 default:
+                    ALIMER_UNREACHABLE();
                     return D3D12_SHADING_RATE_1X1;
             }
-            return D3D12_SHADING_RATE_1X1;
         }
+
         constexpr D3D12_STATIC_SAMPLER_DESC _ConvertStaticSampler(const StaticSampler& x)
         {
             D3D12_STATIC_SAMPLER_DESC desc = {};
@@ -4610,18 +4597,18 @@ namespace Alimer::RHI
 
         BlendState pBlendStateDesc = pso->desc.bs != nullptr ? *pso->desc.bs : BlendState();
         CD3DX12_BLEND_DESC bd = {};
-        bd.AlphaToCoverageEnable = pBlendStateDesc.AlphaToCoverageEnable;
-        bd.IndependentBlendEnable = pBlendStateDesc.IndependentBlendEnable;
-        for (int i = 0; i < 8; ++i)
+        bd.AlphaToCoverageEnable = pBlendStateDesc.alphaToCoverageEnable;
+        bd.IndependentBlendEnable = pBlendStateDesc.independentBlendEnable;
+        for (uint32_t i = 0; i < kMaxSimultaneousRenderTargets; ++i)
         {
-            bd.RenderTarget[i].BlendEnable = pBlendStateDesc.RenderTarget[i].BlendEnable;
-            bd.RenderTarget[i].SrcBlend = _ConvertBlend(pBlendStateDesc.RenderTarget[i].SrcBlend);
-            bd.RenderTarget[i].DestBlend = _ConvertBlend(pBlendStateDesc.RenderTarget[i].DestBlend);
-            bd.RenderTarget[i].BlendOp = _ConvertBlendOp(pBlendStateDesc.RenderTarget[i].BlendOp);
-            bd.RenderTarget[i].SrcBlendAlpha = _ConvertBlend(pBlendStateDesc.RenderTarget[i].SrcBlendAlpha);
-            bd.RenderTarget[i].DestBlendAlpha = _ConvertBlend(pBlendStateDesc.RenderTarget[i].DestBlendAlpha);
-            bd.RenderTarget[i].BlendOpAlpha = _ConvertBlendOp(pBlendStateDesc.RenderTarget[i].BlendOpAlpha);
-            bd.RenderTarget[i].RenderTargetWriteMask = _ParseColorWriteMask(pBlendStateDesc.RenderTarget[i].RenderTargetWriteMask);
+            bd.RenderTarget[i].BlendEnable = pBlendStateDesc.renderTarget[i].blendEnable;
+            bd.RenderTarget[i].SrcBlend = D3D12Blend(pBlendStateDesc.renderTarget[i].srcColorBlendFactor);
+            bd.RenderTarget[i].DestBlend = D3D12Blend(pBlendStateDesc.renderTarget[i].dstColorBlendFactor);
+            bd.RenderTarget[i].BlendOp = D3D12BlendOp(pBlendStateDesc.renderTarget[i].colorBlendOperation);
+            bd.RenderTarget[i].SrcBlendAlpha = D3D12AlphaBlend(pBlendStateDesc.renderTarget[i].srcAlphaBlendFactor);
+            bd.RenderTarget[i].DestBlendAlpha = D3D12AlphaBlend(pBlendStateDesc.renderTarget[i].dstAlphaBlendFactor);
+            bd.RenderTarget[i].BlendOpAlpha = D3D12BlendOp(pBlendStateDesc.renderTarget[i].alphaBlendOperation);
+            bd.RenderTarget[i].RenderTargetWriteMask = D3D12RenderTargetWriteMask(pBlendStateDesc.renderTarget[i].writeMask);
         }
         stream.stream1.BD = bd;
 
@@ -5698,15 +5685,16 @@ namespace Alimer::RHI
         return internal_state->descriptor.index;
     }
 
-    void RHIDeviceD3D12::WriteShadingRateValue(SHADING_RATE rate, void* dest) const
+    void RHIDeviceD3D12::WriteShadingRateValue(ShadingRate rate, void* dest) const
     {
-        D3D12_SHADING_RATE _rate = _ConvertShadingRate(rate);
+        D3D12_SHADING_RATE d3d12Rate = D3D12ShadingRate(rate);
         if (!features_6.AdditionalShadingRatesSupported)
         {
-            _rate = std::min(_rate, D3D12_SHADING_RATE_2X2);
+            d3d12Rate = Min(d3d12Rate, D3D12_SHADING_RATE_2X2);
         }
-        *(uint8_t*)dest = _rate;
+        *(uint8_t*)dest = d3d12Rate;
     }
+
     void RHIDeviceD3D12::WriteTopLevelAccelerationStructureInstance(const RaytracingAccelerationStructureDesc::TopLevel::Instance* instance, void* dest) const
     {
         D3D12_RAYTRACING_INSTANCE_DESC* desc = (D3D12_RAYTRACING_INSTANCE_DESC*)dest;
@@ -5717,6 +5705,7 @@ namespace Alimer::RHI
         desc->InstanceContributionToHitGroupIndex = instance->InstanceContributionToHitGroupIndex;
         desc->Flags = instance->Flags;
     }
+
     void RHIDeviceD3D12::WriteShaderIdentifier(const RaytracingPipelineState* rtpso, uint32_t group_index, void* dest) const
     {
         auto internal_state = to_internal(rtpso);
@@ -5860,7 +5849,7 @@ namespace Alimer::RHI
         active_rootsig_graphics[cmd] = nullptr;
         active_rootsig_compute[cmd] = nullptr;
         active_renderpass[cmd] = nullptr;
-        prev_shadingrate[cmd] = SHADING_RATE_INVALID;
+        prev_shadingrate[cmd] = ShadingRate::Invalid;
         dirty_pso[cmd] = false;
         pushconstants[cmd] = {};
         swapchains[cmd].clear();
@@ -6339,21 +6328,23 @@ namespace Alimer::RHI
         const float blendFactor[4] = { r, g, b, a };
         GetCommandList(cmd)->OMSetBlendFactor(blendFactor);
     }
-    void RHIDeviceD3D12::BindShadingRate(SHADING_RATE rate, CommandList cmd)
-    {
-        if (CheckCapability(GRAPHICSDEVICE_CAPABILITY_VARIABLE_RATE_SHADING) && prev_shadingrate[cmd] != rate)
-        {
-            prev_shadingrate[cmd] = rate;
 
-            D3D12_SHADING_RATE _rate = D3D12_SHADING_RATE_1X1;
-            WriteShadingRateValue(rate, &_rate);
+    void RHIDeviceD3D12::BindShadingRate(CommandList commandList, ShadingRate rate)
+    {
+        if (CheckCapability(GRAPHICSDEVICE_CAPABILITY_VARIABLE_RATE_SHADING)
+            && prev_shadingrate[commandList] != rate)
+        {
+            prev_shadingrate[commandList] = rate;
+
+            D3D12_SHADING_RATE d3d12Rate = D3D12_SHADING_RATE_1X1;
+            WriteShadingRateValue(rate, &d3d12Rate);
 
             D3D12_SHADING_RATE_COMBINER combiners[] =
             {
                 D3D12_SHADING_RATE_COMBINER_MAX,
                 D3D12_SHADING_RATE_COMBINER_MAX,
             };
-            GetCommandList(cmd)->RSSetShadingRate(_rate, combiners);
+            GetCommandList(commandList)->RSSetShadingRate(d3d12Rate, combiners);
         }
     }
     void RHIDeviceD3D12::BindPipelineState(const PipelineState* pso, CommandList cmd)

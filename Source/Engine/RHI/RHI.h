@@ -22,6 +22,7 @@ namespace Alimer::RHI
     /* Constants */
     static constexpr uint32_t kMaxFramesInFlight = 2;
     static constexpr uint32_t kMaxBackBufferCount = 3;
+    static constexpr uint32_t kMaxSimultaneousRenderTargets = 8;
     static constexpr uint32_t kMaxViewportsAndScissors = 8;
     static constexpr uint32_t kMaxVertexBufferBindings = 8;
     static constexpr uint32_t kMaxVertexAttributes = 16;
@@ -104,43 +105,47 @@ namespace Alimer::RHI
         STENCIL_OP_INCR,
         STENCIL_OP_DECR,
     };
-    enum BLEND
+
+    enum class BlendFactor : uint32_t
     {
-        BLEND_ZERO,
-        BLEND_ONE,
-        BLEND_SRC_COLOR,
-        BLEND_INV_SRC_COLOR,
-        BLEND_SRC_ALPHA,
-        BLEND_INV_SRC_ALPHA,
-        BLEND_DEST_ALPHA,
-        BLEND_INV_DEST_ALPHA,
-        BLEND_DEST_COLOR,
-        BLEND_INV_DEST_COLOR,
-        BLEND_SRC_ALPHA_SAT,
-        BLEND_BLEND_FACTOR,
-        BLEND_INV_BLEND_FACTOR,
-        BLEND_SRC1_COLOR,
-        BLEND_INV_SRC1_COLOR,
-        BLEND_SRC1_ALPHA,
-        BLEND_INV_SRC1_ALPHA,
+        Zero,
+        One,
+        SourceColor,
+        OneMinusSourceColor,
+        SourceAlpha,
+        OneMinusSourceAlpha,
+        DestinationColor,
+        OneMinusDestinationColor,
+        DestinationAlpha,
+        OneMinusDestinationAlpha,
+        SourceAlphaSaturated,
+        BlendColor,
+        OneMinusBlendColor,
+        Source1Color,
+        OneMinusSource1Color,
+        Source1Alpha,
+        OneMinusSource1Alpha,
     };
-    enum COLOR_WRITE_ENABLE
+
+    enum class ColorWriteMask : uint32_t
     {
-        COLOR_WRITE_DISABLE = 0,
-        COLOR_WRITE_ENABLE_RED = 1,
-        COLOR_WRITE_ENABLE_GREEN = 2,
-        COLOR_WRITE_ENABLE_BLUE = 4,
-        COLOR_WRITE_ENABLE_ALPHA = 8,
-        COLOR_WRITE_ENABLE_ALL = (((COLOR_WRITE_ENABLE_RED | COLOR_WRITE_ENABLE_GREEN) | COLOR_WRITE_ENABLE_BLUE) | COLOR_WRITE_ENABLE_ALPHA)
+        None = 0,
+        Red = 0x01,
+        Green = 0x02,
+        Blue = 0x04,
+        Alpha = 0x08,
+        All = 0x0F
     };
-    enum BLEND_OP
+
+    enum class BlendOperation : uint32_t
     {
-        BLEND_OP_ADD,
-        BLEND_OP_SUBTRACT,
-        BLEND_OP_REV_SUBTRACT,
-        BLEND_OP_MIN,
-        BLEND_OP_MAX,
+        Add,
+        Subtract,
+        ReverseSubtract,
+        Min,
+        Max
     };
+
     enum FILL_MODE
     {
         FILL_WIREFRAME,
@@ -338,31 +343,32 @@ namespace Alimer::RHI
         IMAGE_LAYOUT_COPY_DST,					// copy to
         IMAGE_LAYOUT_SHADING_RATE_SOURCE,		// shading rate control per tile
     };
-    enum BUFFER_STATE
-    {
-        BUFFER_STATE_UNDEFINED,					// invalid state
-        BUFFER_STATE_VERTEX_BUFFER,				// vertex buffer, read only
-        BUFFER_STATE_INDEX_BUFFER,				// index buffer, read only
-        BUFFER_STATE_CONSTANT_BUFFER,			// constant buffer, read only
-        BUFFER_STATE_INDIRECT_ARGUMENT,			// argument buffer to DrawIndirect() or DispatchIndirect()
-        BUFFER_STATE_SHADER_RESOURCE,			// shader resource, read only
-        BUFFER_STATE_SHADER_RESOURCE_COMPUTE,	// shader resource, read only, non-pixel shader
-        BUFFER_STATE_UNORDERED_ACCESS,			// shader resource, write enabled
-        BUFFER_STATE_COPY_SRC,					// copy from
-        BUFFER_STATE_COPY_DST,					// copy to
-        BUFFER_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
-    };
-    enum SHADING_RATE
-    {
-        SHADING_RATE_1X1,
-        SHADING_RATE_1X2,
-        SHADING_RATE_2X1,
-        SHADING_RATE_2X2,
-        SHADING_RATE_2X4,
-        SHADING_RATE_4X2,
-        SHADING_RATE_4X4,
 
-        SHADING_RATE_INVALID
+    enum class BufferState : uint32_t
+    {
+        Undefined,			// invalid state
+        Vertex,				// vertex buffer, read only
+        Index,				// index buffer, read only
+        Constant,			// constant buffer, read only
+        IndirectArgument,	// argument buffer to DrawIndirect() or DispatchIndirect()
+        ShaderRead,			// shader resource, read only
+        ShaderReadCompute,	// shader resource, read only, non-pixel shader
+        ShaderWrite,		// shader resource, write enabled
+        CopySrc,			// copy from
+        CopyDst,			// copy to
+        RayTracingAccelerationStructure,
+    };
+
+    enum class ShadingRate : uint32_t
+    {
+        Rate1x1,
+        Rate1x2,
+        Rate2x1,
+        Rate2x2,
+        Rate2x4,
+        Rate4x2,
+        Rate4x4,
+        Invalid
     };
 
     // Flags ////////////////////////////////////////////
@@ -517,23 +523,24 @@ namespace Alimer::RHI
         DepthStencilOp FrontFace;
         DepthStencilOp BackFace;
     };
+
+    struct RenderTargetBlendState
+    {
+        bool blendEnable = false;
+        BlendFactor srcColorBlendFactor = BlendFactor::One;
+        BlendFactor dstColorBlendFactor = BlendFactor::Zero;
+        BlendOperation colorBlendOperation = BlendOperation::Add;
+        BlendFactor srcAlphaBlendFactor = BlendFactor::One;
+        BlendFactor dstAlphaBlendFactor = BlendFactor::Zero;
+        BlendOperation alphaBlendOperation{ BlendOperation::Add };
+        ColorWriteMask writeMask = ColorWriteMask::All;
+    };
+
     struct BlendState
     {
-        bool AlphaToCoverageEnable = false;
-        bool IndependentBlendEnable = false;
-
-        struct RenderTargetBlendState
-        {
-            bool BlendEnable = false;
-            BLEND SrcBlend = BLEND_SRC_ALPHA;
-            BLEND DestBlend = BLEND_INV_SRC_ALPHA;
-            BLEND_OP BlendOp = BLEND_OP_ADD;
-            BLEND SrcBlendAlpha = BLEND_ONE;
-            BLEND DestBlendAlpha = BLEND_ONE;
-            BLEND_OP BlendOpAlpha = BLEND_OP_ADD;
-            uint8_t RenderTargetWriteMask = COLOR_WRITE_ENABLE_ALL;
-        };
-        RenderTargetBlendState RenderTarget[8];
+        bool alphaToCoverageEnable = false;
+        bool independentBlendEnable = false;
+        RenderTargetBlendState renderTarget[kMaxSimultaneousRenderTargets];
     };
 
     struct BufferDescriptor
@@ -567,6 +574,7 @@ namespace Alimer::RHI
         PRIMITIVETOPOLOGY		pt = TRIANGLELIST;
         uint32_t				sampleMask = 0xFFFFFFFF;
     };
+
     struct GPUBarrier
     {
         enum TYPE
@@ -591,8 +599,8 @@ namespace Alimer::RHI
         struct Buffer
         {
             const GPUBuffer* buffer;
-            BUFFER_STATE state_before;
-            BUFFER_STATE state_after;
+            BufferState state_before;
+            BufferState state_after;
         };
         union
         {
@@ -620,7 +628,7 @@ namespace Alimer::RHI
             barrier.image.slice = slice;
             return barrier;
         }
-        static GPUBarrier Buffer(const GPUBuffer* buffer, BUFFER_STATE before, BUFFER_STATE after)
+        static GPUBarrier Buffer(const GPUBuffer* buffer, BufferState before, BufferState after)
         {
             GPUBarrier barrier;
             barrier.type = BUFFER_BARRIER;
@@ -1357,7 +1365,7 @@ namespace Alimer::RHI
         virtual int GetDescriptorIndex(const GPUResource* resource, SUBRESOURCE_TYPE type, int subresource = -1) const { return -1; };
         virtual int GetDescriptorIndex(const Sampler* sampler) const { return -1; };
 
-        virtual void WriteShadingRateValue(SHADING_RATE rate, void* dest) const {};
+        virtual void WriteShadingRateValue(ShadingRate rate, void* dest) const = 0;
         virtual void WriteTopLevelAccelerationStructureInstance(const RaytracingAccelerationStructureDesc::TopLevel::Instance* instance, void* dest) const {}
         virtual void WriteShaderIdentifier(const RaytracingPipelineState* rtpso, uint32_t group_index, void* dest) const {}
 
@@ -1411,7 +1419,7 @@ namespace Alimer::RHI
         virtual void BindIndexBuffer(CommandList commandList, const GPUBuffer* indexBuffer, uint64_t offset, IndexType indexType) = 0;
         virtual void BindStencilRef(CommandList commandList, uint32_t value) = 0;
         virtual void BindBlendFactor(float r, float g, float b, float a, CommandList cmd) = 0;
-        virtual void BindShadingRate(SHADING_RATE rate, CommandList cmd) {}
+        virtual void BindShadingRate(CommandList commandList, ShadingRate rate) = 0;
         virtual void BindPipelineState(const PipelineState* pso, CommandList cmd) = 0;
         virtual void BindComputeShader(const Shader* cs, CommandList cmd) = 0;
         virtual void Draw(uint32_t vertexCount, uint32_t startVertexLocation, CommandList cmd) = 0;
@@ -1485,3 +1493,4 @@ namespace std
 
 ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(Alimer::RHI::RHITextureUsage);
 ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(Alimer::RHI::BufferUsage);
+ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(Alimer::RHI::ColorWriteMask);

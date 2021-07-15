@@ -308,7 +308,7 @@ namespace Alimer::RHI
         const Shader* active_cs[COMMANDLIST_COUNT] = {};
         const RaytracingPipelineState* active_rt[COMMANDLIST_COUNT] = {};
         const RenderPass* active_renderpass[COMMANDLIST_COUNT] = {};
-        SHADING_RATE prev_shadingrate[COMMANDLIST_COUNT] = {};
+        ShadingRate prev_shadingrate[COMMANDLIST_COUNT] = {};
         std::vector<const SwapChain*> prev_swapchains[COMMANDLIST_COUNT];
 
         uint32_t vb_strides[COMMANDLIST_COUNT][8] = {};
@@ -357,7 +357,7 @@ namespace Alimer::RHI
         int GetDescriptorIndex(const GPUResource* resource, SUBRESOURCE_TYPE type, int subresource = -1) const override;
         int GetDescriptorIndex(const Sampler* sampler) const override;
 
-        void WriteShadingRateValue(SHADING_RATE rate, void* dest) const override;
+        void WriteShadingRateValue(ShadingRate rate, void* dest) const override;
         void WriteTopLevelAccelerationStructureInstance(const RaytracingAccelerationStructureDesc::TopLevel::Instance* instance, void* dest) const override;
         void WriteShaderIdentifier(const RaytracingPipelineState* rtpso, uint32_t group_index, void* dest) const override;
 
@@ -398,7 +398,7 @@ namespace Alimer::RHI
         void BindIndexBuffer(CommandList commandList, const GPUBuffer* indexBuffer, uint64_t offset, IndexType indexType) override;
         void BindStencilRef(CommandList commandList, uint32_t value) override;
         void BindBlendFactor(float r, float g, float b, float a, CommandList cmd) override;
-        void BindShadingRate(SHADING_RATE rate, CommandList cmd) override;
+        void BindShadingRate(CommandList commandList, ShadingRate rate) override;
         void BindPipelineState(const PipelineState* pso, CommandList cmd) override;
         void BindComputeShader(const Shader* cs, CommandList cmd) override;
         void Draw(uint32_t vertexCount, uint32_t startVertexLocation, CommandList cmd) override;

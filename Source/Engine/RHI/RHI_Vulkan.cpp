@@ -530,90 +530,78 @@ namespace Alimer::RHI
             }
             return VK_COMPARE_OP_NEVER;
         }
-        constexpr VkBlendFactor _ConvertBlend(BLEND value)
+
+        [[nodiscard]] constexpr VkBlendFactor VulkanBlendFactor(BlendFactor value)
         {
-            switch (value)
-            {
-                case BLEND_ZERO:
+            switch (value) {
+                case BlendFactor::Zero:
                     return VK_BLEND_FACTOR_ZERO;
-                    break;
-                case BLEND_ONE:
+                case BlendFactor::One:
                     return VK_BLEND_FACTOR_ONE;
-                    break;
-                case BLEND_SRC_COLOR:
+                case BlendFactor::SourceColor:
                     return VK_BLEND_FACTOR_SRC_COLOR;
-                    break;
-                case BLEND_INV_SRC_COLOR:
+                case BlendFactor::OneMinusSourceColor:
                     return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
-                    break;
-                case BLEND_SRC_ALPHA:
+                case BlendFactor::SourceAlpha:
                     return VK_BLEND_FACTOR_SRC_ALPHA;
-                    break;
-                case BLEND_INV_SRC_ALPHA:
+                case BlendFactor::OneMinusSourceAlpha:
                     return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-                    break;
-                case BLEND_DEST_ALPHA:
-                    return VK_BLEND_FACTOR_DST_ALPHA;
-                    break;
-                case BLEND_INV_DEST_ALPHA:
-                    return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
-                    break;
-                case BLEND_DEST_COLOR:
+                case BlendFactor::DestinationColor:
                     return VK_BLEND_FACTOR_DST_COLOR;
-                    break;
-                case BLEND_INV_DEST_COLOR:
+                case BlendFactor::OneMinusDestinationColor:
                     return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
-                    break;
-                case BLEND_SRC_ALPHA_SAT:
+                case BlendFactor::DestinationAlpha:
+                    return VK_BLEND_FACTOR_DST_ALPHA;
+                case BlendFactor::OneMinusDestinationAlpha:
+                    return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+                case BlendFactor::SourceAlphaSaturated:
                     return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
-                    break;
-                case BLEND_BLEND_FACTOR:
+                case BlendFactor::BlendColor:
                     return VK_BLEND_FACTOR_CONSTANT_COLOR;
-                    break;
-                case BLEND_INV_BLEND_FACTOR:
+                case BlendFactor::OneMinusBlendColor:
                     return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
-                    break;
-                case BLEND_SRC1_COLOR:
+                case BlendFactor::Source1Color:
                     return VK_BLEND_FACTOR_SRC1_COLOR;
-                    break;
-                case BLEND_INV_SRC1_COLOR:
+                case BlendFactor::OneMinusSource1Color:
                     return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
-                    break;
-                case BLEND_SRC1_ALPHA:
+                case BlendFactor::Source1Alpha:
                     return VK_BLEND_FACTOR_SRC1_ALPHA;
-                    break;
-                case BLEND_INV_SRC1_ALPHA:
+                case BlendFactor::OneMinusSource1Alpha:
                     return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
-                    break;
                 default:
-                    break;
+                    ALIMER_UNREACHABLE();
             }
-            return VK_BLEND_FACTOR_ZERO;
         }
-        constexpr VkBlendOp _ConvertBlendOp(BLEND_OP value)
+
+        [[nodiscard]] constexpr VkBlendOp VulkanBlendOp(BlendOperation value)
         {
             switch (value)
             {
-                case BLEND_OP_ADD:
+                case BlendOperation::Add:
                     return VK_BLEND_OP_ADD;
-                    break;
-                case BLEND_OP_SUBTRACT:
+                case BlendOperation::Subtract:
                     return VK_BLEND_OP_SUBTRACT;
-                    break;
-                case BLEND_OP_REV_SUBTRACT:
+                case BlendOperation::ReverseSubtract:
                     return VK_BLEND_OP_REVERSE_SUBTRACT;
-                    break;
-                case BLEND_OP_MIN:
+                case BlendOperation::Min:
                     return VK_BLEND_OP_MIN;
-                    break;
-                case BLEND_OP_MAX:
+                case BlendOperation::Max:
                     return VK_BLEND_OP_MAX;
-                    break;
                 default:
                     break;
             }
             return VK_BLEND_OP_ADD;
         }
+
+        constexpr VkColorComponentFlags VulkanColorWriteMask(ColorWriteMask mask)
+        {
+            static_assert(static_cast<VkColorComponentFlagBits>(ColorWriteMask::Red) == VK_COLOR_COMPONENT_R_BIT, "Vulkan ColorWriteMask mismatch");
+            static_assert(static_cast<VkColorComponentFlagBits>(ColorWriteMask::Green) == VK_COLOR_COMPONENT_G_BIT, "Vulkan ColorWriteMask mismatch");
+            static_assert(static_cast<VkColorComponentFlagBits>(ColorWriteMask::Blue) == VK_COLOR_COMPONENT_B_BIT, "Vulkan ColorWriteMask mismatch");
+            static_assert(static_cast<VkColorComponentFlagBits>(ColorWriteMask::Alpha) == VK_COLOR_COMPONENT_A_BIT, "Vulkan ColorWriteMask mismatch");
+            return static_cast<VkColorComponentFlags>(mask);
+        }
+
         constexpr VkSamplerAddressMode _ConvertTextureAddressMode(TEXTURE_ADDRESS_MODE value)
         {
             switch (value)
@@ -755,44 +743,48 @@ namespace Alimer::RHI
 
             return flags;
         }
-        inline VkAccessFlags _ParseBufferState(BUFFER_STATE value)
+        inline VkAccessFlags _ParseBufferState(BufferState value)
         {
             VkAccessFlags flags = 0;
 
             switch (value)
             {
-                case Alimer::RHI::BUFFER_STATE_UNDEFINED:
+                case BufferState::Undefined:
                     break;
-                case Alimer::RHI::BUFFER_STATE_VERTEX_BUFFER:
+                case BufferState::Vertex:
                     flags |= VK_ACCESS_SHADER_READ_BIT;
                     flags |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
                     break;
-                case Alimer::RHI::BUFFER_STATE_INDEX_BUFFER:
+                case BufferState::Index:
                     flags |= VK_ACCESS_SHADER_READ_BIT;
                     flags |= VK_ACCESS_INDEX_READ_BIT;
                     break;
-                case Alimer::RHI::BUFFER_STATE_CONSTANT_BUFFER:
+                case BufferState::Constant:
                     flags |= VK_ACCESS_SHADER_READ_BIT;
                     flags |= VK_ACCESS_UNIFORM_READ_BIT;
                     break;
-                case Alimer::RHI::BUFFER_STATE_INDIRECT_ARGUMENT:
+                case BufferState::IndirectArgument:
                     flags |= VK_ACCESS_SHADER_READ_BIT;
                     flags |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
                     break;
-                case Alimer::RHI::BUFFER_STATE_SHADER_RESOURCE:
-                case Alimer::RHI::BUFFER_STATE_SHADER_RESOURCE_COMPUTE:
+                case BufferState::ShaderRead:
+                case BufferState::ShaderReadCompute:
                     flags |= VK_ACCESS_SHADER_READ_BIT;
                     flags |= VK_ACCESS_UNIFORM_READ_BIT;
                     break;
-                case Alimer::RHI::BUFFER_STATE_UNORDERED_ACCESS:
+                case BufferState::ShaderWrite:
                     flags |= VK_ACCESS_SHADER_READ_BIT;
                     flags |= VK_ACCESS_SHADER_WRITE_BIT;
                     break;
-                case Alimer::RHI::BUFFER_STATE_COPY_SRC:
+                case BufferState::CopySrc:
                     flags |= VK_ACCESS_TRANSFER_READ_BIT;
                     break;
-                case Alimer::RHI::BUFFER_STATE_COPY_DST:
+                case BufferState::CopyDst:
                     flags |= VK_ACCESS_TRANSFER_WRITE_BIT;
+                    break;
+                case BufferState::RayTracingAccelerationStructure:
+                    flags |= VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+                    flags |= VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
                     break;
                 default:
                     break;
@@ -1997,7 +1989,7 @@ namespace Alimer::RHI
 
                 // Blending:
                 uint32_t numBlendAttachments = 0;
-                VkPipelineColorBlendAttachmentState colorBlendAttachments[8] = {};
+                VkPipelineColorBlendAttachmentState colorBlendAttachments[kMaxSimultaneousRenderTargets] = {};
                 const size_t blend_loopCount = active_renderpass[cmd]->desc.attachments.size();
                 for (size_t i = 0; i < blend_loopCount; ++i)
                 {
@@ -2006,36 +1998,22 @@ namespace Alimer::RHI
                         continue;
                     }
 
-                    const auto& desc = pso->desc.bs->RenderTarget[numBlendAttachments];
+                    size_t rtIndex = 0;
+                    if (pso->desc.bs->independentBlendEnable)
+                        rtIndex = i;
+
+                    const auto& desc = pso->desc.bs->renderTarget[rtIndex];
                     VkPipelineColorBlendAttachmentState& attachment = colorBlendAttachments[numBlendAttachments];
                     numBlendAttachments++;
 
-                    attachment.blendEnable = desc.BlendEnable ? VK_TRUE : VK_FALSE;
-
-                    attachment.colorWriteMask = 0;
-                    if (desc.RenderTargetWriteMask & COLOR_WRITE_ENABLE_RED)
-                    {
-                        attachment.colorWriteMask |= VK_COLOR_COMPONENT_R_BIT;
-                    }
-                    if (desc.RenderTargetWriteMask & COLOR_WRITE_ENABLE_GREEN)
-                    {
-                        attachment.colorWriteMask |= VK_COLOR_COMPONENT_G_BIT;
-                    }
-                    if (desc.RenderTargetWriteMask & COLOR_WRITE_ENABLE_BLUE)
-                    {
-                        attachment.colorWriteMask |= VK_COLOR_COMPONENT_B_BIT;
-                    }
-                    if (desc.RenderTargetWriteMask & COLOR_WRITE_ENABLE_ALPHA)
-                    {
-                        attachment.colorWriteMask |= VK_COLOR_COMPONENT_A_BIT;
-                    }
-
-                    attachment.srcColorBlendFactor = _ConvertBlend(desc.SrcBlend);
-                    attachment.dstColorBlendFactor = _ConvertBlend(desc.DestBlend);
-                    attachment.colorBlendOp = _ConvertBlendOp(desc.BlendOp);
-                    attachment.srcAlphaBlendFactor = _ConvertBlend(desc.SrcBlendAlpha);
-                    attachment.dstAlphaBlendFactor = _ConvertBlend(desc.DestBlendAlpha);
-                    attachment.alphaBlendOp = _ConvertBlendOp(desc.BlendOpAlpha);
+                    attachment.blendEnable = desc.blendEnable ? VK_TRUE : VK_FALSE;
+                    attachment.srcColorBlendFactor = VulkanBlendFactor(desc.srcColorBlendFactor);
+                    attachment.dstColorBlendFactor = VulkanBlendFactor(desc.dstColorBlendFactor);
+                    attachment.colorBlendOp = VulkanBlendOp(desc.colorBlendOperation);
+                    attachment.srcAlphaBlendFactor = VulkanBlendFactor(desc.srcAlphaBlendFactor);
+                    attachment.dstAlphaBlendFactor = VulkanBlendFactor(desc.dstAlphaBlendFactor);
+                    attachment.alphaBlendOp = VulkanBlendOp(desc.alphaBlendOperation);
+                    attachment.colorWriteMask = VulkanColorWriteMask(desc.writeMask);
                 }
 
                 VkPipelineColorBlendStateCreateInfo colorBlending = {};
@@ -5893,7 +5871,7 @@ namespace Alimer::RHI
         return internal_state->index;
     }
 
-    void RHIDeviceVulkan::WriteShadingRateValue(SHADING_RATE rate, void* dest) const
+    void RHIDeviceVulkan::WriteShadingRateValue(ShadingRate rate, void* dest) const
     {
         // How to compute shading rate value texel data:
         // https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#primsrast-fragment-shading-rate-attachment
@@ -5901,30 +5879,30 @@ namespace Alimer::RHI
         switch (rate)
         {
             default:
-            case Alimer::RHI::SHADING_RATE_1X1:
+            case ShadingRate::Rate1x1:
                 *(uint8_t*)dest = 0;
                 break;
-            case Alimer::RHI::SHADING_RATE_1X2:
+            case ShadingRate::Rate1x2:
                 *(uint8_t*)dest = 0x1;
                 break;
-            case Alimer::RHI::SHADING_RATE_2X1:
+            case ShadingRate::Rate2x1:
                 *(uint8_t*)dest = 0x4;
                 break;
-            case Alimer::RHI::SHADING_RATE_2X2:
+            case ShadingRate::Rate2x2:
                 *(uint8_t*)dest = 0x5;
                 break;
-            case Alimer::RHI::SHADING_RATE_2X4:
+            case ShadingRate::Rate2x4:
                 *(uint8_t*)dest = 0x6;
                 break;
-            case Alimer::RHI::SHADING_RATE_4X2:
+            case ShadingRate::Rate4x2:
                 *(uint8_t*)dest = 0x9;
                 break;
-            case Alimer::RHI::SHADING_RATE_4X4:
+            case ShadingRate::Rate4x4:
                 *(uint8_t*)dest = 0xa;
                 break;
         }
-
     }
+
     void RHIDeviceVulkan::WriteTopLevelAccelerationStructureInstance(const RaytracingAccelerationStructureDesc::TopLevel::Instance* instance, void* dest) const
     {
         VkAccelerationStructureInstanceKHR* desc = (VkAccelerationStructureInstanceKHR*)dest;
@@ -5938,6 +5916,7 @@ namespace Alimer::RHI
         auto internal_state = to_internal((RaytracingAccelerationStructure*)&instance->bottomlevel);
         desc->accelerationStructureReference = internal_state->as_address;
     }
+
     void RHIDeviceVulkan::WriteShaderIdentifier(const RaytracingPipelineState* rtpso, uint32_t group_index, void* dest) const
     {
         VkResult res = vkGetRayTracingShaderGroupHandlesKHR(device, to_internal(rtpso)->pipeline, group_index, 1, SHADER_IDENTIFIER_SIZE, dest);
@@ -6145,7 +6124,7 @@ namespace Alimer::RHI
         active_rt[cmd] = nullptr;
         active_renderpass[cmd] = VK_NULL_HANDLE;
         dirty_pso[cmd] = false;
-        prev_shadingrate[cmd] = SHADING_RATE_INVALID;
+        prev_shadingrate[cmd] = ShadingRate::Invalid;
         pushconstants[cmd] = {};
         vb_hash[cmd] = 0;
         for (uint32_t i = 0; i < ALIMER_STATIC_ARRAY_SIZE(vb_strides[cmd]); ++i)
@@ -6621,40 +6600,41 @@ namespace Alimer::RHI
         vkCmdSetBlendConstants(GetCommandList(cmd), blendConstants);
     }
 
-    void RHIDeviceVulkan::BindShadingRate(SHADING_RATE rate, CommandList cmd)
+    void RHIDeviceVulkan::BindShadingRate(CommandList commandList, ShadingRate rate)
     {
-        if (CheckCapability(GRAPHICSDEVICE_CAPABILITY_VARIABLE_RATE_SHADING) && prev_shadingrate[cmd] != rate)
+        if (CheckCapability(GRAPHICSDEVICE_CAPABILITY_VARIABLE_RATE_SHADING)
+            && prev_shadingrate[commandList] != rate)
         {
-            prev_shadingrate[cmd] = rate;
+            prev_shadingrate[commandList] = rate;
 
             VkExtent2D fragmentSize;
             switch (rate)
             {
-                case Alimer::RHI::SHADING_RATE_1X1:
+                case ShadingRate::Rate1x1:
                     fragmentSize.width = 1;
                     fragmentSize.height = 1;
                     break;
-                case Alimer::RHI::SHADING_RATE_1X2:
+                case ShadingRate::Rate1x2:
                     fragmentSize.width = 1;
                     fragmentSize.height = 2;
                     break;
-                case Alimer::RHI::SHADING_RATE_2X1:
+                case ShadingRate::Rate2x1:
                     fragmentSize.width = 2;
                     fragmentSize.height = 1;
                     break;
-                case Alimer::RHI::SHADING_RATE_2X2:
+                case ShadingRate::Rate2x2:
                     fragmentSize.width = 2;
                     fragmentSize.height = 2;
                     break;
-                case Alimer::RHI::SHADING_RATE_2X4:
+                case ShadingRate::Rate2x4:
                     fragmentSize.width = 2;
                     fragmentSize.height = 4;
                     break;
-                case Alimer::RHI::SHADING_RATE_4X2:
+                case ShadingRate::Rate4x2:
                     fragmentSize.width = 4;
                     fragmentSize.height = 2;
                     break;
-                case Alimer::RHI::SHADING_RATE_4X4:
+                case ShadingRate::Rate4x4:
                     fragmentSize.width = 4;
                     fragmentSize.height = 4;
                     break;
@@ -6691,12 +6671,13 @@ namespace Alimer::RHI
             }
 
             vkCmdSetFragmentShadingRateKHR(
-                GetCommandList(cmd),
+                GetCommandList(commandList),
                 &fragmentSize,
                 combiner
             );
         }
     }
+
     void RHIDeviceVulkan::BindPipelineState(const PipelineState* pso, CommandList cmd)
     {
         size_t pipeline_hash = 0;
