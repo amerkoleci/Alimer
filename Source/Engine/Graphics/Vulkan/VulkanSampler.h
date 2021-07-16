@@ -11,15 +11,13 @@ namespace Alimer
 	class VulkanSampler final : public Sampler
 	{
 	public:
-		VulkanSampler(VulkanGraphics& device, const SamplerCreateInfo* info);
+		VulkanSampler(VulkanGraphics& device, const SamplerDescription& desc);
 		~VulkanSampler() override;
 		void Destroy() override;
 
 		VkSampler GetHandle() const { return handle; }
 
 	private:
-        void ApiSetName() override;
-
 		VulkanGraphics& device;
 		VkSampler handle{ VK_NULL_HANDLE };
 	};

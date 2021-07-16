@@ -155,7 +155,7 @@ namespace Alimer
                 info.colorAttachments[0].view = host->GetMainWindow()->GetSwapChain()->GetCurrentTextureView();
                 info.colorAttachments[0].loadAction = LoadAction::Clear;
                 info.colorAttachments[0].storeAction = StoreAction::Store;
-                info.colorAttachments[0].clearColor = Colors::CornflowerBlue;
+                info.colorAttachments[0].clearColor = { 0.1f, 0.2f, 0.3f, 1.0f };
                 //info.depthStencilAttachment.view = mainWindow->GetDepthStencilTexture()->GetView();
                 //info.depthStencilAttachment.clearDepth = 1.0f;
                 commandBuffer->BeginRenderPass(info);

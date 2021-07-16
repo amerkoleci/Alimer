@@ -28,8 +28,6 @@ namespace Alimer
         TextureView* CreateView(const TextureViewCreateInfo& createInfo) override;
 
 	private:
-        void ApiSetName() override;
-
 		D3D12Graphics& device;
 		D3D12SwapChain* swapChain = nullptr;
 		DXGI_FORMAT dxgiFormat;

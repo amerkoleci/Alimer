@@ -32,12 +32,6 @@ namespace Alimer
 	class D3D12CommandBuffer;
 	class D3D12CommandQueue;
 
-	struct D3D12DescriptorAlloc
-	{
-		D3D12_CPU_DESCRIPTOR_HANDLE handle = { };
-		uint32_t index = uint32_t(-1);
-	};
-
 	constexpr const char* ToString(D3D_FEATURE_LEVEL value)
 	{
 		switch (value)

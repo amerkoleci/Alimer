@@ -30,9 +30,8 @@ namespace Alimer
         OpaqueWhite,
     };
 
-    struct SamplerCreateInfo
+    struct SamplerDescription
     {
-        const char* label = nullptr;
         SamplerFilter minFilter = SamplerFilter::Nearest;
         SamplerFilter magFilter = SamplerFilter::Nearest;
         SamplerFilter mipFilter = SamplerFilter::Nearest;
@@ -44,15 +43,20 @@ namespace Alimer
         SamplerBorderColor borderColor = SamplerBorderColor::TransparentBlack;
         float lodMinClamp = 0.0f;
         float lodMaxClamp = FLT_MAX;
+        const char* label = nullptr;
     };
 
 	class ALIMER_API Sampler : public GPUObject, public RefCounted
 	{
 	public:
-		static SamplerRef Create(const SamplerCreateInfo& info);
+		static SamplerRef Create(const SamplerDescription& description);
+
+        uint32_t GetBindlessIndex() const noexcept { return bindlessIndex; }
 
 	protected:
 		/// Constructor.
 		Sampler();
+
+        uint32_t bindlessIndex = kInvalidBindlessIndex;
 	};
 }

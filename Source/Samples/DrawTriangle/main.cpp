@@ -12,12 +12,13 @@ private:
     ShaderRef vertexShader;
     ShaderRef pixelShader;
     PipelineRef renderPipeline;
+    SamplerRef sampler;
 
 public:
     TriangleGame()
     {
         config.title = "Triangle";
-        //config.backendType = RHIBackendType::Vulkan;
+        config.backendType = GPUBackendType::Vulkan;
     }
 
     void Initialize() override
@@ -41,6 +42,8 @@ public:
         auto texture = RHICreateTexture(descriptor);
         auto view = texture->GetView({});
 #endif // TODO
+
+        sampler = Sampler::Create({});
 
         float vertices[] = {
             /* positions        colors */

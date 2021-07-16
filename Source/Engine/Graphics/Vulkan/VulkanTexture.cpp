@@ -241,7 +241,7 @@ namespace Alimer
 
         if (info.label != nullptr)
         {
-            SetName(info.label);
+            device.SetObjectName(VK_OBJECT_TYPE_IMAGE, (uint64_t)handle, info.label);
         }
     }
 
@@ -265,10 +265,6 @@ namespace Alimer
         OnDestroyed();
     }
 
-    void VulkanTexture::ApiSetName()
-    {
-        device.SetObjectName(VK_OBJECT_TYPE_IMAGE, (uint64_t)handle, name);
-    }
 
     TextureView* VulkanTexture::CreateView(const TextureViewCreateInfo& createInfo)
     {

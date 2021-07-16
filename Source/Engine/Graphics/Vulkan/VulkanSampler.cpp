@@ -73,25 +73,25 @@ namespace Alimer
         }
     }
 
-	VulkanSampler::VulkanSampler(VulkanGraphics& device, const SamplerCreateInfo* info)
+	VulkanSampler::VulkanSampler(VulkanGraphics& device, const SamplerDescription& desc)
 		: Sampler()
         , device{ device }
 	{
         VkSamplerCreateInfo createInfo{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
-        createInfo.magFilter = VulkanSamplerFilter(info->magFilter);
-        createInfo.minFilter = VulkanSamplerFilter(info->minFilter);
-        createInfo.mipmapMode = VulkanMipMapMode(info->mipFilter);
-        createInfo.addressModeU = VulkanSamplerAddressMode(info->addressModeU);
-        createInfo.addressModeV = VulkanSamplerAddressMode(info->addressModeV);
-        createInfo.addressModeW = VulkanSamplerAddressMode(info->addressModeW);
+        createInfo.magFilter = VulkanSamplerFilter(desc.magFilter);
+        createInfo.minFilter = VulkanSamplerFilter(desc.minFilter);
+        createInfo.mipmapMode = VulkanMipMapMode(desc.mipFilter);
+        createInfo.addressModeU = VulkanSamplerAddressMode(desc.addressModeU);
+        createInfo.addressModeV = VulkanSamplerAddressMode(desc.addressModeV);
+        createInfo.addressModeW = VulkanSamplerAddressMode(desc.addressModeW);
         createInfo.mipLodBias = 0.0f;
 
         // https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkSamplerCreateInfo.html
-        if (device.GetCaps().features.samplerAnisotropy && info->maxAnisotropy > 1)
+        if (device.GetCaps().features.samplerAnisotropy && desc.maxAnisotropy > 1)
         {
             createInfo.anisotropyEnable = VK_TRUE;
             createInfo.maxAnisotropy = Min(
-                static_cast<float>(info->maxAnisotropy),
+                static_cast<float>(desc.maxAnisotropy),
                 static_cast<float>(device.GetCaps().limits.maxSamplerAnisotropy)
             );
         }
@@ -101,9 +101,9 @@ namespace Alimer
             createInfo.maxAnisotropy = 1;
         }
 
-        if (info->compareFunction != CompareFunction::Never)
+        if (desc.compareFunction != CompareFunction::Never)
         {
-            createInfo.compareOp = ToVkCompareOp(info->compareFunction);
+            createInfo.compareOp = ToVkCompareOp(desc.compareFunction);
             createInfo.compareEnable = VK_TRUE;
         }
         else {
@@ -111,10 +111,10 @@ namespace Alimer
             createInfo.compareEnable = VK_FALSE;
         }
 
-        createInfo.minLod = info->lodMinClamp;
-        createInfo.maxLod = info->lodMaxClamp;
+        createInfo.minLod = desc.lodMinClamp;
+        createInfo.maxLod = desc.lodMaxClamp;
         createInfo.unnormalizedCoordinates = VK_FALSE;
-        createInfo.borderColor = VulkanBorderColor(info->borderColor);
+        createInfo.borderColor = VulkanBorderColor(desc.borderColor);
 
 		VkResult result = vkCreateSampler(device.GetHandle(), &createInfo, nullptr, &handle);
 
@@ -124,9 +124,9 @@ namespace Alimer
 			return;
 		}
 
-        if (info->label != nullptr)
+        if (desc.label != nullptr)
         {
-            SetName(info->label);
+            device.SetObjectName(VK_OBJECT_TYPE_SAMPLER, (uint64_t)handle, desc.label);
         }
 
         OnCreated();
@@ -147,9 +147,4 @@ namespace Alimer
 		handle = VK_NULL_HANDLE;
         OnDestroyed();
 	}
-
-    void VulkanSampler::ApiSetName()
-    {
-        device.SetObjectName(VK_OBJECT_TYPE_SAMPLER, (uint64_t)handle, name);
-    }
 }

@@ -225,8 +225,8 @@ namespace Alimer
         uint32_t arrayLayerCount;
         size_t hash{ 0 };
 
-        mutable uint32_t bindless_srv = kInvalidBindlessIndex;
-        mutable uint32_t bindless_uav = kInvalidBindlessIndex;
+        uint32_t bindless_srv = kInvalidBindlessIndex;
+        uint32_t bindless_uav = kInvalidBindlessIndex;
     };
 }
 

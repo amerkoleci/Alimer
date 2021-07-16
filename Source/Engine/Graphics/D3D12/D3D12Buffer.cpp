@@ -77,7 +77,8 @@ namespace Alimer
 
         if (info.label != nullptr)
         {
-            SetName(info.label);
+            auto wideName = ToUtf16(info.label, strlen(info.label));
+            handle->SetName(wideName.c_str());
         }
 
         device.GetHandle()->GetCopyableFootprints(&resourceDesc, 0, 1, 0, nullptr, nullptr, nullptr, &allocatedSize);
@@ -125,12 +126,6 @@ namespace Alimer
 
         D3D12GpuResource::Destroy();
         OnDestroyed();
-	}
-
-	void D3D12Buffer::ApiSetName()
-	{
-		auto wideName = ToUtf16(name);
-        handle->SetName(wideName.c_str());
 	}
 
 	uint8_t* D3D12Buffer::Map()

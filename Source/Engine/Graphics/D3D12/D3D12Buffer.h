@@ -20,9 +20,6 @@ namespace Alimer
 		void Unmap() override;
 		void Update(const void* data, size_t size, size_t offset = 0);
 
-    private:
-		void ApiSetName() override;
-
 	private:
 		D3D12Graphics& device;
 

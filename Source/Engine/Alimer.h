@@ -25,6 +25,8 @@
 // Graphics
 #include "Graphics/Buffer.h"
 #include "Graphics/Texture.h"
+#include "Graphics/Sampler.h"
+#include "Graphics/Shader.h"
 #include "Graphics/Pipeline.h"
 #include "Graphics/CommandBuffer.h"
 #include "Graphics/SwapChain.h"

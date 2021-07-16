@@ -101,7 +101,7 @@ namespace Alimer
         TextureRef CreateTextureCore(const TextureCreateInfo& info, const void* initialData) override;
 		BufferRef CreateBuffer(const BufferCreateInfo& info, const void* initialData) override;
 		RefPtr<Shader> CreateShader(ShaderStage stage, const std::vector<uint8_t>& byteCode, const std::string& entryPoint) override;
-		SamplerRef CreateSampler(const SamplerCreateInfo* info) override;
+		SamplerRef CreateSampler(const SamplerDescription& description) override;
 		PipelineRef CreateRenderPipeline(const RenderPipelineStateCreateInfo* info) override;
 		PipelineRef CreateComputePipeline(const ComputePipelineCreateInfo* info) override;
         SwapChainRef CreateSwapChain(void* windowHandle, const SwapChainCreateInfo& info) override;

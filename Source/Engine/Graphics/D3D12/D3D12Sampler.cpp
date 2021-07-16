@@ -1,4 +1,4 @@
-// Copyright © Amer Koleci and Contributors.
+// Copyright Â© Amer Koleci and Contributors.
 // Licensed under the MIT License (MIT). See LICENSE in the repository root for more information.
 
 #include "D3D12Sampler.h"
@@ -42,54 +42,86 @@ namespace Alimer
         }
     }
 
-	D3D12Sampler::D3D12Sampler(D3D12Graphics& device, const SamplerCreateInfo* info)
-		: Sampler()
-		, device{ device }
-	{
-        const D3D12_FILTER_TYPE minFilter = ToD3D12FilterType(info->minFilter);
-        const D3D12_FILTER_TYPE magFilter = ToD3D12FilterType(info->magFilter);
-        const D3D12_FILTER_TYPE mipFilter = ToD3D12FilterType(info->mipFilter);
+    D3D12Sampler::D3D12Sampler(D3D12Graphics& device_, const SamplerDescription& desc)
+        : device(device_)
+    {
+        const D3D12_FILTER_TYPE minFilter = ToD3D12FilterType(desc.minFilter);
+        const D3D12_FILTER_TYPE magFilter = ToD3D12FilterType(desc.magFilter);
+        const D3D12_FILTER_TYPE mipFilter = ToD3D12FilterType(desc.mipFilter);
 
-        D3D12_FILTER_REDUCTION_TYPE reduction = info->compareFunction == CompareFunction::Never
+        D3D12_FILTER_REDUCTION_TYPE reduction = desc.compareFunction == CompareFunction::Never
             ? D3D12_FILTER_REDUCTION_TYPE_STANDARD
             : D3D12_FILTER_REDUCTION_TYPE_COMPARISON;
 
-        D3D12_SAMPLER_DESC desc{};
+        D3D12_SAMPLER_DESC samplerDesc{};
 
         // https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_sampler_desc
-        if (info->maxAnisotropy > 1)
+        if (desc.maxAnisotropy > 1)
         {
-            desc.Filter = D3D12_ENCODE_ANISOTROPIC_FILTER(reduction);
+            samplerDesc.Filter = D3D12_ENCODE_ANISOTROPIC_FILTER(reduction);
         }
         else
         {
-            desc.Filter = D3D12_ENCODE_BASIC_FILTER(minFilter, magFilter, mipFilter, reduction);
+            samplerDesc.Filter = D3D12_ENCODE_BASIC_FILTER(minFilter, magFilter, mipFilter, reduction);
         }
 
-        desc.AddressU = ToD3D12AddressMode(info->addressModeU);
-        desc.AddressV = ToD3D12AddressMode(info->addressModeV);
-        desc.AddressW = ToD3D12AddressMode(info->addressModeW);
-        desc.MipLODBias = 0.f;
-        desc.MaxAnisotropy = Min<UINT>(info->maxAnisotropy, 16u);
-        if (info->compareFunction != CompareFunction::Never)
+        samplerDesc.AddressU = ToD3D12AddressMode(desc.addressModeU);
+        samplerDesc.AddressV = ToD3D12AddressMode(desc.addressModeV);
+        samplerDesc.AddressW = ToD3D12AddressMode(desc.addressModeW);
+        samplerDesc.MipLODBias = 0.f;
+        samplerDesc.MaxAnisotropy = Min<UINT>(desc.maxAnisotropy, 16u);
+        if (desc.compareFunction != CompareFunction::Never)
         {
-            desc.ComparisonFunc = ToD3D12ComparisonFunc(info->compareFunction);
+            samplerDesc.ComparisonFunc = ToD3D12ComparisonFunc(desc.compareFunction);
         }
         else
         {
-            desc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+            samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
         }
 
-        desc.MinLOD = info->lodMinClamp;
-        desc.MaxLOD = info->lodMaxClamp;
-	}
+        switch (desc.borderColor)
+        {
+            case SamplerBorderColor::OpaqueBlack:
+                samplerDesc.BorderColor[0] = 0.0f;
+                samplerDesc.BorderColor[1] = 0.0f;
+                samplerDesc.BorderColor[2] = 0.0f;
+                samplerDesc.BorderColor[3] = 1.0f;
+                break;
 
-	D3D12Sampler::~D3D12Sampler()
-	{
-		Destroy();
-	}
+            case SamplerBorderColor::OpaqueWhite:
+                samplerDesc.BorderColor[0] = 1.0f;
+                samplerDesc.BorderColor[1] = 1.0f;
+                samplerDesc.BorderColor[2] = 1.0f;
+                samplerDesc.BorderColor[3] = 1.0f;
+                break;
+            default:
+                samplerDesc.BorderColor[0] = 0.0f;
+                samplerDesc.BorderColor[1] = 0.0f;
+                samplerDesc.BorderColor[2] = 0.0f;
+                samplerDesc.BorderColor[3] = 0.0f;
+                break;
+        }
 
-	void D3D12Sampler::Destroy()
-	{
-	}
+        samplerDesc.MinLOD = desc.lodMinClamp;
+        samplerDesc.MaxLOD = desc.lodMaxClamp;
+
+        handle = device.AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+        device.GetHandle()->CreateSampler(&samplerDesc, handle);
+        bindlessIndex = device.AllocateBindlessSampler(handle);
+    }
+
+    D3D12Sampler::~D3D12Sampler()
+    {
+        Destroy();
+    }
+
+    void D3D12Sampler::Destroy()
+    {
+        if (handle.ptr != 0)
+        {
+            device.FreeDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, handle);
+        }
+
+        device.FreeBindlessSampler(bindlessIndex);
+    }
 }

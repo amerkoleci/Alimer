@@ -209,6 +209,12 @@ namespace Alimer
             dxgiFormat = handle->GetDesc().Format;
         }
 
+        if (info.label != nullptr)
+        {
+            auto wideName = ToUtf16(info.label, strlen(info.label));
+            handle->SetName(wideName.c_str());
+        }
+
         // Create default view.
         TextureViewCreateInfo viewInfo;
         viewInfo.format = viewFormat;
@@ -230,12 +236,6 @@ namespace Alimer
         device.DeferDestroy(handle, allocation);
         OnDestroyed();
         D3D12GpuResource::Destroy();
-    }
-
-    void D3D12Texture::ApiSetName()
-    {
-        auto wideName = ToUtf16(name);
-        handle->SetName(wideName.c_str());
     }
 
     TextureView* D3D12Texture::CreateView(const TextureViewCreateInfo& createInfo)
@@ -276,9 +276,7 @@ namespace Alimer
             device.GetHandle()->CreateShaderResourceView(texture->GetHandle(), &srvDesc, srv);
 
             // Allocate bindless handle
-            auto bindlessHandle = device.AllocateSRV();
-            device.GetHandle()->CopyDescriptorsSimple(1, bindlessHandle.handle, srv, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-            bindless_srv = bindlessHandle.index;
+            bindless_srv = device.AllocateBindlessResource(srv);
         }
     }
 
@@ -299,11 +297,8 @@ namespace Alimer
             device.FreeDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, srv);
         }
 
-        // TODO: Free bindless
-        if (bindless_srv != kInvalidBindlessIndex)
-        {
-
-        }
+        // Free bindless
+        device.FreeBindlessResource(bindless_srv);
     }
 
     const D3D12_CPU_DESCRIPTOR_HANDLE& D3D12TextureView::GetDSV(bool readOnlyDepth, bool readOnlyStencil) const

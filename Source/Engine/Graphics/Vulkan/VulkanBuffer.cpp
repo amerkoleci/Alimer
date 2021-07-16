@@ -209,7 +209,7 @@ namespace Alimer
 
         if (info.label != nullptr)
         {
-            SetName(info.label);
+            device.SetObjectName(VK_OBJECT_TYPE_BUFFER, (uint64_t)handle, info.label);
         }
 
         allocatedSize = allocationInfo.size;
@@ -253,11 +253,6 @@ namespace Alimer
         handle = VK_NULL_HANDLE;
         allocation = VK_NULL_HANDLE;
         OnDestroyed();
-    }
-
-    void VulkanBuffer::ApiSetName()
-    {
-        device.SetObjectName(VK_OBJECT_TYPE_BUFFER, (uint64_t)handle, name);
     }
 
     uint8_t* VulkanBuffer::Map()

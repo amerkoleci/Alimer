@@ -204,11 +204,21 @@ namespace Alimer
             }
 
             // We run on vulkan 1.1 or higher.
-            VkPhysicalDeviceProperties gpuProps;
-            vkGetPhysicalDeviceProperties(physicalDevice, &gpuProps);
+            VkPhysicalDeviceProperties props;
+            vkGetPhysicalDeviceProperties(physicalDevice, &props);
+
+            LOGI("Found Vulkan GPU: {}", props.deviceName);
+            LOGI("    API: {}.{}.{}",
+                VK_VERSION_MAJOR(props.apiVersion),
+                VK_VERSION_MINOR(props.apiVersion),
+                VK_VERSION_PATCH(props.apiVersion));
+            LOGI("    Driver: {}.{}.{}",
+                VK_VERSION_MAJOR(props.driverVersion),
+                VK_VERSION_MINOR(props.driverVersion),
+                VK_VERSION_PATCH(props.driverVersion));
 
             // Promoted in 1.2
-            if (gpuProps.apiVersion >= VK_API_VERSION_1_2)
+            if (props.apiVersion >= VK_API_VERSION_1_2)
             {
                 extensions.host_query_reset = true;
                 extensions.sampler_mirror_clamp_to_edge = true;
@@ -1488,9 +1498,9 @@ namespace Alimer
         return nullptr;
     }
 
-    SamplerRef VulkanGraphics::CreateSampler(const SamplerCreateInfo* info)
+    SamplerRef VulkanGraphics::CreateSampler(const SamplerDescription& desc)
     {
-        auto result = new VulkanSampler(*this, info);
+        auto result = new VulkanSampler(*this, desc);
 
         if (result->GetHandle() != VK_NULL_HANDLE)
         {

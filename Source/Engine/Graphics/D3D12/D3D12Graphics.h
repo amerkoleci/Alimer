@@ -81,7 +81,11 @@ namespace Alimer
 			return GetD3D12CommandQueue(D3D12_COMMAND_LIST_TYPE(fenceValue >> 56))->IsFenceComplete(fenceValue);
 		}
 
-		D3D12DescriptorAlloc AllocateSRV();
+        uint32_t AllocateBindlessResource(D3D12_CPU_DESCRIPTOR_HANDLE handle);
+        uint32_t AllocateBindlessSampler(D3D12_CPU_DESCRIPTOR_HANDLE handle);
+        void FreeBindlessResource(uint32_t index);
+        void FreeBindlessSampler(uint32_t index);
+
         ID3D12DescriptorHeap* GetResourceDescriptorHeap() const
         {
             return resourceHeap.handle;
@@ -109,7 +113,7 @@ namespace Alimer
         TextureRef CreateTextureCore(const TextureCreateInfo& info, const void* initialData) override;
 		BufferRef CreateBuffer(const BufferCreateInfo& info, const void* initialData) override;
         ShaderRef CreateShader(ShaderStage stage, const std::vector<uint8_t>& byteCode, const std::string& entryPoint) override;
-        SamplerRef CreateSampler(const SamplerCreateInfo* info) override;
+        SamplerRef CreateSampler(const SamplerDescription& description) override;
 		PipelineRef CreateRenderPipeline(const RenderPipelineStateCreateInfo* info) override;
 		PipelineRef CreateComputePipeline(const ComputePipelineCreateInfo* info) override;
         SwapChainRef CreateSwapChain(void* windowHandle, const SwapChainCreateInfo& info) override;
@@ -175,10 +179,6 @@ namespace Alimer
 		void ClearFinishedUploads(uint64_t flushCount);
 		UploadSubmission* AllocUploadSubmission(uint64_t size);
 
-		std::mutex destroyMutex;
-		std::deque<std::pair<D3D12MA::Allocation*, uint64_t>> deferredAllocations;
-		std::deque<std::pair<IUnknown*, uint64_t>> deferredReleases;
-
 		struct DescriptorAllocator
 		{
 			D3D12Graphics* device = nullptr;
@@ -243,10 +243,10 @@ namespace Alimer
 			}
 		};
 
-		DescriptorAllocator rtv;
-		DescriptorAllocator dsv;
 		DescriptorAllocator resourceDescriptorAllocator;
         DescriptorAllocator samplerDescriptorAllocator;
+		DescriptorAllocator rtvDescriptorAllocator;
+		DescriptorAllocator dsvDescriptorAllocator;
 
 		struct DescriptorHeap
 		{
@@ -271,6 +271,12 @@ namespace Alimer
 
         std::vector<uint32_t> freeBindlessResources;
         std::vector<uint32_t> freeBindlessSamplers;
-		SRWLOCK bindlessFreeLock = SRWLOCK_INIT;
+
+        // Destroy logic
+        SRWLOCK destroyMutex = SRWLOCK_INIT;
+        std::deque<std::pair<D3D12MA::Allocation*, uint64_t>> deferredAllocations;
+        std::deque<std::pair<IUnknown*, uint64_t>> deferredReleases;
+        std::deque<std::pair<uint32_t, uint64_t>> destroyedBindlessResources;
+        std::deque<std::pair<uint32_t, uint64_t>> destroyedBindlessSamplers;
 	};
 }

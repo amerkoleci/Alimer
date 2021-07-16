@@ -457,10 +457,10 @@ namespace Alimer
 
         // Descriptor allocators
         {
-            rtv.Init(this, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 1024);
-            dsv.Init(this, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 256);
             resourceDescriptorAllocator.Init(this, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1024);
             samplerDescriptorAllocator.Init(this, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, 1024);
+            rtvDescriptorAllocator.Init(this, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 1024);
+            dsvDescriptorAllocator.Init(this, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 256);
 
         }
 
@@ -567,10 +567,10 @@ namespace Alimer
         }
 
         // CPU Descriptor Heaps
-        rtv.Shutdown();
-        dsv.Shutdown();
         resourceDescriptorAllocator.Shutdown();
         samplerDescriptorAllocator.Shutdown();
+        rtvDescriptorAllocator.Shutdown();
+        dsvDescriptorAllocator.Shutdown();
 
         // GPU Descriptor Heaps
         SafeRelease(resourceHeap.handle);
@@ -741,24 +741,62 @@ namespace Alimer
         *ppAdapter = adapter.Detach();
     }
 
-    D3D12DescriptorAlloc D3D12Graphics::AllocateSRV()
+    uint32_t D3D12Graphics::AllocateBindlessResource(D3D12_CPU_DESCRIPTOR_HANDLE handle)
     {
-        AcquireSRWLockExclusive(&bindlessFreeLock);
+        AcquireSRWLockExclusive(&destroyMutex);
         if (!freeBindlessResources.empty())
         {
             uint32_t index = freeBindlessResources.back();
             freeBindlessResources.pop_back();
-            ReleaseSRWLockExclusive(&bindlessFreeLock);
+            ReleaseSRWLockExclusive(&destroyMutex);
 
-            D3D12DescriptorAlloc alloc;
-            alloc.handle = resourceHeap.CPUStart;
-            alloc.handle.ptr += index * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-            alloc.index = index;
-            return alloc;
+            D3D12_CPU_DESCRIPTOR_HANDLE dstBindless = resourceHeap.CPUStart;
+            dstBindless.ptr += index * GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+            device->CopyDescriptorsSimple(1, dstBindless, handle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+            return index;
         }
 
-        ReleaseSRWLockExclusive(&bindlessFreeLock);
+        ReleaseSRWLockExclusive(&destroyMutex);
         return {};
+    }
+
+    uint32_t D3D12Graphics::AllocateBindlessSampler(D3D12_CPU_DESCRIPTOR_HANDLE handle)
+    {
+        AcquireSRWLockExclusive(&destroyMutex);
+        if (!freeBindlessSamplers.empty())
+        {
+            uint32_t index = freeBindlessSamplers.back();
+            freeBindlessSamplers.pop_back();
+            ReleaseSRWLockExclusive(&destroyMutex);
+
+            D3D12_CPU_DESCRIPTOR_HANDLE dstBindless = samplerHeap.CPUStart;
+            dstBindless.ptr += index * GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+            device->CopyDescriptorsSimple(1, dstBindless, handle, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+            return index;
+        }
+
+        ReleaseSRWLockExclusive(&destroyMutex);
+        return {};
+    }
+
+    void D3D12Graphics::FreeBindlessResource(uint32_t index)
+    {
+        if (index != kInvalidBindlessIndex)
+        {
+            AcquireSRWLockExclusive(&destroyMutex);
+            destroyedBindlessResources.push_back(std::make_pair(index, frameCount));
+            ReleaseSRWLockExclusive(&destroyMutex);
+        }
+    }
+
+    void D3D12Graphics::FreeBindlessSampler(uint32_t index)
+    {
+        if (index != kInvalidBindlessIndex)
+        {
+            AcquireSRWLockExclusive(&destroyMutex);
+            destroyedBindlessSamplers.push_back(std::make_pair(index, frameCount));
+            ReleaseSRWLockExclusive(&destroyMutex);
+        }
     }
 
     void D3D12Graphics::HandleDeviceLost(HRESULT hr)
@@ -885,9 +923,9 @@ namespace Alimer
             case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER:
                 return samplerDescriptorAllocator.Allocate();
             case D3D12_DESCRIPTOR_HEAP_TYPE_RTV:
-                return rtv.Allocate();
+                return rtvDescriptorAllocator.Allocate();
             case D3D12_DESCRIPTOR_HEAP_TYPE_DSV:
-                return dsv.Allocate();
+                return dsvDescriptorAllocator.Allocate();
             default:
                 ALIMER_UNREACHABLE();
                 return {};
@@ -905,10 +943,10 @@ namespace Alimer
                 samplerDescriptorAllocator.Free(handle);
                 break;
             case D3D12_DESCRIPTOR_HEAP_TYPE_RTV:
-                rtv.Free(handle);
+                rtvDescriptorAllocator.Free(handle);
                 break;
             case D3D12_DESCRIPTOR_HEAP_TYPE_DSV:
-                dsv.Free(handle);
+                dsvDescriptorAllocator.Free(handle);
                 break;
             default:
                 ALIMER_UNREACHABLE();
@@ -925,9 +963,9 @@ namespace Alimer
             case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER:
                 return samplerDescriptorAllocator.descriptorSize;
             case D3D12_DESCRIPTOR_HEAP_TYPE_RTV:
-                return rtv.descriptorSize;
+                return rtvDescriptorAllocator.descriptorSize;
             case D3D12_DESCRIPTOR_HEAP_TYPE_DSV:
-                return dsv.descriptorSize;
+                return dsvDescriptorAllocator.descriptorSize;
             default:
                 ALIMER_UNREACHABLE();
         }
@@ -958,12 +996,13 @@ namespace Alimer
 
     void D3D12Graphics::DeferDestroy(IUnknown* resource, D3D12MA::Allocation* allocation)
     {
-        std::lock_guard<std::mutex> guard(destroyMutex);
+        AcquireSRWLockExclusive(&destroyMutex);
 
         if (shuttingDown)
         {
             resource->Release();
             SafeRelease(allocation);
+            ReleaseSRWLockExclusive(&destroyMutex);
             return;
         }
 
@@ -972,11 +1011,12 @@ namespace Alimer
         {
             deferredAllocations.push_back(std::make_pair(allocation, frameCount));
         }
+        ReleaseSRWLockExclusive(&destroyMutex);
     }
 
     void D3D12Graphics::ProcessDeletionQueue()
     {
-        std::lock_guard<std::mutex> guard(destroyMutex);
+        AcquireSRWLockExclusive(&destroyMutex);
 
         while (!deferredAllocations.empty())
         {
@@ -1005,6 +1045,35 @@ namespace Alimer
                 break;
             }
         }
+
+        while (!destroyedBindlessResources.empty())
+        {
+            if (destroyedBindlessResources.front().second + kMaxFramesInFlight < frameCount)
+            {
+                uint32_t index = destroyedBindlessResources.front().first;
+                destroyedBindlessResources.pop_front();
+                freeBindlessResources.push_back(index);
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        while (!destroyedBindlessSamplers.empty())
+        {
+            if (destroyedBindlessSamplers.front().second + kMaxFramesInFlight < frameCount)
+            {
+                uint32_t index = destroyedBindlessSamplers.front().first;
+                destroyedBindlessSamplers.pop_front();
+                freeBindlessSamplers.push_back(index);
+            }
+            else
+            {
+                break;
+            }
+        }
+        ReleaseSRWLockExclusive(&destroyMutex);
     }
 
     ID3D12RootSignature* D3D12Graphics::CreateRootSignature(const D3D12_ROOT_SIGNATURE_DESC1& desc)
@@ -1228,9 +1297,9 @@ namespace Alimer
         return result;
     }
 
-    SamplerRef D3D12Graphics::CreateSampler(const SamplerCreateInfo* info)
+    SamplerRef D3D12Graphics::CreateSampler(const SamplerDescription& description)
     {
-        auto result = new D3D12Sampler(*this, info);
+        auto result = new D3D12Sampler(*this, description);
         return RefPtr<Sampler>(result);
     }
 

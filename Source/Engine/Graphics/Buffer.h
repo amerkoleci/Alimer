@@ -21,11 +21,11 @@ namespace Alimer
 
     struct BufferCreateInfo
     {
-        const char* label = nullptr;
         MemoryUsage memoryUsage = MemoryUsage::GpuOnly;
         BufferUsage usage = BufferUsage::None;
         uint64_t size = 0;
         PixelFormat format = PixelFormat::Undefined;
+        const char* label = nullptr;
     };
 
 	class ALIMER_API Buffer : public GPUResource, public RefCounted

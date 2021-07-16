@@ -12,7 +12,7 @@ namespace Alimer
 {
     struct BufferCreateInfo;
     struct TextureCreateInfo;
-    struct SamplerCreateInfo;
+    struct SamplerDescription;
     struct SwapChainCreateInfo;
     struct RenderPipelineStateCreateInfo;
     struct ComputePipelineCreateInfo;
@@ -47,9 +47,6 @@ namespace Alimer
         /// Create new texture.
         [[nodiscard]] TextureRef CreateTexture(const TextureCreateInfo& info, const void* initialData = nullptr);
 
-        /// Create new sampler.
-        [[nodiscard]] virtual SamplerRef CreateSampler(const SamplerCreateInfo* info) = 0;
-
         /// Return the graphics capabilities.
         const GraphicsDeviceCaps& GetCaps() const noexcept { return caps; }
 
@@ -70,6 +67,7 @@ namespace Alimer
 
     private:
         virtual TextureRef CreateTextureCore(const TextureCreateInfo& info, const void* initialData) = 0;
+        virtual SamplerRef CreateSampler(const SamplerDescription& description) = 0;
         virtual BufferRef CreateBuffer(const BufferCreateInfo& info, const void* initialData) = 0;
         virtual RefPtr<Shader> CreateShader(ShaderStage stage, const std::vector<uint8_t>& byteCode, const std::string& entryPoint) = 0;
         virtual PipelineRef CreateRenderPipeline(const RenderPipelineStateCreateInfo* info) = 0;

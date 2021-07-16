@@ -27,8 +27,6 @@ namespace Alimer
 		//VulkanBufferState GetState() const noexcept { return state; }
 
 	private:
-		void ApiSetName() override;
-
 		VulkanGraphics& device;
 		VkBuffer handle{ VK_NULL_HANDLE };
 		VmaAllocation allocation{ VK_NULL_HANDLE };

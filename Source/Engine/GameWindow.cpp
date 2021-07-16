@@ -27,7 +27,7 @@ namespace Alimer
     void GameWindow::CreateSwapChain(void* windowHandle)
     {
         SwapChainCreateInfo swapChainDesc{};
-        //swapChainDesc.format = PixelFormat::BGRA8UNormSrgb;
+        //swapChainDesc.colorFormat = PixelFormat::BGRA8UNorm;
         swapChain = SwapChain::Create(windowHandle, swapChainDesc);
         ALIMER_ASSERT(swapChain.IsNotNull());
     }

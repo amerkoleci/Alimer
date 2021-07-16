@@ -38,8 +38,6 @@ namespace Alimer
 		void SetSignalSemaphore(VkSemaphore semaphore) { signalSemaphore = semaphore; }
 
 	private:
-        void ApiSetName() override;
-
 		VulkanGraphics& device;
 		VkImage handle{ VK_NULL_HANDLE };
 		VmaAllocation allocation{ VK_NULL_HANDLE };
