@@ -9,15 +9,16 @@ class TriangleGame final : public Game
 {
 private:
     GPUBuffer vertexBuffer;
-    Shader vertexShader;
-    Shader pixelShader;
+    RHIShader vertexShader;
+    RHIShader pixelShader;
     InputLayout inputLayout;
     PipelineState renderPipeline;
 
 public:
     TriangleGame()
     {
-        //config.title = "Triangle";
+        config.title = "Triangle";
+        //config.backendType = RHIBackendType::Vulkan;
     }
 
     void Initialize() override
@@ -50,7 +51,7 @@ public:
         };
 
         BufferDescriptor bufferDesc = {};
-        bufferDesc.label = "Triangle VertexBuffer";
+       // bufferDesc.label = "Triangle VertexBuffer";
         bufferDesc.size = sizeof(vertices);
         bufferDesc.usage = BufferUsage::Vertex;
         ALIMER_ASSERT(GDevice->CreateBuffer(&bufferDesc, vertices, &vertexBuffer));
@@ -65,8 +66,8 @@ public:
         };
 
         PipelineStateDesc renderPipelineDesc;
-        renderPipelineDesc.vs = &vertexShader;
-        renderPipelineDesc.ps = &pixelShader;
+        renderPipelineDesc.vertex = &vertexShader;
+        renderPipelineDesc.pixel = &pixelShader;
         renderPipelineDesc.il = &inputLayout;
         ALIMER_ASSERT(GDevice->CreatePipelineState(&renderPipelineDesc, &renderPipeline));
     }

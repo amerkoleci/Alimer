@@ -107,9 +107,9 @@ install (DIRECTORY ${CMAKE_SOURCE_DIR}/cmake/Modules/ DESTINATION ${DEST_SHARE_D
 file (MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 if (NOT ANDROID)
-	#foreach(dir Assets)
-	#	install (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${dir} DESTINATION bin/)
-	#endforeach()
+	foreach(dir Assets)
+		install (DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${dir} DESTINATION bin/)
+	endforeach()
 
 	# dxil and dxcompiler
 	if(WIN32 AND NOT (WINDOWS_STORE))

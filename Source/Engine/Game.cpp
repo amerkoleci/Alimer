@@ -123,13 +123,7 @@ namespace Alimer
         // Platform logic has been setup and main window has been created.
 
         // Init RHI
-        ValidationMode validationMode = ValidationMode::Disabled;
-
-#if defined(_DEBUG)
-        validationMode = ValidationMode::Enabled;
-#endif
-
-        if (!RHIInitialize(validationMode, BackendType::Count))
+        if (!RHIInitialize(config.validationMode, config.backendType))
         {
             headless = true;
         }

@@ -10,6 +10,20 @@ namespace Alimer
 {
     class GameHost;
 
+    struct GameConfig
+    {
+        String title = "Alimer";
+        uint32_t width = 1200;
+        uint32_t height = 800;
+
+        RHIBackendType backendType = RHIBackendType::Count;
+#if defined(_DEBUG)
+        RHIValidationMode validationMode = RHIValidationMode::Disabled;
+#else
+        RHIValidationMode validationMode = RHIValidationMode::Enabled;
+#endif
+    };
+
 	/// Class that provides graphics initialization, game logic, and rendering code.
 	class ALIMER_API Game
 	{
@@ -30,6 +44,9 @@ namespace Alimer
 
 		/// Request the game to exit.
 		void Exit();
+
+        // Gets the config data used to run the application
+        const GameConfig& GetConfig() const { return config; }
 
 		/// Checks whether exit was requested.
 		[[nodiscard]] bool IsExitRequested() const noexcept { return exiting; }
@@ -58,6 +75,7 @@ namespace Alimer
         void Render();
 
 	protected:
+        GameConfig config{};
         bool headless{ false };
 		bool running{ false };
 		bool paused{ false };

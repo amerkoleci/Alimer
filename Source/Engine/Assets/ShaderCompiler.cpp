@@ -162,14 +162,14 @@ namespace Alimer::ShaderCompiler
         ULONG STDMETHODCALLTYPE Release() override { return E_NOTIMPL; }
     };
 
-    bool Compile(const std::string& fileName, Shader* shader)
+    bool Compile(const std::string& fileName, RHIShader* shader)
     {
         ShaderCompileOptions options{};
         options.source = File::ReadAllText(fileName);
         return Compile(options, shader);
     }
 
-    bool Compile(ShaderStage stage, const std::string& fileName, Shader* shader)
+    bool Compile(ShaderStage stage, const std::string& fileName, RHIShader* shader)
     {
         ShaderCompileOptions options{};
         options.source = File::ReadAllText(fileName);
@@ -187,7 +187,7 @@ namespace Alimer::ShaderCompiler
         return Compile(options, shader);
     }
 
-    bool Compile(const ShaderCompileOptions& options, Shader* shader)
+    bool Compile(const ShaderCompileOptions& options, RHIShader* shader)
     {
         if (DxcCreateInstance == nullptr)
         {

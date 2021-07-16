@@ -184,23 +184,23 @@ namespace Alimer
     /* RHIDevice */
     RHIDevice* GDevice = nullptr;
 
-    bool RHIInitialize(ValidationMode validationMode, BackendType backendType)
+    bool RHIInitialize(RHIValidationMode validationMode, RHIBackendType backendType)
     {
         if (GDevice != nullptr)
             return true;
 
-        if (backendType == BackendType::Count)
+        if (backendType == RHIBackendType::Count)
         {
 #if defined(ALIMER_RHI_D3D12)
             if (RHIDeviceD3D12::IsAvailable())
-                backendType = BackendType::Direct3D12;
+                backendType = RHIBackendType::Direct3D12;
 #endif
 
-            if (backendType == BackendType::Count)
+            if (backendType == RHIBackendType::Count)
             {
 #if defined(ALIMER_RHI_VULKAN)
                 if (RHIDeviceVulkan::IsAvailable())
-                    backendType = BackendType::Vulkan;
+                    backendType = RHIBackendType::Vulkan;
 #endif
             }
         }
@@ -208,13 +208,13 @@ namespace Alimer
         switch (backendType)
         {
 #if defined(ALIMER_RHI_D3D12)
-            case BackendType::Direct3D12:
+            case RHIBackendType::Direct3D12:
                 GDevice = new RHIDeviceD3D12(validationMode);
                 break;
 #endif
 
 #if defined(ALIMER_RHI_VULKAN)
-            case BackendType::Vulkan:
+            case RHIBackendType::Vulkan:
                 GDevice = new RHIDeviceVulkan(validationMode);
                 break;
 #endif

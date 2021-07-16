@@ -531,6 +531,33 @@ namespace Alimer
             return VK_COMPARE_OP_NEVER;
         }
 
+        [[nodiscard]] constexpr VkCompareOp ToVkCompareOp(CompareFunction function)
+        {
+            switch (function)
+            {
+                case CompareFunction::Never:
+                    return VK_COMPARE_OP_NEVER;
+                case CompareFunction::Less:
+                    return VK_COMPARE_OP_LESS;
+                case CompareFunction::Equal:
+                    return VK_COMPARE_OP_EQUAL;
+                case CompareFunction::LessEqual:
+                    return VK_COMPARE_OP_LESS_OR_EQUAL;
+                case CompareFunction::Greater:
+                    return VK_COMPARE_OP_GREATER;
+                case CompareFunction::NotEqual:
+                    return VK_COMPARE_OP_NOT_EQUAL;
+                case CompareFunction::GreaterEqual:
+                    return VK_COMPARE_OP_GREATER_OR_EQUAL;
+                case CompareFunction::Always:
+                    return VK_COMPARE_OP_ALWAYS;
+
+                default:
+                    ALIMER_UNREACHABLE();
+                    return VK_COMPARE_OP_MAX_ENUM;
+            }
+        }
+
         [[nodiscard]] constexpr VkBlendFactor VulkanBlendFactor(BlendFactor value)
         {
             switch (value) {
@@ -602,27 +629,70 @@ namespace Alimer
             return static_cast<VkColorComponentFlags>(mask);
         }
 
-        constexpr VkSamplerAddressMode _ConvertTextureAddressMode(TEXTURE_ADDRESS_MODE value)
+        [[nodiscard]] constexpr VkFilter VulkanSamplerFilter(SamplerFilter mode)
+        {
+            switch (mode)
+            {
+                case SamplerFilter::Nearest:
+                    return VK_FILTER_NEAREST;
+                case SamplerFilter::Linear:
+                    return VK_FILTER_LINEAR;
+                default:
+                    ALIMER_UNREACHABLE();
+                    return VK_FILTER_MAX_ENUM;
+            }
+        }
+
+        [[nodiscard]] constexpr VkSamplerMipmapMode VulkanMipMapMode(SamplerFilter mode)
+        {
+            switch (mode)
+            {
+                case SamplerFilter::Nearest:
+                    return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+                case SamplerFilter::Linear:
+                    return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+                default:
+                    ALIMER_UNREACHABLE();
+                    return VK_SAMPLER_MIPMAP_MODE_MAX_ENUM;
+            }
+        }
+
+        [[nodiscard]] constexpr VkSamplerAddressMode VulkanSamplerAddressMode(SamplerAddressMode mode)
+        {
+            switch (mode)
+            {
+                case SamplerAddressMode::Wrap:
+                    return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+                case SamplerAddressMode::Mirror:
+                    return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+                case SamplerAddressMode::Clamp:
+                    return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+                case SamplerAddressMode::Border:
+                    return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+                case SamplerAddressMode::MirrorOnce:
+                    return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
+                default:
+                    ALIMER_UNREACHABLE();
+                    return VK_SAMPLER_ADDRESS_MODE_MAX_ENUM;
+            }
+        }
+
+        [[nodiscard]] constexpr VkBorderColor VulkanBorderColor(SamplerBorderColor value)
         {
             switch (value)
             {
-                case TEXTURE_ADDRESS_WRAP:
-                    return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-                    break;
-                case TEXTURE_ADDRESS_MIRROR:
-                    return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-                    break;
-                case TEXTURE_ADDRESS_CLAMP:
-                    return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-                    break;
-                case TEXTURE_ADDRESS_BORDER:
-                    return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-                    break;
+                case SamplerBorderColor::TransparentBlack:
+                    return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+                case SamplerBorderColor::OpaqueBlack:
+                    return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+                case SamplerBorderColor::OpaqueWhite:
+                    return VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
                 default:
-                    break;
+                    ALIMER_UNREACHABLE();
+                    return VK_BORDER_COLOR_MAX_ENUM;
             }
-            return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
         }
+
         constexpr VkStencilOp _ConvertStencilOp(STENCIL_OP value)
         {
             switch (value)
@@ -1141,7 +1211,7 @@ namespace Alimer
         {
             return static_cast<QueryHeap_Vulkan*>(param->internal_state.get());
         }
-        Shader_Vulkan* to_internal(const Shader* param)
+        Shader_Vulkan* to_internal(const RHIShader* param)
         {
             return static_cast<Shader_Vulkan*>(param->internal_state.get());
         }
@@ -2244,7 +2314,7 @@ namespace Alimer
         return true;
     }
 
-    RHIDeviceVulkan::RHIDeviceVulkan(ValidationMode validationMode_)
+    RHIDeviceVulkan::RHIDeviceVulkan(RHIValidationMode validationMode_)
     {
         ALIMER_VERIFY(IsAvailable());
 
@@ -2309,7 +2379,7 @@ namespace Alimer
         instanceExtensions.push_back(VK_EXT_HEADLESS_SURFACE_EXTENSION_NAME);
 #endif
 
-        if (validationMode != ValidationMode::Disabled)
+        if (validationMode != RHIValidationMode::Disabled)
         {
             // Determine the optimal validation layers to enable that are necessary for useful debugging
             std::vector<const char*> optimalValidationLyers = GetOptimalValidationLayers(availableInstanceLayers);
@@ -2325,7 +2395,7 @@ namespace Alimer
 
         VkDebugUtilsMessengerCreateInfoEXT debugUtilsCreateInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT };
 
-        if (validationMode != ValidationMode::Disabled
+        if (validationMode != RHIValidationMode::Disabled
             && debugUtils)
         {
             debugUtilsCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
@@ -2343,7 +2413,7 @@ namespace Alimer
 
         volkLoadInstanceOnly(instance);
 
-        if (validationMode != ValidationMode::Disabled
+        if (validationMode != RHIValidationMode::Disabled
             && debugUtils)
         {
             result = vkCreateDebugUtilsMessengerEXT(instance, &debugUtilsCreateInfo, nullptr, &debugUtilsMessenger);
@@ -3820,7 +3890,7 @@ namespace Alimer
         return res == VK_SUCCESS;
     }
 
-    bool RHIDeviceVulkan::CreateShader(ShaderStage stage, const void* pShaderBytecode, size_t BytecodeLength, Shader* pShader) const
+    bool RHIDeviceVulkan::CreateShader(ShaderStage stage, const void* pShaderBytecode, size_t BytecodeLength, RHIShader* pShader) const
     {
         auto internal_state = std::make_shared<Shader_Vulkan>();
         internal_state->allocationhandler = allocationhandler;
@@ -4133,185 +4203,56 @@ namespace Alimer
 
         return res == VK_SUCCESS;
     }
-    bool RHIDeviceVulkan::CreateSampler(const SamplerDesc* pSamplerDesc, Sampler* pSamplerState) const
+
+    bool RHIDeviceVulkan::CreateSampler(const RHISamplerDescriptor* descriptor, Sampler* pSamplerState) const
     {
+        ALIMER_ASSERT(descriptor);
+
         auto internal_state = std::make_shared<Sampler_Vulkan>();
         internal_state->allocationhandler = allocationhandler;
         pSamplerState->internal_state = internal_state;
 
-        pSamplerState->desc = *pSamplerDesc;
+        //pSamplerState->desc = *descriptor;
 
         VkSamplerCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
         createInfo.flags = 0;
         createInfo.pNext = nullptr;
-
-
-        switch (pSamplerDesc->Filter)
+        createInfo.magFilter = VulkanSamplerFilter(descriptor->magFilter);
+        createInfo.minFilter = VulkanSamplerFilter(descriptor->minFilter);
+        createInfo.mipmapMode = VulkanMipMapMode(descriptor->mipFilter);
+        createInfo.addressModeU = VulkanSamplerAddressMode(descriptor->addressModeU);
+        createInfo.addressModeV = VulkanSamplerAddressMode(descriptor->addressModeV);
+        createInfo.addressModeW = VulkanSamplerAddressMode(descriptor->addressModeW);
+        createInfo.mipLodBias = 0.0f;
+        // https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkSamplerCreateInfo.html
+        if (features2.features.samplerAnisotropy && descriptor->maxAnisotropy > 1)
         {
-            case FILTER_MIN_MAG_MIP_POINT:
-                createInfo.minFilter = VK_FILTER_NEAREST;
-                createInfo.magFilter = VK_FILTER_NEAREST;
-                createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-                createInfo.anisotropyEnable = false;
-                createInfo.compareEnable = false;
-                break;
-            case FILTER_MIN_MAG_POINT_MIP_LINEAR:
-                createInfo.minFilter = VK_FILTER_NEAREST;
-                createInfo.magFilter = VK_FILTER_NEAREST;
-                createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-                createInfo.anisotropyEnable = false;
-                createInfo.compareEnable = false;
-                break;
-            case FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT:
-                createInfo.minFilter = VK_FILTER_NEAREST;
-                createInfo.magFilter = VK_FILTER_LINEAR;
-                createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-                createInfo.anisotropyEnable = false;
-                createInfo.compareEnable = false;
-                break;
-            case FILTER_MIN_POINT_MAG_MIP_LINEAR:
-                createInfo.minFilter = VK_FILTER_NEAREST;
-                createInfo.magFilter = VK_FILTER_LINEAR;
-                createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-                createInfo.anisotropyEnable = false;
-                createInfo.compareEnable = false;
-                break;
-            case FILTER_MIN_LINEAR_MAG_MIP_POINT:
-                createInfo.minFilter = VK_FILTER_LINEAR;
-                createInfo.magFilter = VK_FILTER_NEAREST;
-                createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-                createInfo.anisotropyEnable = false;
-                createInfo.compareEnable = false;
-                break;
-            case FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR:
-                createInfo.minFilter = VK_FILTER_LINEAR;
-                createInfo.magFilter = VK_FILTER_NEAREST;
-                createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-                createInfo.anisotropyEnable = false;
-                createInfo.compareEnable = false;
-                break;
-            case FILTER_MIN_MAG_LINEAR_MIP_POINT:
-                createInfo.minFilter = VK_FILTER_LINEAR;
-                createInfo.magFilter = VK_FILTER_LINEAR;
-                createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-                createInfo.anisotropyEnable = false;
-                createInfo.compareEnable = false;
-                break;
-            case FILTER_MIN_MAG_MIP_LINEAR:
-                createInfo.minFilter = VK_FILTER_LINEAR;
-                createInfo.magFilter = VK_FILTER_LINEAR;
-                createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-                createInfo.anisotropyEnable = false;
-                createInfo.compareEnable = false;
-                break;
-            case FILTER_ANISOTROPIC:
-                createInfo.minFilter = VK_FILTER_LINEAR;
-                createInfo.magFilter = VK_FILTER_LINEAR;
-                createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-                createInfo.anisotropyEnable = true;
-                createInfo.compareEnable = false;
-                break;
-            case FILTER_COMPARISON_MIN_MAG_MIP_POINT:
-                createInfo.minFilter = VK_FILTER_NEAREST;
-                createInfo.magFilter = VK_FILTER_NEAREST;
-                createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-                createInfo.anisotropyEnable = false;
-                createInfo.compareEnable = true;
-                break;
-            case FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR:
-                createInfo.minFilter = VK_FILTER_NEAREST;
-                createInfo.magFilter = VK_FILTER_NEAREST;
-                createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-                createInfo.anisotropyEnable = false;
-                createInfo.compareEnable = true;
-                break;
-            case FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT:
-                createInfo.minFilter = VK_FILTER_NEAREST;
-                createInfo.magFilter = VK_FILTER_LINEAR;
-                createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-                createInfo.anisotropyEnable = false;
-                createInfo.compareEnable = true;
-                break;
-            case FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR:
-                createInfo.minFilter = VK_FILTER_NEAREST;
-                createInfo.magFilter = VK_FILTER_NEAREST;
-                createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-                createInfo.anisotropyEnable = false;
-                createInfo.compareEnable = true;
-                break;
-            case FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT:
-                createInfo.minFilter = VK_FILTER_LINEAR;
-                createInfo.magFilter = VK_FILTER_NEAREST;
-                createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-                createInfo.anisotropyEnable = false;
-                createInfo.compareEnable = true;
-                break;
-            case FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR:
-                createInfo.minFilter = VK_FILTER_LINEAR;
-                createInfo.magFilter = VK_FILTER_NEAREST;
-                createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-                createInfo.anisotropyEnable = false;
-                createInfo.compareEnable = true;
-                break;
-            case FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT:
-                createInfo.minFilter = VK_FILTER_LINEAR;
-                createInfo.magFilter = VK_FILTER_LINEAR;
-                createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-                createInfo.anisotropyEnable = false;
-                createInfo.compareEnable = true;
-                break;
-            case FILTER_COMPARISON_MIN_MAG_MIP_LINEAR:
-                createInfo.minFilter = VK_FILTER_LINEAR;
-                createInfo.magFilter = VK_FILTER_LINEAR;
-                createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-                createInfo.anisotropyEnable = false;
-                createInfo.compareEnable = true;
-                break;
-            case FILTER_COMPARISON_ANISOTROPIC:
-                createInfo.minFilter = VK_FILTER_LINEAR;
-                createInfo.magFilter = VK_FILTER_LINEAR;
-                createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-                createInfo.anisotropyEnable = true;
-                createInfo.compareEnable = true;
-                break;
-            case FILTER_MINIMUM_MIN_MAG_MIP_POINT:
-            case FILTER_MINIMUM_MIN_MAG_POINT_MIP_LINEAR:
-            case FILTER_MINIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT:
-            case FILTER_MINIMUM_MIN_POINT_MAG_MIP_LINEAR:
-            case FILTER_MINIMUM_MIN_LINEAR_MAG_MIP_POINT:
-            case FILTER_MINIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR:
-            case FILTER_MINIMUM_MIN_MAG_LINEAR_MIP_POINT:
-            case FILTER_MINIMUM_MIN_MAG_MIP_LINEAR:
-            case FILTER_MINIMUM_ANISOTROPIC:
-            case FILTER_MAXIMUM_MIN_MAG_MIP_POINT:
-            case FILTER_MAXIMUM_MIN_MAG_POINT_MIP_LINEAR:
-            case FILTER_MAXIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT:
-            case FILTER_MAXIMUM_MIN_POINT_MAG_MIP_LINEAR:
-            case FILTER_MAXIMUM_MIN_LINEAR_MAG_MIP_POINT:
-            case FILTER_MAXIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR:
-            case FILTER_MAXIMUM_MIN_MAG_LINEAR_MIP_POINT:
-            case FILTER_MAXIMUM_MIN_MAG_MIP_LINEAR:
-            case FILTER_MAXIMUM_ANISOTROPIC:
-            default:
-                createInfo.minFilter = VK_FILTER_NEAREST;
-                createInfo.magFilter = VK_FILTER_NEAREST;
-                createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-                createInfo.anisotropyEnable = false;
-                createInfo.compareEnable = false;
-                break;
+            createInfo.anisotropyEnable = VK_TRUE;
+            createInfo.maxAnisotropy = Min(
+                static_cast<float>(descriptor->maxAnisotropy),
+                properties2.properties.limits.maxSamplerAnisotropy
+            );
+        }
+        else
+        {
+            createInfo.anisotropyEnable = VK_FALSE;
+            createInfo.maxAnisotropy = 1;
+        }
+        if (descriptor->compareFunction != CompareFunction::Never)
+        {
+            createInfo.compareOp = ToVkCompareOp(descriptor->compareFunction);
+            createInfo.compareEnable = VK_TRUE;
+        }
+        else {
+            createInfo.compareOp = VK_COMPARE_OP_NEVER;
+            createInfo.compareEnable = VK_FALSE;
         }
 
-        createInfo.addressModeU = _ConvertTextureAddressMode(pSamplerDesc->AddressU);
-        createInfo.addressModeV = _ConvertTextureAddressMode(pSamplerDesc->AddressV);
-        createInfo.addressModeW = _ConvertTextureAddressMode(pSamplerDesc->AddressW);
-        createInfo.maxAnisotropy = static_cast<float>(pSamplerDesc->MaxAnisotropy);
-        createInfo.compareOp = _ConvertComparisonFunc(pSamplerDesc->ComparisonFunc);
-        createInfo.minLod = pSamplerDesc->MinLOD;
-        createInfo.maxLod = pSamplerDesc->MaxLOD;
-        createInfo.mipLodBias = pSamplerDesc->MipLODBias;
-        createInfo.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+        createInfo.minLod = descriptor->lodMinClamp;
+        createInfo.maxLod = descriptor->lodMaxClamp;
         createInfo.unnormalizedCoordinates = VK_FALSE;
+        createInfo.borderColor = VulkanBorderColor(descriptor->borderColor);
 
         VkResult res = vkCreateSampler(device, &createInfo, nullptr, &internal_state->resource);
         assert(res == VK_SUCCESS);
@@ -4338,6 +4279,7 @@ namespace Alimer
 
         return res == VK_SUCCESS;
     }
+
     bool RHIDeviceVulkan::CreateQueryHeap(const GPUQueryHeapDesc* pDesc, GPUQueryHeap* pQueryHeap) const
     {
         auto internal_state = std::make_shared<QueryHeap_Vulkan>();
@@ -4376,18 +4318,18 @@ namespace Alimer
         pso->desc = *pDesc;
 
         pso->hash = 0;
-        HashCombine(pso->hash, pDesc->ms);
-        HashCombine(pso->hash, pDesc->as);
-        HashCombine(pso->hash, pDesc->vs);
-        HashCombine(pso->hash, pDesc->ps);
-        HashCombine(pso->hash, pDesc->hs);
-        HashCombine(pso->hash, pDesc->ds);
-        HashCombine(pso->hash, pDesc->gs);
+        HashCombine(pso->hash, pDesc->vertex);
+        HashCombine(pso->hash, pDesc->hull);
+        HashCombine(pso->hash, pDesc->domain);
+        HashCombine(pso->hash, pDesc->geometry);
+        HashCombine(pso->hash, pDesc->pixel);
+        HashCombine(pso->hash, pDesc->mesh);
+        HashCombine(pso->hash, pDesc->amplification);
         HashCombine(pso->hash, pDesc->il);
         HashCombine(pso->hash, pDesc->rs);
         HashCombine(pso->hash, pDesc->bs);
         HashCombine(pso->hash, pDesc->dss);
-        HashCombine(pso->hash, pDesc->pt);
+        HashCombine(pso->hash, (uint32_t)pDesc->primitiveTopology);
         HashCombine(pso->hash, pDesc->sampleMask);
 
         VkResult res = VK_SUCCESS;
@@ -4395,7 +4337,7 @@ namespace Alimer
         {
             // Descriptor set layout comes from reflection data when there is no root signature specified:
 
-            auto insert_shader = [&](const Shader* shader) {
+            auto insert_shader = [&](const RHIShader* shader) {
                 if (shader == nullptr)
                     return;
                 auto shader_internal = to_internal(shader);
@@ -4439,20 +4381,20 @@ namespace Alimer
                 }
             };
 
-            insert_shader(pDesc->ms);
-            insert_shader(pDesc->as);
-            insert_shader(pDesc->vs);
-            insert_shader(pDesc->hs);
-            insert_shader(pDesc->ds);
-            insert_shader(pDesc->gs);
-            insert_shader(pDesc->ps);
+            insert_shader(pDesc->mesh);
+            insert_shader(pDesc->amplification);
+            insert_shader(pDesc->vertex);
+            insert_shader(pDesc->hull);
+            insert_shader(pDesc->domain);
+            insert_shader(pDesc->geometry);
+            insert_shader(pDesc->pixel);
 
-            auto insert_shader_bindless = [&](const Shader* shader) {
+            auto insert_shader_bindless = [&](const RHIShader* shader) {
                 if (shader == nullptr)
                     return;
                 auto shader_internal = to_internal(shader);
 
-                internal_state->bindlessBindings.resize(std::max(internal_state->bindlessBindings.size(), shader_internal->bindlessBindings.size()));
+                internal_state->bindlessBindings.resize(Max(internal_state->bindlessBindings.size(), shader_internal->bindlessBindings.size()));
 
                 int i = 0;
                 for (auto& x : shader_internal->bindlessBindings)
@@ -4469,13 +4411,13 @@ namespace Alimer
                 }
             };
 
-            insert_shader_bindless(pDesc->ms);
-            insert_shader_bindless(pDesc->as);
-            insert_shader_bindless(pDesc->vs);
-            insert_shader_bindless(pDesc->hs);
-            insert_shader_bindless(pDesc->ds);
-            insert_shader_bindless(pDesc->gs);
-            insert_shader_bindless(pDesc->ps);
+            insert_shader_bindless(pDesc->mesh);
+            insert_shader_bindless(pDesc->amplification);
+            insert_shader_bindless(pDesc->vertex);
+            insert_shader_bindless(pDesc->hull);
+            insert_shader_bindless(pDesc->domain);
+            insert_shader_bindless(pDesc->geometry);
+            insert_shader_bindless(pDesc->pixel);
 
             internal_state->binding_hash = 0;
             size_t i = 0;
@@ -4590,33 +4532,33 @@ namespace Alimer
 
         uint32_t shaderStageCount = 0;
         auto& shaderStages = internal_state->shaderStages;
-        if (pso->desc.ms != nullptr && pso->desc.ms->IsValid())
+        if (pso->desc.mesh != nullptr && pso->desc.mesh->IsValid())
         {
-            shaderStages[shaderStageCount++] = to_internal(pso->desc.ms)->stageInfo;
+            shaderStages[shaderStageCount++] = to_internal(pso->desc.mesh)->stageInfo;
         }
-        if (pso->desc.as != nullptr && pso->desc.as->IsValid())
+        if (pso->desc.amplification != nullptr && pso->desc.amplification->IsValid())
         {
-            shaderStages[shaderStageCount++] = to_internal(pso->desc.as)->stageInfo;
+            shaderStages[shaderStageCount++] = to_internal(pso->desc.amplification)->stageInfo;
         }
-        if (pso->desc.vs != nullptr && pso->desc.vs->IsValid())
+        if (pso->desc.vertex != nullptr && pso->desc.vertex->IsValid())
         {
-            shaderStages[shaderStageCount++] = to_internal(pso->desc.vs)->stageInfo;
+            shaderStages[shaderStageCount++] = to_internal(pso->desc.vertex)->stageInfo;
         }
-        if (pso->desc.hs != nullptr && pso->desc.hs->IsValid())
+        if (pso->desc.hull != nullptr && pso->desc.hull->IsValid())
         {
-            shaderStages[shaderStageCount++] = to_internal(pso->desc.hs)->stageInfo;
+            shaderStages[shaderStageCount++] = to_internal(pso->desc.hull)->stageInfo;
         }
-        if (pso->desc.ds != nullptr && pso->desc.ds->IsValid())
+        if (pso->desc.domain != nullptr && pso->desc.domain->IsValid())
         {
-            shaderStages[shaderStageCount++] = to_internal(pso->desc.ds)->stageInfo;
+            shaderStages[shaderStageCount++] = to_internal(pso->desc.domain)->stageInfo;
         }
-        if (pso->desc.gs != nullptr && pso->desc.gs->IsValid())
+        if (pso->desc.geometry != nullptr && pso->desc.geometry->IsValid())
         {
-            shaderStages[shaderStageCount++] = to_internal(pso->desc.gs)->stageInfo;
+            shaderStages[shaderStageCount++] = to_internal(pso->desc.geometry)->stageInfo;
         }
-        if (pso->desc.ps != nullptr && pso->desc.ps->IsValid())
+        if (pso->desc.pixel != nullptr && pso->desc.pixel->IsValid())
         {
-            shaderStages[shaderStageCount++] = to_internal(pso->desc.ps)->stageInfo;
+            shaderStages[shaderStageCount++] = to_internal(pso->desc.pixel)->stageInfo;
         }
         pipelineInfo.stageCount = shaderStageCount;
         pipelineInfo.pStages = shaderStages;
@@ -4627,24 +4569,24 @@ namespace Alimer
         // Primitive type:
         VkPipelineInputAssemblyStateCreateInfo& inputAssembly = internal_state->inputAssembly;
         inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        switch (pso->desc.pt)
+        switch (pso->desc.primitiveTopology)
         {
-            case POINTLIST:
+            case PrimitiveTopology::PointList:
                 inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
                 break;
-            case LINELIST:
+            case PrimitiveTopology::LineList:
                 inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
                 break;
-            case LINESTRIP:
+            case PrimitiveTopology::LineStrip:
                 inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
                 break;
-            case TRIANGLESTRIP:
-                inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-                break;
-            case TRIANGLELIST:
+            case PrimitiveTopology::TriangleList:
                 inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
                 break;
-            case PATCHLIST:
+            case PrimitiveTopology::TriangleStrip:
+                inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+                break;
+            case PrimitiveTopology::PatchList:
                 inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
                 break;
             default:
@@ -6748,36 +6690,37 @@ namespace Alimer
         dirty_pso[cmd] = true;
     }
 
-    void RHIDeviceVulkan::BindComputeShader(const Shader* cs, CommandList cmd)
+    void RHIDeviceVulkan::BindComputeShader(CommandList commandList, const RHIShader* shader)
     {
-        assert(cs->stage == ShaderStage::Compute || cs->stage == ShaderStage::Library);
-        if (active_cs[cmd] != cs)
+        ALIMER_ASSERT(shader->stage == ShaderStage::Compute || shader->stage == ShaderStage::Library);
+
+        if (active_cs[commandList] != shader)
         {
-            if (active_cs[cmd] == nullptr)
+            if (active_cs[commandList] == nullptr)
             {
-                GetFrameResources().descriptors[cmd].dirty = true;
+                GetFrameResources().descriptors[commandList].dirty = true;
             }
             else
             {
-                auto internal_state = to_internal(cs);
-                auto active_internal = to_internal(active_cs[cmd]);
+                auto internal_state = to_internal(shader);
+                auto active_internal = to_internal(active_cs[commandList]);
                 if (internal_state->binding_hash != active_internal->binding_hash)
                 {
-                    GetFrameResources().descriptors[cmd].dirty = true;
+                    GetFrameResources().descriptors[commandList].dirty = true;
                 }
             }
 
-            active_cs[cmd] = cs;
-            auto internal_state = to_internal(cs);
+            active_cs[commandList] = shader;
+            auto internal_state = to_internal(shader);
 
-            if (cs->stage == ShaderStage::Compute)
+            if (shader->stage == ShaderStage::Compute)
             {
-                vkCmdBindPipeline(GetCommandList(cmd), VK_PIPELINE_BIND_POINT_COMPUTE, internal_state->pipeline_cs);
+                vkCmdBindPipeline(GetCommandList(commandList), VK_PIPELINE_BIND_POINT_COMPUTE, internal_state->pipeline_cs);
 
                 if (!internal_state->bindlessSets.empty())
                 {
                     vkCmdBindDescriptorSets(
-                        GetCommandList(cmd),
+                        GetCommandList(commandList),
                         VK_PIPELINE_BIND_POINT_COMPUTE,
                         internal_state->pipelineLayout_cs,
                         internal_state->bindlessFirstSet,
@@ -6788,12 +6731,12 @@ namespace Alimer
                     );
                 }
             }
-            else if (cs->stage == ShaderStage::Library)
+            else if (shader->stage == ShaderStage::Library)
             {
                 if (!internal_state->bindlessSets.empty())
                 {
                     vkCmdBindDescriptorSets(
-                        GetCommandList(cmd),
+                        GetCommandList(commandList),
                         VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
                         internal_state->pipelineLayout_cs,
                         internal_state->bindlessFirstSet,
@@ -7350,10 +7293,11 @@ namespace Alimer
         prev_pipeline_hash[cmd] = 0;
         active_rt[cmd] = rtpso;
 
-        BindComputeShader(rtpso->desc.shaderlibraries.front().shader, cmd);
+        BindComputeShader(cmd, rtpso->desc.shaderlibraries.front().shader);
 
         vkCmdBindPipeline(GetCommandList(cmd), VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, to_internal(rtpso)->pipeline);
     }
+
     void RHIDeviceVulkan::DispatchRays(const DispatchRaysDesc* desc, CommandList cmd)
     {
         predispatch(cmd);

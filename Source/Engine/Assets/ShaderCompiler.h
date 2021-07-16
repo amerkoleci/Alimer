@@ -17,7 +17,7 @@ namespace Alimer::ShaderCompiler
         ShaderModel shaderModel = ShaderModel::Model6_0;
     };
 
-    ALIMER_API bool Compile(const std::string& fileName, Shader* shader);
-    ALIMER_API bool Compile(ShaderStage stage, const std::string& fileName, Shader* shader);
-    ALIMER_API bool Compile(const ShaderCompileOptions& options, Shader* shader);
+    ALIMER_API bool Compile(const std::string& fileName, RHIShader* shader);
+    ALIMER_API bool Compile(ShaderStage stage, const std::string& fileName, RHIShader* shader);
+    ALIMER_API bool Compile(const ShaderCompileOptions& options, RHIShader* shader);
 }

@@ -172,7 +172,7 @@ namespace Alimer
 
         std::vector<D3D12_RESOURCE_BARRIER> frame_barriers[COMMANDLIST_COUNT];
 
-        PRIMITIVETOPOLOGY prev_pt[COMMANDLIST_COUNT] = {};
+        PrimitiveTopology prev_pt[COMMANDLIST_COUNT] = {};
 
         mutable std::unordered_map<size_t, Microsoft::WRL::ComPtr<ID3D12RootSignature>> rootsignature_cache;
         mutable std::mutex rootsignature_cache_mutex;
@@ -181,7 +181,7 @@ namespace Alimer
         std::vector<std::pair<size_t, Microsoft::WRL::ComPtr<ID3D12PipelineState>>> pipelines_worker[COMMANDLIST_COUNT];
         size_t prev_pipeline_hash[COMMANDLIST_COUNT] = {};
         const PipelineState* active_pso[COMMANDLIST_COUNT] = {};
-        const Shader* active_cs[COMMANDLIST_COUNT] = {};
+        const RHIShader* active_cs[COMMANDLIST_COUNT] = {};
         const RaytracingPipelineState* active_rt[COMMANDLIST_COUNT] = {};
         const ID3D12RootSignature* active_rootsig_graphics[COMMANDLIST_COUNT] = {};
         const ID3D12RootSignature* active_rootsig_compute[COMMANDLIST_COUNT] = {};
@@ -218,7 +218,7 @@ namespace Alimer
     public:
         [[nodiscard]] static bool IsAvailable();
 
-        RHIDeviceD3D12(ValidationMode validationMode);
+        RHIDeviceD3D12(RHIValidationMode validationMode);
 
         bool Initialize() override;
         void Shutdown() override;
@@ -226,8 +226,8 @@ namespace Alimer
         bool CreateSwapChain(const SwapChainDescriptor* descriptor, void* window, SwapChain* swapChain) const override;
         bool CreateBuffer(const BufferDescriptor* descriptor, const void* pInitialData, GPUBuffer* pBuffer) const override;
         bool CreateTexture(const TextureDesc* pDesc, const SubresourceData* pInitialData, RHITexture* pTexture) const override;
-        bool CreateShader(ShaderStage stage, const void* pShaderBytecode, size_t BytecodeLength, Shader* pShader) const override;
-        bool CreateSampler(const SamplerDesc* pSamplerDesc, Sampler* pSamplerState) const override;
+        bool CreateShader(ShaderStage stage, const void* pShaderBytecode, size_t BytecodeLength, RHIShader* pShader) const override;
+        bool CreateSampler(const RHISamplerDescriptor* descriptor, Sampler* pSamplerState) const override;
         bool CreateQueryHeap(const GPUQueryHeapDesc* pDesc, GPUQueryHeap* pQueryHeap) const override;
         bool CreatePipelineState(const PipelineStateDesc* pDesc, PipelineState* pso) const override;
         bool CreateRenderPass(const RenderPassDesc* pDesc, RenderPass* renderpass) const override;
@@ -283,7 +283,7 @@ namespace Alimer
         void BindBlendFactor(float r, float g, float b, float a, CommandList cmd) override;
         void BindShadingRate(CommandList commandList, ShadingRate rate) override;
         void BindPipelineState(const PipelineState* pso, CommandList cmd) override;
-        void BindComputeShader(const Shader* cs, CommandList cmd) override;
+        void BindComputeShader(CommandList commandList, const RHIShader* shader) override;
         void Draw(uint32_t vertexCount, uint32_t startVertexLocation, CommandList cmd) override;
         void DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, CommandList cmd) override;
         void DrawInstanced(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation, CommandList cmd) override;

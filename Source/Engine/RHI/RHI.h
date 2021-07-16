@@ -33,10 +33,117 @@ namespace Alimer
     static constexpr uint32_t kInvalidBindlessIndex = static_cast<uint32_t>(-1);
 
     /* Forward declarations */
-    struct Shader;
+    struct RHIShader;
     struct GPUResource;
     struct GPUBuffer;
     struct RHITexture;
+
+    enum class RHIBackendType : uint32_t
+    {
+        Direct3D12,
+        Vulkan,
+        Count
+    };
+
+    enum class RHIValidationMode : uint32_t
+    {
+        /// No validation is enabled.
+        Disabled,
+        /// Print warnings and errors
+        Enabled,
+        /// Print all warnings, errors and info messages
+        Verbose,
+        /// Enable GPU-based validation
+        GPU
+    };
+
+    enum class RHIQueueType : uint32_t
+    {
+        /// Can be used for draw, dispatch, or copy commands.
+        Graphics,
+        /// Can be used for dispatch or copy commands.
+        Compute,
+        Count
+    };
+
+    enum class RHITextureDimension : uint32_t
+    {
+        Texture1D = 1,
+        Texture2D = 2,
+        Texture3D = 3,
+        TextureCube = 4
+    };
+
+    enum class RHITextureUsage : uint32_t
+    {
+        Unknown = 0,
+        ShaderRead = 1 << 0,
+        ShaderWrite = 1 << 1,
+        ShaderReadWrite = ShaderRead | ShaderWrite,
+        RenderTarget = 1 << 2,
+    };
+
+    /// Number of MSAA samples to use. 1xMSAA and 4xMSAA are most broadly supported
+    enum class RHITextureSampleCount : uint32_t
+    {
+        Count1,
+        Count2,
+        Count4,
+        Count8,
+        Count16,
+        Count32,
+    };
+
+    enum class CompareFunction : uint32_t
+    {
+        Never,
+        Less,
+        Equal,
+        LessEqual,
+        Greater,
+        NotEqual,
+        GreaterEqual,
+        Always,
+    };
+
+    enum class PrimitiveTopology : uint32_t
+    {
+        PointList,
+        LineList,
+        LineStrip,
+        TriangleList,
+        TriangleStrip,
+        PatchList,
+        Count
+    };
+
+    enum class RHIIndexType : uint32_t
+    {
+        UInt16 = 0,
+        UInt32 = 1
+    };
+
+    enum class SamplerFilter : uint32_t
+    {
+        Nearest,
+        Linear
+    };
+
+    enum class SamplerAddressMode : uint32_t
+    {
+        Wrap,
+        Mirror,
+        Clamp,
+        Border,
+        MirrorOnce,
+    };
+
+    enum class SamplerBorderColor : uint32_t
+    {
+        TransparentBlack,
+        OpaqueBlack,
+        OpaqueWhite,
+    };
 
     enum class ShaderStage : uint32_t
     {
@@ -70,16 +177,6 @@ namespace Alimer
         Model6_7,
     };
 
-    enum PRIMITIVETOPOLOGY
-    {
-        UNDEFINED,
-        TRIANGLELIST,
-        TRIANGLESTRIP,
-        POINTLIST,
-        LINELIST,
-        LINESTRIP,
-        PATCHLIST,
-    };
     enum COMPARISON_FUNC
     {
         COMPARISON_NEVER,
@@ -181,52 +278,6 @@ namespace Alimer
         StagingReadback,
     };
 
-    enum TEXTURE_ADDRESS_MODE
-    {
-        TEXTURE_ADDRESS_WRAP,
-        TEXTURE_ADDRESS_MIRROR,
-        TEXTURE_ADDRESS_CLAMP,
-        TEXTURE_ADDRESS_BORDER,
-    };
-    enum FILTER
-    {
-        FILTER_MIN_MAG_MIP_POINT,
-        FILTER_MIN_MAG_POINT_MIP_LINEAR,
-        FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT,
-        FILTER_MIN_POINT_MAG_MIP_LINEAR,
-        FILTER_MIN_LINEAR_MAG_MIP_POINT,
-        FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR,
-        FILTER_MIN_MAG_LINEAR_MIP_POINT,
-        FILTER_MIN_MAG_MIP_LINEAR,
-        FILTER_ANISOTROPIC,
-        FILTER_COMPARISON_MIN_MAG_MIP_POINT,
-        FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR,
-        FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT,
-        FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR,
-        FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT,
-        FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR,
-        FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT,
-        FILTER_COMPARISON_MIN_MAG_MIP_LINEAR,
-        FILTER_COMPARISON_ANISOTROPIC,
-        FILTER_MINIMUM_MIN_MAG_MIP_POINT,
-        FILTER_MINIMUM_MIN_MAG_POINT_MIP_LINEAR,
-        FILTER_MINIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT,
-        FILTER_MINIMUM_MIN_POINT_MAG_MIP_LINEAR,
-        FILTER_MINIMUM_MIN_LINEAR_MAG_MIP_POINT,
-        FILTER_MINIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR,
-        FILTER_MINIMUM_MIN_MAG_LINEAR_MIP_POINT,
-        FILTER_MINIMUM_MIN_MAG_MIP_LINEAR,
-        FILTER_MINIMUM_ANISOTROPIC,
-        FILTER_MAXIMUM_MIN_MAG_MIP_POINT,
-        FILTER_MAXIMUM_MIN_MAG_POINT_MIP_LINEAR,
-        FILTER_MAXIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT,
-        FILTER_MAXIMUM_MIN_POINT_MAG_MIP_LINEAR,
-        FILTER_MAXIMUM_MIN_LINEAR_MAG_MIP_POINT,
-        FILTER_MAXIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR,
-        FILTER_MAXIMUM_MIN_MAG_LINEAR_MIP_POINT,
-        FILTER_MAXIMUM_MIN_MAG_MIP_LINEAR,
-        FILTER_MAXIMUM_ANISOTROPIC,
-    };
     enum FORMAT
     {
         FORMAT_UNKNOWN,
@@ -440,6 +491,135 @@ namespace Alimer
         float maxDepth;
     };
 
+    struct RHITextureDescription
+    {
+        StringView name;
+
+        /// Dimension of texture.
+        RHITextureDimension dimension = RHITextureDimension::Texture2D;
+
+        /// Pixel format.
+        PixelFormat format = PixelFormat::RGBA8UNorm;
+
+        /// Usage of texture.
+        RHITextureUsage usage = RHITextureUsage::ShaderRead;
+
+        /// Width of the texture in pixels.
+        uint32_t width = 1;
+
+        /// Height of the texture in pixels.
+        uint32_t height = 1;
+
+        /// Depth or array size of the texture in pixels.
+        uint32_t depthOrArraySize = 1;
+
+        /// Number of mip levels.
+        uint32_t mipLevels = 1;
+
+        /// Number of samples.
+        RHITextureSampleCount sampleCount = RHITextureSampleCount::Count1;
+
+        static inline RHITextureDescription Texture1D(
+            PixelFormat format,
+            uint32_t width,
+            uint32_t mipLevels = 1,
+            uint32_t arraySize = 1,
+            RHITextureUsage usage = RHITextureUsage::ShaderRead) noexcept
+        {
+            RHITextureDescription desc;
+            desc.dimension = RHITextureDimension::Texture1D;
+            desc.format = format;
+            desc.usage = usage;
+            desc.width = width;
+            desc.depthOrArraySize = arraySize;
+            desc.mipLevels = mipLevels;
+            return desc;
+        }
+
+        static inline RHITextureDescription Texture2D(
+            PixelFormat format,
+            uint32_t width,
+            uint32_t height,
+            uint32_t mipLevels = 1,
+            uint32_t arraySize = 1,
+            RHITextureUsage usage = RHITextureUsage::ShaderRead) noexcept
+        {
+            RHITextureDescription desc;
+            desc.format = format;
+            desc.usage = usage;
+            desc.width = width;
+            desc.height = height;
+            desc.depthOrArraySize = arraySize;
+            desc.mipLevels = mipLevels;
+            return desc;
+        }
+
+        static inline RHITextureDescription Texture3D(
+            PixelFormat format,
+            uint32_t width,
+            uint32_t height,
+            uint32_t depth,
+            uint16_t mipLevels = 1,
+            RHITextureUsage usage = RHITextureUsage::ShaderRead) noexcept
+        {
+            RHITextureDescription desc;
+            desc.dimension = RHITextureDimension::Texture3D;
+            desc.format = format;
+            desc.usage = usage;
+            desc.width = width;
+            desc.height = height;
+            desc.depthOrArraySize = depth;
+            desc.mipLevels = mipLevels;
+            return desc;
+        }
+
+        static RHITextureDescription TextureCube(
+            PixelFormat format,
+            uint32_t width,
+            uint32_t arraySize = 1,
+            uint32_t mipLevels = 1,
+            RHITextureUsage usage = RHITextureUsage::ShaderRead) noexcept
+        {
+            RHITextureDescription desc;
+            desc.dimension = RHITextureDimension::TextureCube;
+            desc.format = format;
+            desc.usage = usage;
+            desc.width = width;
+            desc.height = width;
+            desc.depthOrArraySize = arraySize;
+            desc.mipLevels = mipLevels;
+            return desc;
+        }
+    };
+
+    struct RHITextureViewDescription
+    {
+        PixelFormat format = PixelFormat::Undefined;
+        /// The base mip level visible in the view. Must be less than texture mip levels.
+        uint32_t baseMipLevel = 0;
+        /// The number of mip levels visible in the view.
+        uint32_t mipLevels = 0;
+        /// The base array layer visible in the view.
+        uint32_t baseArrayLayer = 0;
+        ///  The number of array layers visible in the view.
+        uint32_t arrayLayers = 0;
+    };
+
+    struct RHISamplerDescriptor
+    {
+        SamplerFilter minFilter = SamplerFilter::Nearest;
+        SamplerFilter magFilter = SamplerFilter::Nearest;
+        SamplerFilter mipFilter = SamplerFilter::Nearest;
+        SamplerAddressMode addressModeU = SamplerAddressMode::Clamp;
+        SamplerAddressMode addressModeV = SamplerAddressMode::Clamp;
+        SamplerAddressMode addressModeW = SamplerAddressMode::Clamp;
+        uint16_t maxAnisotropy = 1;
+        CompareFunction compareFunction = CompareFunction::Never;
+        SamplerBorderColor borderColor = SamplerBorderColor::TransparentBlack;
+        float lodMinClamp = 0.0f;
+        float lodMaxClamp = FLT_MAX;
+    };
+
     struct InputLayout
     {
         static const uint32_t APPEND_ALIGNED_ELEMENT = 0xffffffff; // automatically figure out AlignedByteOffset depending on Format
@@ -487,19 +667,6 @@ namespace Alimer
         IMAGE_LAYOUT layout = IMAGE_LAYOUT_SHADER_RESOURCE;
     };
 
-    struct SamplerDesc
-    {
-        FILTER Filter = FILTER_MIN_MAG_MIP_POINT;
-        TEXTURE_ADDRESS_MODE AddressU = TEXTURE_ADDRESS_CLAMP;
-        TEXTURE_ADDRESS_MODE AddressV = TEXTURE_ADDRESS_CLAMP;
-        TEXTURE_ADDRESS_MODE AddressW = TEXTURE_ADDRESS_CLAMP;
-        float MipLODBias = 0.0f;
-        uint32_t MaxAnisotropy = 0;
-        COMPARISON_FUNC ComparisonFunc = COMPARISON_NEVER;
-        float BorderColor[4] = { 0.0f,0.0f,0.0f,0.0f };
-        float MinLOD = 0.0f;
-        float MaxLOD = FLT_MAX;
-    };
     struct RasterizerState
     {
         CullMode cullMode = CullMode::Back;
@@ -570,19 +737,19 @@ namespace Alimer
     };
     struct PipelineStateDesc
     {
-        const Shader* vs = nullptr;
-        const Shader* ps = nullptr;
-        const Shader* hs = nullptr;
-        const Shader* ds = nullptr;
-        const Shader* gs = nullptr;
-        const Shader* ms = nullptr;
-        const Shader* as = nullptr;
+        const RHIShader* vertex = nullptr;
+        const RHIShader* hull = nullptr;
+        const RHIShader* domain = nullptr;
+        const RHIShader* geometry = nullptr;
+        const RHIShader* pixel = nullptr;
+        const RHIShader* mesh = nullptr;
+        const RHIShader* amplification = nullptr;
         const BlendState* bs = nullptr;
         const RasterizerState* rs = nullptr;
         const DepthStencilState* dss = nullptr;
         const InputLayout* il = nullptr;
-        PRIMITIVETOPOLOGY		pt = TRIANGLELIST;
-        uint32_t				sampleMask = 0xFFFFFFFF;
+        PrimitiveTopology   primitiveTopology = PrimitiveTopology::TriangleList;
+        uint32_t			sampleMask = 0xFFFFFFFF;
     };
 
     struct GPUBarrier
@@ -817,17 +984,18 @@ namespace Alimer
 
     struct Sampler : public GraphicsDeviceChild
     {
-        SamplerDesc desc;
+        //RHISamplerDescriptor desc;
 
-        const SamplerDesc& GetDesc() const { return desc; }
+        //const RHISamplerDescriptor& GetDesc() const { return desc; }
     };
+
     struct StaticSampler
     {
         Sampler sampler;
         uint32_t slot = 0;
     };
 
-    struct Shader : public GraphicsDeviceChild
+    struct RHIShader : public GraphicsDeviceChild
     {
         ShaderStage stage = ShaderStage::Count;
         std::vector<StaticSampler> auto_samplers; // ability to set static samplers without explicit root signature
@@ -1003,7 +1171,7 @@ namespace Alimer
             ANYHIT,
             INTERSECTION,
         } type = RAYGENERATION;
-        const Shader* shader = nullptr;
+        const RHIShader* shader = nullptr;
         std::string function_name;
     };
     struct ShaderHitGroup
@@ -1053,241 +1221,6 @@ namespace Alimer
         uint32_t Depth = 1;
     };
 
-    enum class BackendType : uint32_t
-    {
-        Direct3D12,
-        Vulkan,
-        Count
-    };
-
-    enum class ValidationMode : uint32_t
-    {
-        /// No validation is enabled.
-        Disabled,
-        /// Print warnings and errors
-        Enabled,
-        /// Print all warnings, errors and info messages
-        Verbose,
-        /// Enable GPU-based validation
-        GPU
-    };
-
-    enum class RHIQueueType : uint32_t
-    {
-        /// Can be used for draw, dispatch, or copy commands.
-        Graphics,
-        /// Can be used for dispatch or copy commands.
-        Compute,
-        Count
-    };
-
-    enum class RHITextureDimension : uint32_t
-    {
-        Texture1D = 1,
-        Texture2D = 2,
-        Texture3D = 3,
-        TextureCube = 4
-    };
-
-    enum class RHITextureUsage : uint32_t
-    {
-        Unknown = 0,
-        ShaderRead = 1 << 0,
-        ShaderWrite = 1 << 1,
-        ShaderReadWrite = ShaderRead | ShaderWrite,
-        RenderTarget = 1 << 2,
-    };
-
-    /// Number of MSAA samples to use. 1xMSAA and 4xMSAA are most broadly supported
-    enum class RHITextureSampleCount : uint32_t
-    {
-        Count1,
-        Count2,
-        Count4,
-        Count8,
-        Count16,
-        Count32,
-    };
-
-    enum class RHICompareFunction : uint32_t
-    {
-        Never,
-        Less,
-        Equal,
-        LessEqual,
-        Greater,
-        NotEqual,
-        GreaterEqual,
-        Always,
-    };
-
-    enum class RHIPrimitiveTopology : uint32_t
-    {
-        PointList,
-        LineList,
-        LineStrip,
-        TriangleList,
-        TriangleStrip,
-        Count
-    };
-
-    enum class RHIIndexType : uint32_t
-    {
-        UInt16 = 0,
-        UInt32 = 1
-    };
-
-    enum class RHISamplerFilter : uint32_t
-    {
-        Nearest,
-        Linear
-    };
-
-    enum class RHISamplerAddressMode : uint32_t
-    {
-        Wrap,
-        Mirror,
-        Clamp,
-        Border,
-        MirrorOnce,
-    };
-
-    enum class RHISamplerBorderColor : uint32_t
-    {
-        TransparentBlack,
-        OpaqueBlack,
-        OpaqueWhite,
-    };
-
-    struct RHITextureDescription
-    {
-        StringView name;
-
-        /// Dimension of texture.
-        RHITextureDimension dimension = RHITextureDimension::Texture2D;
-
-        /// Pixel format.
-        PixelFormat format = PixelFormat::RGBA8UNorm;
-
-        /// Usage of texture.
-        RHITextureUsage usage = RHITextureUsage::ShaderRead;
-
-        /// Width of the texture in pixels.
-        uint32_t width = 1;
-
-        /// Height of the texture in pixels.
-        uint32_t height = 1;
-
-        /// Depth or array size of the texture in pixels.
-        uint32_t depthOrArraySize = 1;
-
-        /// Number of mip levels.
-        uint32_t mipLevels = 1;
-
-        /// Number of samples.
-        RHITextureSampleCount sampleCount = RHITextureSampleCount::Count1;
-
-        static inline RHITextureDescription Texture1D(
-            PixelFormat format,
-            uint32_t width,
-            uint32_t mipLevels = 1,
-            uint32_t arraySize = 1,
-            RHITextureUsage usage = RHITextureUsage::ShaderRead) noexcept
-        {
-            RHITextureDescription desc;
-            desc.dimension = RHITextureDimension::Texture1D;
-            desc.format = format;
-            desc.usage = usage;
-            desc.width = width;
-            desc.depthOrArraySize = arraySize;
-            desc.mipLevels = mipLevels;
-            return desc;
-        }
-
-        static inline RHITextureDescription Texture2D(
-            PixelFormat format,
-            uint32_t width,
-            uint32_t height,
-            uint32_t mipLevels = 1,
-            uint32_t arraySize = 1,
-            RHITextureUsage usage = RHITextureUsage::ShaderRead) noexcept
-        {
-            RHITextureDescription desc;
-            desc.format = format;
-            desc.usage = usage;
-            desc.width = width;
-            desc.height = height;
-            desc.depthOrArraySize = arraySize;
-            desc.mipLevels = mipLevels;
-            return desc;
-        }
-
-        static inline RHITextureDescription Texture3D(
-            PixelFormat format,
-            uint32_t width,
-            uint32_t height,
-            uint32_t depth,
-            uint16_t mipLevels = 1,
-            RHITextureUsage usage = RHITextureUsage::ShaderRead) noexcept
-        {
-            RHITextureDescription desc;
-            desc.dimension = RHITextureDimension::Texture3D;
-            desc.format = format;
-            desc.usage = usage;
-            desc.width = width;
-            desc.height = height;
-            desc.depthOrArraySize = depth;
-            desc.mipLevels = mipLevels;
-            return desc;
-        }
-
-        static RHITextureDescription TextureCube(
-            PixelFormat format,
-            uint32_t width,
-            uint32_t arraySize = 1,
-            uint32_t mipLevels = 1,
-            RHITextureUsage usage = RHITextureUsage::ShaderRead) noexcept
-        {
-            RHITextureDescription desc;
-            desc.dimension = RHITextureDimension::TextureCube;
-            desc.format = format;
-            desc.usage = usage;
-            desc.width = width;
-            desc.height = width;
-            desc.depthOrArraySize = arraySize;
-            desc.mipLevels = mipLevels;
-            return desc;
-        }
-    };
-
-    struct RHITextureViewDescription
-    {
-        PixelFormat format = PixelFormat::Undefined;
-        /// The base mip level visible in the view. Must be less than texture mip levels.
-        uint32_t baseMipLevel = 0;
-        /// The number of mip levels visible in the view.
-        uint32_t mipLevels = 0;
-        /// The base array layer visible in the view.
-        uint32_t baseArrayLayer = 0;
-        ///  The number of array layers visible in the view.
-        uint32_t arrayLayers = 0;
-    };
-
-    struct RHISamplerDescription
-    {
-        RHISamplerFilter minFilter = RHISamplerFilter::Nearest;
-        RHISamplerFilter magFilter = RHISamplerFilter::Nearest;
-        RHISamplerFilter mipFilter = RHISamplerFilter::Nearest;
-        RHISamplerAddressMode addressModeU = RHISamplerAddressMode::Clamp;
-        RHISamplerAddressMode addressModeV = RHISamplerAddressMode::Clamp;
-        RHISamplerAddressMode addressModeW = RHISamplerAddressMode::Clamp;
-        uint16_t maxAnisotropy = 1;
-        RHICompareFunction compareFunction = RHICompareFunction::Never;
-        RHISamplerBorderColor borderColor = RHISamplerBorderColor::TransparentBlack;
-        float lodMinClamp = 0.0f;
-        float lodMaxClamp = FLT_MAX;
-    };
-
     class ALIMER_API RHICommandBuffer
     {
     public:
@@ -1322,10 +1255,10 @@ namespace Alimer
     };
 
 
-    uint32_t GetFormatStride(FORMAT value) ;
-    bool IsFormatUnorm(FORMAT value) ;
-    bool IsFormatBlockCompressed(FORMAT value) ;
-    bool IsFormatStencilSupport(FORMAT value) ;
+    uint32_t GetFormatStride(FORMAT value);
+    bool IsFormatUnorm(FORMAT value);
+    bool IsFormatBlockCompressed(FORMAT value);
+    bool IsFormatStencilSupport(FORMAT value);
 
     using CommandList = uint8_t;
     static const CommandList COMMANDLIST_COUNT = 32;
@@ -1345,7 +1278,7 @@ namespace Alimer
     class ALIMER_API RHIDevice
     {
     protected:
-        ValidationMode validationMode = ValidationMode::Disabled;
+        RHIValidationMode validationMode = RHIValidationMode::Disabled;
         uint32_t capabilities = 0;
         size_t SHADER_IDENTIFIER_SIZE = 0;
         size_t TOPLEVEL_ACCELERATION_STRUCTURE_INSTANCE_SIZE = 0;
@@ -1361,8 +1294,8 @@ namespace Alimer
         virtual bool CreateSwapChain(const SwapChainDescriptor* descriptor, void* window, SwapChain* swapChain) const = 0;
         virtual bool CreateBuffer(const BufferDescriptor* descriptor, const void* initialData, GPUBuffer* pBuffer) const = 0;
         virtual bool CreateTexture(const TextureDesc* pDesc, const SubresourceData* pInitialData, RHITexture* pTexture) const = 0;
-        virtual bool CreateShader(ShaderStage stage, const void* pShaderBytecode, size_t BytecodeLength, Shader* pShader) const = 0;
-        virtual bool CreateSampler(const SamplerDesc* pSamplerDesc, Sampler* pSamplerState) const = 0;
+        virtual bool CreateShader(ShaderStage stage, const void* pShaderBytecode, size_t BytecodeLength, RHIShader* pShader) const = 0;
+        virtual bool CreateSampler(const RHISamplerDescriptor* descriptor, Sampler* pSamplerState) const = 0;
         virtual bool CreateQueryHeap(const GPUQueryHeapDesc* pDesc, GPUQueryHeap* pQueryHeap) const = 0;
         virtual bool CreatePipelineState(const PipelineStateDesc* pDesc, PipelineState* pso) const = 0;
         virtual bool CreateRenderPass(const RenderPassDesc* pDesc, RenderPass* renderpass) const = 0;
@@ -1399,7 +1332,7 @@ namespace Alimer
 
         inline bool CheckCapability(GRAPHICSDEVICE_CAPABILITY capability) const { return capabilities & capability; }
 
-        constexpr ValidationMode GetValidationMode() const { return validationMode; }
+        constexpr RHIValidationMode GetValidationMode() const { return validationMode; }
 
         constexpr size_t GetShaderIdentifierSize() const { return SHADER_IDENTIFIER_SIZE; }
         constexpr size_t GetTopLevelAccelerationStructureInstanceSize() const { return TOPLEVEL_ACCELERATION_STRUCTURE_INSTANCE_SIZE; }
@@ -1431,7 +1364,7 @@ namespace Alimer
         virtual void BindBlendFactor(float r, float g, float b, float a, CommandList cmd) = 0;
         virtual void BindShadingRate(CommandList commandList, ShadingRate rate) = 0;
         virtual void BindPipelineState(const PipelineState* pso, CommandList cmd) = 0;
-        virtual void BindComputeShader(const Shader* cs, CommandList cmd) = 0;
+        virtual void BindComputeShader(CommandList commandList, const RHIShader* shader) = 0;
         virtual void Draw(uint32_t vertexCount, uint32_t startVertexLocation, CommandList cmd) = 0;
         virtual void DrawIndexed(uint32_t indexCount, uint32_t startIndexLocation, uint32_t baseVertexLocation, CommandList cmd) = 0;
         virtual void DrawInstanced(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation, CommandList cmd) = 0;
@@ -1478,7 +1411,7 @@ namespace Alimer
 
     extern ALIMER_API RHIDevice* GDevice;
 
-    ALIMER_API bool RHIInitialize(ValidationMode validationMode, BackendType backendType = BackendType::Count);
+    ALIMER_API bool RHIInitialize(RHIValidationMode validationMode, RHIBackendType backendType = RHIBackendType::Count);
     ALIMER_API void RHIShutdown();
     ALIMER_API void RHIWaitForGPU();
 }

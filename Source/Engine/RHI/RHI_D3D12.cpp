@@ -60,156 +60,84 @@ namespace Alimer
         static constexpr IID RHI_DXGI_DEBUG_ALL = { 0xe48ae283, 0xda80, 0x490b, {0x87, 0xe6, 0x43, 0xe9, 0xa9, 0xcf, 0xda, 0x8} };
         static constexpr IID RHI_DXGI_DEBUG_DXGI = { 0x25cddaa4, 0xb1c6, 0x47e1, {0xac, 0x3e, 0x98, 0x87, 0x5b, 0x5a, 0x2e, 0x2a} };
 #endif
-
         // Engine -> Native converters
-
-        [[nodiscard]] constexpr uint8_t D3D12RenderTargetWriteMask(ColorWriteMask mask)
+        [[nodiscard]] constexpr D3D12_COMPARISON_FUNC ToD3D12ComparisonFunc(CompareFunction function)
         {
-            static_assert(static_cast<D3D12_COLOR_WRITE_ENABLE>(ColorWriteMask::Red) == D3D12_COLOR_WRITE_ENABLE_RED, "ColorWriteMask mismatch");
-            static_assert(static_cast<D3D12_COLOR_WRITE_ENABLE>(ColorWriteMask::Green) == D3D12_COLOR_WRITE_ENABLE_GREEN, "ColorWriteMask mismatch");
-            static_assert(static_cast<D3D12_COLOR_WRITE_ENABLE>(ColorWriteMask::Blue) == D3D12_COLOR_WRITE_ENABLE_BLUE, "ColorWriteMask mismatch");
-            static_assert(static_cast<D3D12_COLOR_WRITE_ENABLE>(ColorWriteMask::Alpha) == D3D12_COLOR_WRITE_ENABLE_ALPHA, "ColorWriteMask mismatch");
-            return static_cast<uint8_t>(mask);
-        }
-
-        constexpr D3D12_FILTER _ConvertFilter(FILTER value)
-        {
-            switch (value)
+            switch (function)
             {
-                case FILTER_MIN_MAG_MIP_POINT:
-                    return D3D12_FILTER_MIN_MAG_MIP_POINT;
-                    break;
-                case FILTER_MIN_MAG_POINT_MIP_LINEAR:
-                    return D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
-                    break;
-                case FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT:
-                    return D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
-                    break;
-                case FILTER_MIN_POINT_MAG_MIP_LINEAR:
-                    return D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR;
-                    break;
-                case FILTER_MIN_LINEAR_MAG_MIP_POINT:
-                    return D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT;
-                    break;
-                case FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR:
-                    return D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
-                    break;
-                case FILTER_MIN_MAG_LINEAR_MIP_POINT:
-                    return D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-                    break;
-                case FILTER_MIN_MAG_MIP_LINEAR:
-                    return D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-                    break;
-                case FILTER_ANISOTROPIC:
-                    return D3D12_FILTER_ANISOTROPIC;
-                    break;
-                case FILTER_COMPARISON_MIN_MAG_MIP_POINT:
-                    return D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
-                    break;
-                case FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR:
-                    return D3D12_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR;
-                    break;
-                case FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT:
-                    return D3D12_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT;
-                    break;
-                case FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR:
-                    return D3D12_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR;
-                    break;
-                case FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT:
-                    return D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT;
-                    break;
-                case FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR:
-                    return D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
-                    break;
-                case FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT:
-                    return D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
-                    break;
-                case FILTER_COMPARISON_MIN_MAG_MIP_LINEAR:
-                    return D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
-                    break;
-                case FILTER_COMPARISON_ANISOTROPIC:
-                    return D3D12_FILTER_COMPARISON_ANISOTROPIC;
-                    break;
-                case FILTER_MINIMUM_MIN_MAG_MIP_POINT:
-                    return D3D12_FILTER_MINIMUM_MIN_MAG_MIP_POINT;
-                    break;
-                case FILTER_MINIMUM_MIN_MAG_POINT_MIP_LINEAR:
-                    return D3D12_FILTER_MINIMUM_MIN_MAG_POINT_MIP_LINEAR;
-                    break;
-                case FILTER_MINIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT:
-                    return D3D12_FILTER_MINIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT;
-                    break;
-                case FILTER_MINIMUM_MIN_POINT_MAG_MIP_LINEAR:
-                    return D3D12_FILTER_MINIMUM_MIN_POINT_MAG_MIP_LINEAR;
-                    break;
-                case FILTER_MINIMUM_MIN_LINEAR_MAG_MIP_POINT:
-                    return D3D12_FILTER_MINIMUM_MIN_LINEAR_MAG_MIP_POINT;
-                    break;
-                case FILTER_MINIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR:
-                    return D3D12_FILTER_MINIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
-                    break;
-                case FILTER_MINIMUM_MIN_MAG_LINEAR_MIP_POINT:
-                    return D3D12_FILTER_MINIMUM_MIN_MAG_LINEAR_MIP_POINT;
-                    break;
-                case FILTER_MINIMUM_MIN_MAG_MIP_LINEAR:
-                    return D3D12_FILTER_MINIMUM_MIN_MAG_MIP_LINEAR;
-                    break;
-                case FILTER_MINIMUM_ANISOTROPIC:
-                    return D3D12_FILTER_MINIMUM_ANISOTROPIC;
-                    break;
-                case FILTER_MAXIMUM_MIN_MAG_MIP_POINT:
-                    return D3D12_FILTER_MAXIMUM_MIN_MAG_MIP_POINT;
-                    break;
-                case FILTER_MAXIMUM_MIN_MAG_POINT_MIP_LINEAR:
-                    return D3D12_FILTER_MAXIMUM_MIN_MAG_POINT_MIP_LINEAR;
-                    break;
-                case FILTER_MAXIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT:
-                    return D3D12_FILTER_MAXIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT;
-                    break;
-                case FILTER_MAXIMUM_MIN_POINT_MAG_MIP_LINEAR:
-                    return D3D12_FILTER_MAXIMUM_MIN_POINT_MAG_MIP_LINEAR;
-                    break;
-                case FILTER_MAXIMUM_MIN_LINEAR_MAG_MIP_POINT:
-                    return D3D12_FILTER_MAXIMUM_MIN_LINEAR_MAG_MIP_POINT;
-                    break;
-                case FILTER_MAXIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR:
-                    return D3D12_FILTER_MAXIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
-                    break;
-                case FILTER_MAXIMUM_MIN_MAG_LINEAR_MIP_POINT:
-                    return D3D12_FILTER_MAXIMUM_MIN_MAG_LINEAR_MIP_POINT;
-                    break;
-                case FILTER_MAXIMUM_MIN_MAG_MIP_LINEAR:
-                    return D3D12_FILTER_MAXIMUM_MIN_MAG_MIP_LINEAR;
-                    break;
-                case FILTER_MAXIMUM_ANISOTROPIC:
-                    return D3D12_FILTER_MAXIMUM_ANISOTROPIC;
-                    break;
+                case CompareFunction::Never:
+                    return D3D12_COMPARISON_FUNC_NEVER;
+                case CompareFunction::Less:
+                    return D3D12_COMPARISON_FUNC_LESS;
+                case CompareFunction::Equal:
+                    return D3D12_COMPARISON_FUNC_EQUAL;
+                case CompareFunction::LessEqual:
+                    return D3D12_COMPARISON_FUNC_LESS_EQUAL;
+                case CompareFunction::Greater:
+                    return D3D12_COMPARISON_FUNC_GREATER;
+                case CompareFunction::NotEqual:
+                    return D3D12_COMPARISON_FUNC_NOT_EQUAL;
+                case CompareFunction::GreaterEqual:
+                    return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+                case CompareFunction::Always:
+                    return D3D12_COMPARISON_FUNC_ALWAYS;
+
                 default:
-                    break;
+                    ALIMER_UNREACHABLE();
+                    return static_cast<D3D12_COMPARISON_FUNC>(0);
             }
-            return D3D12_FILTER_MIN_MAG_MIP_POINT;
         }
-        constexpr D3D12_TEXTURE_ADDRESS_MODE _ConvertTextureAddressMode(TEXTURE_ADDRESS_MODE value)
+
+        [[nodiscard]] constexpr D3D12_FILTER_TYPE ToD3D12FilterType(SamplerFilter value)
         {
             switch (value)
             {
-                case TEXTURE_ADDRESS_WRAP:
+                case SamplerFilter::Nearest:
+                    return D3D12_FILTER_TYPE_POINT;
+                case SamplerFilter::Linear:
+                    return D3D12_FILTER_TYPE_LINEAR;
+                default:
+                    ALIMER_UNREACHABLE();
+                    return D3D12_FILTER_TYPE_POINT;
+            }
+        }
+
+        [[nodiscard]] constexpr D3D12_TEXTURE_ADDRESS_MODE ToD3D12AddressMode(SamplerAddressMode mode)
+        {
+            switch (mode) {
+                case SamplerAddressMode::Wrap:
                     return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-                    break;
-                case TEXTURE_ADDRESS_MIRROR:
+                case SamplerAddressMode::Mirror:
                     return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
-                    break;
-                case TEXTURE_ADDRESS_CLAMP:
+                case SamplerAddressMode::Clamp:
                     return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-                    break;
-                case TEXTURE_ADDRESS_BORDER:
+                case SamplerAddressMode::Border:
                     return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-                    break;
+                case SamplerAddressMode::MirrorOnce:
+                    return D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
                 default:
-                    break;
+                    ALIMER_UNREACHABLE();
+                    return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
             }
-            return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
         }
+
+        [[nodiscard]] constexpr D3D12_STATIC_BORDER_COLOR ToD3D12BorderColor(SamplerBorderColor value)
+        {
+            switch (value)
+            {
+                case SamplerBorderColor::TransparentBlack:
+                    return D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+                case SamplerBorderColor::OpaqueBlack:
+                    return D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+                case SamplerBorderColor::OpaqueWhite:
+                    return D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+                default:
+                    ALIMER_UNREACHABLE();
+                    return D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+            }
+        }
+
+
         constexpr D3D12_COMPARISON_FUNC _ConvertComparisonFunc(COMPARISON_FUNC value)
         {
             switch (value)
@@ -402,21 +330,29 @@ namespace Alimer
             }
         }
 
+        [[nodiscard]] constexpr uint8_t D3D12RenderTargetWriteMask(ColorWriteMask mask)
+        {
+            static_assert(static_cast<D3D12_COLOR_WRITE_ENABLE>(ColorWriteMask::Red) == D3D12_COLOR_WRITE_ENABLE_RED, "ColorWriteMask mismatch");
+            static_assert(static_cast<D3D12_COLOR_WRITE_ENABLE>(ColorWriteMask::Green) == D3D12_COLOR_WRITE_ENABLE_GREEN, "ColorWriteMask mismatch");
+            static_assert(static_cast<D3D12_COLOR_WRITE_ENABLE>(ColorWriteMask::Blue) == D3D12_COLOR_WRITE_ENABLE_BLUE, "ColorWriteMask mismatch");
+            static_assert(static_cast<D3D12_COLOR_WRITE_ENABLE>(ColorWriteMask::Alpha) == D3D12_COLOR_WRITE_ENABLE_ALPHA, "ColorWriteMask mismatch");
+            return static_cast<uint8_t>(mask);
+        }
+
         constexpr D3D12_INPUT_CLASSIFICATION _ConvertInputClassification(INPUT_CLASSIFICATION value)
         {
             switch (value)
             {
                 case INPUT_PER_VERTEX_DATA:
                     return D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
-                    break;
                 case INPUT_PER_INSTANCE_DATA:
                     return D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
-                    break;
                 default:
-                    break;
+                    ALIMER_UNREACHABLE();
+                    return D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
             }
-            return D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
         }
+
         constexpr DXGI_FORMAT _ConvertFormat(FORMAT value)
         {
             switch (value)
@@ -735,24 +671,6 @@ namespace Alimer
                     ALIMER_UNREACHABLE();
                     return D3D12_SHADING_RATE_1X1;
             }
-        }
-
-        constexpr D3D12_STATIC_SAMPLER_DESC _ConvertStaticSampler(const StaticSampler& x)
-        {
-            D3D12_STATIC_SAMPLER_DESC desc = {};
-            desc.ShaderRegister = x.slot;
-            desc.Filter = _ConvertFilter(x.sampler.desc.Filter);
-            desc.AddressU = _ConvertTextureAddressMode(x.sampler.desc.AddressU);
-            desc.AddressV = _ConvertTextureAddressMode(x.sampler.desc.AddressV);
-            desc.AddressW = _ConvertTextureAddressMode(x.sampler.desc.AddressW);
-            desc.MipLODBias = x.sampler.desc.MipLODBias;
-            desc.MaxAnisotropy = x.sampler.desc.MaxAnisotropy;
-            desc.ComparisonFunc = _ConvertComparisonFunc(x.sampler.desc.ComparisonFunc);
-            desc.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-            desc.MinLOD = x.sampler.desc.MinLOD;
-            desc.MaxLOD = x.sampler.desc.MaxLOD;
-            desc.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-            return desc;
         }
 
         // Native -> Engine converters
@@ -1254,6 +1172,8 @@ namespace Alimer
         struct Sampler_DX12
         {
             std::shared_ptr<RHIDeviceD3D12::AllocationHandler> allocationhandler;
+            D3D12_SAMPLER_DESC desc;
+            D3D12_STATIC_BORDER_COLOR borderColor;
             SingleDescriptor descriptor;
 
             ~Sampler_DX12()
@@ -1441,7 +1361,7 @@ namespace Alimer
         {
             return static_cast<QueryHeap_DX12*>(param->internal_state.get());
         }
-        PipelineState_DX12* to_internal(const Shader* param)
+        PipelineState_DX12* to_internal(const RHIShader* param)
         {
             return static_cast<PipelineState_DX12*>(param->internal_state.get());
         }
@@ -1464,6 +1384,26 @@ namespace Alimer
         SwapChain_DX12* to_internal(const SwapChain* param)
         {
             return static_cast<SwapChain_DX12*>(param->internal_state.get());
+        }
+
+        inline D3D12_STATIC_SAMPLER_DESC _ConvertStaticSampler(const StaticSampler& x)
+        {
+            Sampler_DX12* internalState = to_internal(&x.sampler);
+            D3D12_STATIC_SAMPLER_DESC desc = {};
+            desc.Filter = internalState->desc.Filter;
+            desc.AddressU = internalState->desc.AddressU;
+            desc.AddressV = internalState->desc.AddressV;
+            desc.AddressW = internalState->desc.AddressW;
+            desc.MipLODBias = internalState->desc.MipLODBias;
+            desc.MaxAnisotropy = internalState->desc.MaxAnisotropy;
+            desc.ComparisonFunc = internalState->desc.ComparisonFunc;
+            desc.BorderColor = internalState->borderColor;
+            desc.MinLOD = internalState->desc.MinLOD;
+            desc.MaxLOD = internalState->desc.MaxLOD;
+            desc.RegisterSpace = 0;
+            desc.ShaderRegister = x.slot;
+            desc.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+            return desc;
         }
     }
     using namespace DX12_Internal;
@@ -2338,29 +2278,29 @@ namespace Alimer
 
         GetCommandList(cmd)->SetPipelineState(pipeline);
 
-        if (prev_pt[cmd] != pso->desc.pt)
+        if (prev_pt[cmd] != pso->desc.primitiveTopology)
         {
-            prev_pt[cmd] = pso->desc.pt;
+            prev_pt[cmd] = pso->desc.primitiveTopology;
 
             D3D12_PRIMITIVE_TOPOLOGY d3dType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-            switch (pso->desc.pt)
+            switch (pso->desc.primitiveTopology)
             {
-                case TRIANGLELIST:
+                case PrimitiveTopology::TriangleList:
                     d3dType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
                     break;
-                case TRIANGLESTRIP:
+                case PrimitiveTopology::TriangleStrip:
                     d3dType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
                     break;
-                case POINTLIST:
+                case PrimitiveTopology::PointList:
                     d3dType = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
                     break;
-                case LINELIST:
+                case PrimitiveTopology::LineList:
                     d3dType = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
                     break;
-                case LINESTRIP:
+                case PrimitiveTopology::LineStrip:
                     d3dType = D3D_PRIMITIVE_TOPOLOGY_LINESTRIP;
                     break;
-                case PATCHLIST:
+                case PrimitiveTopology::PatchList:
                     d3dType = D3D_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
                     break;
                 default:
@@ -2548,7 +2488,7 @@ namespace Alimer
         return false;
     }
 
-    RHIDeviceD3D12::RHIDeviceD3D12(ValidationMode validationMode_)
+    RHIDeviceD3D12::RHIDeviceD3D12(RHIValidationMode validationMode_)
     {
         ALIMER_VERIFY(IsAvailable());
 
@@ -2571,7 +2511,7 @@ namespace Alimer
 
         ThrowIfFailed(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils)));
 
-        if (validationMode != ValidationMode::Disabled)
+        if (validationMode != RHIValidationMode::Disabled)
         {
             dxgiFactoryFlags = DXGI_CREATE_FACTORY_DEBUG;
 
@@ -2580,7 +2520,7 @@ namespace Alimer
             {
                 debugController->EnableDebugLayer();
 
-                if (validationMode == ValidationMode::GPU)
+                if (validationMode == RHIValidationMode::GPU)
                 {
                     ComPtr<ID3D12Debug1> debugController1;
                     if (SUCCEEDED(debugController.As(&debugController1)))
@@ -2704,7 +2644,7 @@ namespace Alimer
             std::exit(1);
         }
 
-        if (validationMode != ValidationMode::Disabled)
+        if (validationMode != RHIValidationMode::Disabled)
         {
             ComPtr<ID3D12InfoQueue> d3dInfoQueue;
             if (SUCCEEDED(device.As(&d3dInfoQueue)))
@@ -3525,7 +3465,7 @@ namespace Alimer
         return SUCCEEDED(hr);
     }
 
-    bool RHIDeviceD3D12::CreateShader(ShaderStage stage, const void* pShaderBytecode, size_t BytecodeLength, Shader* pShader) const
+    bool RHIDeviceD3D12::CreateShader(ShaderStage stage, const void* pShaderBytecode, size_t BytecodeLength, RHIShader* pShader) const
     {
         auto internal_state = std::make_shared<PipelineState_DX12>();
         internal_state->allocationhandler = allocationhandler;
@@ -4079,33 +4019,79 @@ namespace Alimer
 
         return SUCCEEDED(hr);
     }
-    bool RHIDeviceD3D12::CreateSampler(const SamplerDesc* pSamplerDesc, Sampler* pSamplerState) const
+
+    bool RHIDeviceD3D12::CreateSampler(const RHISamplerDescriptor* descriptor, Sampler* pSamplerState) const
     {
+        ALIMER_ASSERT(descriptor);
+
+        const D3D12_FILTER_TYPE minFilter = ToD3D12FilterType(descriptor->minFilter);
+        const D3D12_FILTER_TYPE magFilter = ToD3D12FilterType(descriptor->magFilter);
+        const D3D12_FILTER_TYPE mipFilter = ToD3D12FilterType(descriptor->mipFilter);
+
+        D3D12_FILTER_REDUCTION_TYPE reduction = descriptor->compareFunction == CompareFunction::Never
+            ? D3D12_FILTER_REDUCTION_TYPE_STANDARD
+            : D3D12_FILTER_REDUCTION_TYPE_COMPARISON;
+
         auto internal_state = std::make_shared<Sampler_DX12>();
         internal_state->allocationhandler = allocationhandler;
         pSamplerState->internal_state = internal_state;
 
         D3D12_SAMPLER_DESC desc;
-        desc.Filter = _ConvertFilter(pSamplerDesc->Filter);
-        desc.AddressU = _ConvertTextureAddressMode(pSamplerDesc->AddressU);
-        desc.AddressV = _ConvertTextureAddressMode(pSamplerDesc->AddressV);
-        desc.AddressW = _ConvertTextureAddressMode(pSamplerDesc->AddressW);
-        desc.MipLODBias = pSamplerDesc->MipLODBias;
-        desc.MaxAnisotropy = pSamplerDesc->MaxAnisotropy;
-        desc.ComparisonFunc = _ConvertComparisonFunc(pSamplerDesc->ComparisonFunc);
-        desc.BorderColor[0] = pSamplerDesc->BorderColor[0];
-        desc.BorderColor[1] = pSamplerDesc->BorderColor[1];
-        desc.BorderColor[2] = pSamplerDesc->BorderColor[2];
-        desc.BorderColor[3] = pSamplerDesc->BorderColor[3];
-        desc.MinLOD = pSamplerDesc->MinLOD;
-        desc.MaxLOD = pSamplerDesc->MaxLOD;
+        // https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ns-d3d12-d3d12_sampler_desc
+        if (descriptor->maxAnisotropy > 1)
+        {
+            desc.Filter = D3D12_ENCODE_ANISOTROPIC_FILTER(reduction);
+        }
+        else
+        {
+            desc.Filter = D3D12_ENCODE_BASIC_FILTER(minFilter, magFilter, mipFilter, reduction);
+        }
 
-        pSamplerState->desc = *pSamplerDesc;
+        desc.AddressU = ToD3D12AddressMode(descriptor->addressModeU);
+        desc.AddressV = ToD3D12AddressMode(descriptor->addressModeV);
+        desc.AddressW = ToD3D12AddressMode(descriptor->addressModeW);
+        desc.MipLODBias = 0.0f;
+        desc.MaxAnisotropy = Min<UINT>(descriptor->maxAnisotropy, 16u);
+        if (descriptor->compareFunction != CompareFunction::Never)
+        {
+            desc.ComparisonFunc = ToD3D12ComparisonFunc(descriptor->compareFunction);
+        }
+        else
+        {
+            desc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+        }
 
+        switch (descriptor->borderColor)
+        {
+            case SamplerBorderColor::OpaqueBlack:
+                desc.BorderColor[0] = 0.0f;
+                desc.BorderColor[1] = 0.0f;
+                desc.BorderColor[2] = 0.0f;
+                desc.BorderColor[3] = 1.0f;
+                break;
+
+            case SamplerBorderColor::OpaqueWhite:
+                desc.BorderColor[0] = 1.0f;
+                desc.BorderColor[1] = 1.0f;
+                desc.BorderColor[2] = 1.0f;
+                desc.BorderColor[3] = 1.0f;
+                break;
+            default:
+                desc.BorderColor[0] = 0.0f;
+                desc.BorderColor[1] = 0.0f;
+                desc.BorderColor[2] = 0.0f;
+                desc.BorderColor[3] = 0.0f;
+                break;
+        }
+        desc.MinLOD = descriptor->lodMinClamp;
+        desc.MaxLOD = descriptor->lodMaxClamp;
+
+        internal_state->desc = desc;
+        internal_state->borderColor = ToD3D12BorderColor(descriptor->borderColor);
         internal_state->descriptor.init(this, desc);
-
         return true;
     }
+
     bool RHIDeviceD3D12::CreateQueryHeap(const GPUQueryHeapDesc* pDesc, GPUQueryHeap* pQueryHeap) const
     {
         auto internal_state = std::make_shared<QueryHeap_DX12>();
@@ -4169,18 +4155,18 @@ namespace Alimer
         pso->desc = *pDesc;
 
         pso->hash = 0;
-        HashCombine(pso->hash, pDesc->ms);
-        HashCombine(pso->hash, pDesc->as);
-        HashCombine(pso->hash, pDesc->vs);
-        HashCombine(pso->hash, pDesc->ps);
-        HashCombine(pso->hash, pDesc->hs);
-        HashCombine(pso->hash, pDesc->ds);
-        HashCombine(pso->hash, pDesc->gs);
+        HashCombine(pso->hash, pDesc->vertex);
+        HashCombine(pso->hash, pDesc->hull);
+        HashCombine(pso->hash, pDesc->domain);
+        HashCombine(pso->hash, pDesc->geometry);
+        HashCombine(pso->hash, pDesc->pixel);
+        HashCombine(pso->hash, pDesc->mesh);
+        HashCombine(pso->hash, pDesc->amplification);
         HashCombine(pso->hash, pDesc->il);
         HashCombine(pso->hash, pDesc->rs);
         HashCombine(pso->hash, pDesc->bs);
         HashCombine(pso->hash, pDesc->dss);
-        HashCombine(pso->hash, pDesc->pt);
+        HashCombine(pso->hash, (uint32_t)pDesc->primitiveTopology);
         HashCombine(pso->hash, pDesc->sampleMask);
 
         HRESULT hr = S_OK;
@@ -4188,7 +4174,7 @@ namespace Alimer
         {
             // Root signature comes from reflection data when there is no root signature specified:
 
-            auto insert_shader = [&](const Shader* shader)
+            auto insert_shader = [&](const RHIShader* shader)
             {
                 if (shader == nullptr)
                     return;
@@ -4254,13 +4240,13 @@ namespace Alimer
                 }
             };
 
-            insert_shader(pDesc->ps); // prioritize ps root descriptor assignment
-            insert_shader(pDesc->ms);
-            insert_shader(pDesc->as);
-            insert_shader(pDesc->vs);
-            insert_shader(pDesc->hs);
-            insert_shader(pDesc->ds);
-            insert_shader(pDesc->gs);
+            insert_shader(pDesc->pixel); // prioritize ps root descriptor assignment
+            insert_shader(pDesc->mesh);
+            insert_shader(pDesc->amplification);
+            insert_shader(pDesc->vertex);
+            insert_shader(pDesc->hull);
+            insert_shader(pDesc->domain);
+            insert_shader(pDesc->geometry);
 
             std::vector<D3D12_ROOT_PARAMETER1> params;
 
@@ -4337,7 +4323,7 @@ namespace Alimer
 
             internal_state->bindpoint_bindless = (uint32_t)params.size();
 
-            auto insert_shader_bindless = [&](const Shader* shader, D3D12_SHADER_VISIBILITY stage) {
+            auto insert_shader_bindless = [&](const RHIShader* shader, D3D12_SHADER_VISIBILITY stage) {
                 if (shader == nullptr)
                     return;
 
@@ -4374,13 +4360,13 @@ namespace Alimer
                 }
             };
 
-            insert_shader_bindless(pDesc->ms, D3D12_SHADER_VISIBILITY_MESH);
-            insert_shader_bindless(pDesc->as, D3D12_SHADER_VISIBILITY_AMPLIFICATION);
-            insert_shader_bindless(pDesc->vs, D3D12_SHADER_VISIBILITY_VERTEX);
-            insert_shader_bindless(pDesc->hs, D3D12_SHADER_VISIBILITY_HULL);
-            insert_shader_bindless(pDesc->ds, D3D12_SHADER_VISIBILITY_DOMAIN);
-            insert_shader_bindless(pDesc->gs, D3D12_SHADER_VISIBILITY_GEOMETRY);
-            insert_shader_bindless(pDesc->ps, D3D12_SHADER_VISIBILITY_PIXEL);
+            insert_shader_bindless(pDesc->mesh, D3D12_SHADER_VISIBILITY_MESH);
+            insert_shader_bindless(pDesc->amplification, D3D12_SHADER_VISIBILITY_AMPLIFICATION);
+            insert_shader_bindless(pDesc->vertex, D3D12_SHADER_VISIBILITY_VERTEX);
+            insert_shader_bindless(pDesc->hull, D3D12_SHADER_VISIBILITY_HULL);
+            insert_shader_bindless(pDesc->domain, D3D12_SHADER_VISIBILITY_DOMAIN);
+            insert_shader_bindless(pDesc->geometry, D3D12_SHADER_VISIBILITY_GEOMETRY);
+            insert_shader_bindless(pDesc->pixel, D3D12_SHADER_VISIBILITY_PIXEL);
 
             internal_state->bindpoint_bindless = (uint32_t)params.size();
             if (!internal_state->bindless_res.empty())
@@ -4519,40 +4505,40 @@ namespace Alimer
         }
 
         auto& stream = internal_state->stream;
-        if (pso->desc.vs != nullptr)
+        if (pso->desc.vertex != nullptr)
         {
-            auto shader_internal = to_internal(pso->desc.vs);
+            auto shader_internal = to_internal(pso->desc.vertex);
             stream.stream1.VS = { shader_internal->shadercode.data(), shader_internal->shadercode.size() };
         }
-        if (pso->desc.hs != nullptr)
+        if (pso->desc.hull != nullptr)
         {
-            auto shader_internal = to_internal(pso->desc.hs);
+            auto shader_internal = to_internal(pso->desc.hull);
             stream.stream1.HS = { shader_internal->shadercode.data(), shader_internal->shadercode.size() };
         }
-        if (pso->desc.ds != nullptr)
+        if (pso->desc.domain != nullptr)
         {
-            auto shader_internal = to_internal(pso->desc.ds);
+            auto shader_internal = to_internal(pso->desc.domain);
             stream.stream1.DS = { shader_internal->shadercode.data(),shader_internal->shadercode.size() };
         }
-        if (pso->desc.gs != nullptr)
+        if (pso->desc.geometry != nullptr)
         {
-            auto shader_internal = to_internal(pso->desc.gs);
+            auto shader_internal = to_internal(pso->desc.geometry);
             stream.stream1.GS = { shader_internal->shadercode.data(), shader_internal->shadercode.size() };
         }
-        if (pso->desc.ps != nullptr)
+        if (pso->desc.pixel != nullptr)
         {
-            auto shader_internal = to_internal(pso->desc.ps);
+            auto shader_internal = to_internal(pso->desc.pixel);
             stream.stream1.PS = { shader_internal->shadercode.data(), shader_internal->shadercode.size() };
         }
 
-        if (pso->desc.ms != nullptr)
+        if (pso->desc.mesh != nullptr)
         {
-            auto shader_internal = to_internal(pso->desc.ms);
+            auto shader_internal = to_internal(pso->desc.mesh);
             stream.stream2.MS = { shader_internal->shadercode.data(), shader_internal->shadercode.size() };
         }
-        if (pso->desc.as != nullptr)
+        if (pso->desc.amplification != nullptr)
         {
-            auto shader_internal = to_internal(pso->desc.as);
+            auto shader_internal = to_internal(pso->desc.amplification);
             stream.stream2.AS = { shader_internal->shadercode.data(), shader_internal->shadercode.size() };
         }
 
@@ -4634,27 +4620,26 @@ namespace Alimer
 
         stream.stream1.SampleMask = pso->desc.sampleMask;
 
-        switch (pso->desc.pt)
+        switch (pso->desc.primitiveTopology)
         {
-            case POINTLIST:
+            case PrimitiveTopology::PointList:
                 stream.stream1.PT = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
                 break;
-            case LINELIST:
-            case LINESTRIP:
+            case PrimitiveTopology::LineList:
+            case PrimitiveTopology::LineStrip:
                 stream.stream1.PT = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
                 break;
-            case TRIANGLELIST:
-            case TRIANGLESTRIP:
+            case PrimitiveTopology::TriangleList:
+            case PrimitiveTopology::TriangleStrip:
                 stream.stream1.PT = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
                 break;
-            case PATCHLIST:
+            case PrimitiveTopology::PatchList:
                 stream.stream1.PT = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
                 break;
             default:
                 stream.stream1.PT = D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED;
                 break;
         }
-
         stream.stream1.STRIP = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
         stream.stream1.pRootSignature = internal_state->rootSignature.Get();
 
@@ -5835,7 +5820,7 @@ namespace Alimer
             GetCommandList(cmd)->RSSetScissorRects(8, pRects);
         }
 
-        prev_pt[cmd] = PRIMITIVETOPOLOGY::UNDEFINED;
+        prev_pt[cmd] = PrimitiveTopology::Count;
         prev_pipeline_hash[cmd] = 0;
         active_pso[cmd] = nullptr;
         active_cs[cmd] = nullptr;
@@ -6393,47 +6378,45 @@ namespace Alimer
         dirty_pso[cmd] = true;
     }
 
-    void RHIDeviceD3D12::BindComputeShader(const Shader* cs, CommandList cmd)
+    void RHIDeviceD3D12::BindComputeShader(CommandList commandList, const RHIShader* shader)
     {
-        active_pso[cmd] = nullptr;
-        active_rt[cmd] = nullptr;
+        active_pso[commandList] = nullptr;
+        active_rt[commandList] = nullptr;
 
-        ALIMER_ASSERT(cs->stage == ShaderStage::Compute || cs->stage == ShaderStage::Library);
-        if (active_cs[cmd] != cs)
+        ALIMER_ASSERT(shader->stage == ShaderStage::Compute || shader->stage == ShaderStage::Library);
+        if (active_cs[commandList] != shader)
         {
-            prev_pipeline_hash[cmd] = 0;
+            prev_pipeline_hash[commandList] = 0;
+            active_cs[commandList] = shader;
 
-            active_cs[cmd] = cs;
+            auto internal_state = to_internal(shader);
 
-            auto internal_state = to_internal(cs);
-
-            if (cs->stage == ShaderStage::Compute)
+            if (shader->stage == ShaderStage::Compute)
             {
-                GetCommandList(cmd)->SetPipelineState(internal_state->resource.Get());
+                GetCommandList(commandList)->SetPipelineState(internal_state->resource.Get());
             }
 
-            if (active_rootsig_compute[cmd] != internal_state->rootSignature.Get())
+            if (active_rootsig_compute[commandList] != internal_state->rootSignature.Get())
             {
-                active_rootsig_compute[cmd] = internal_state->rootSignature.Get();
-                GetCommandList(cmd)->SetComputeRootSignature(internal_state->rootSignature.Get());
+                active_rootsig_compute[commandList] = internal_state->rootSignature.Get();
+                GetCommandList(commandList)->SetComputeRootSignature(internal_state->rootSignature.Get());
 
                 // Invalidate compute root bindings:
-                descriptors[cmd].dirty_res = true;
-                descriptors[cmd].dirty_sam = true;
-                descriptors[cmd].dirty_root_cbvs_compute = ~0;
+                descriptors[commandList].dirty_res = true;
+                descriptors[commandList].dirty_sam = true;
+                descriptors[commandList].dirty_root_cbvs_compute = ~0;
 
                 // Set the bindless tables:
                 uint32_t bindpoint = internal_state->bindpoint_bindless;
                 if (!internal_state->bindless_res.empty())
                 {
-                    GetCommandList(cmd)->SetComputeRootDescriptorTable(bindpoint++, descriptorheap_res.start_gpu);
+                    GetCommandList(commandList)->SetComputeRootDescriptorTable(bindpoint++, descriptorheap_res.start_gpu);
                 }
                 if (!internal_state->bindless_sam.empty())
                 {
-                    GetCommandList(cmd)->SetComputeRootDescriptorTable(bindpoint++, descriptorheap_sam.start_gpu);
+                    GetCommandList(commandList)->SetComputeRootDescriptorTable(bindpoint++, descriptorheap_sam.start_gpu);
                 }
             }
-
         }
     }
 
@@ -6816,6 +6799,7 @@ namespace Alimer
         desc.ScratchAccelerationStructureData = to_internal(&dst_internal->scratch)->gpu_address;
         GetCommandList(cmd)->BuildRaytracingAccelerationStructure(&desc, 0, nullptr);
     }
+
     void RHIDeviceD3D12::BindRaytracingPipelineState(const RaytracingPipelineState* rtpso, CommandList cmd)
     {
         active_cs[cmd] = nullptr;
@@ -6823,11 +6807,12 @@ namespace Alimer
         prev_pipeline_hash[cmd] = 0;
         active_rt[cmd] = rtpso;
 
-        BindComputeShader(rtpso->desc.shaderlibraries.front().shader, cmd);
+        BindComputeShader(cmd, rtpso->desc.shaderlibraries.front().shader);
 
         auto internal_state = to_internal(rtpso);
         GetCommandList(cmd)->SetPipelineState1(internal_state->resource.Get());
     }
+
     void RHIDeviceD3D12::DispatchRays(const DispatchRaysDesc* desc, CommandList cmd)
     {
         predispatch(cmd);
