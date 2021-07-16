@@ -2121,6 +2121,15 @@ available through VmaAllocatorCreateInfo::pRecordSettings.
     #endif
 #endif
 
+// Defined to 1 when VK_KHR_external_memory device extension is defined in Vulkan headers.
+#if !defined(VMA_EXTERNAL_MEMORY)
+    #if VK_KHR_external_memory
+        #define VMA_EXTERNAL_MEMORY 1
+    #else
+        #define VMA_EXTERNAL_MEMORY 0
+    #endif
+#endif
+
 // Define these macros to decorate all public functions with additional code,
 // before and after returned type, appropriately. This may be useful for
 // exporting the functions when compiling VMA as a separate library. Example:
@@ -2494,6 +2503,18 @@ typedef struct VmaAllocatorCreateInfo
     Leaving it initialized to zero is equivalent to `VK_API_VERSION_1_0`.
     */
     uint32_t vulkanApiVersion;
+#if VMA_EXTERNAL_MEMORY
+    /** \brief Either null or a pointer to an array of external memory handle types for each Vulkan memory type.
+
+    If not NULL, it must be a pointer to an array of `VkPhysicalDeviceMemoryProperties::memoryTypeCount`
+    elements, defining external memory handle types of particular Vulkan memory type,
+    to be passed using `VkExportMemoryAllocateInfoKHR`.
+
+    Any of the elements may be equal to 0, which means not to use `VkExportMemoryAllocateInfoKHR` on this memory type.
+    This is also the default in case of `pTypeExternalMemoryHandleTypes` = NULL.
+    */
+    const VkExternalMemoryHandleTypeFlagsKHR* VMA_NULLABLE VMA_LEN_IF_NOT_NULL("VkPhysicalDeviceMemoryProperties::memoryTypeCount") pTypeExternalMemoryHandleTypes;
+#endif // #if VMA_EXTERNAL_MEMORY
 } VmaAllocatorCreateInfo;
 
 /// Creates Allocator object.
@@ -3962,6 +3983,21 @@ VMA_CALL_PRE VkResult VMA_CALL_POST vmaCreateBuffer(
     VmaAllocator VMA_NOT_NULL allocator,
     const VkBufferCreateInfo* VMA_NOT_NULL pBufferCreateInfo,
     const VmaAllocationCreateInfo* VMA_NOT_NULL pAllocationCreateInfo,
+    VkBuffer VMA_NULLABLE_NON_DISPATCHABLE * VMA_NOT_NULL pBuffer,
+    VmaAllocation VMA_NULLABLE * VMA_NOT_NULL pAllocation,
+    VmaAllocationInfo* VMA_NULLABLE pAllocationInfo);
+
+/** \brief Creates a buffer with additional minimum alignment.
+
+Similar to vmaCreateBuffer() but provides additional parameter `minAlignment` which allows to specify custom,
+minimum alignment to be used when placing the buffer inside a larger memory block, which may be needed e.g.
+for interop with OpenGL.
+*/
+VMA_CALL_PRE VkResult VMA_CALL_POST vmaCreateBufferWithAlignment(
+    VmaAllocator VMA_NOT_NULL allocator,
+    const VkBufferCreateInfo* VMA_NOT_NULL pBufferCreateInfo,
+    const VmaAllocationCreateInfo* VMA_NOT_NULL pAllocationCreateInfo,
+    VkDeviceSize minAlignment,
     VkBuffer VMA_NULLABLE_NON_DISPATCHABLE * VMA_NOT_NULL pBuffer,
     VmaAllocation VMA_NULLABLE * VMA_NOT_NULL pAllocation,
     VmaAllocationInfo* VMA_NULLABLE pAllocationInfo);
@@ -8395,6 +8431,12 @@ public:
     */
     uint32_t GetGpuDefragmentationMemoryTypeBits();
 
+#if VMA_EXTERNAL_MEMORY
+    VkExternalMemoryHandleTypeFlagsKHR GetExternalMemoryHandleTypeFlags(uint32_t memTypeIndex) const
+    {
+        return m_TypeExternalMemoryHandleTypes[memTypeIndex];
+    }
+#endif // #if VMA_EXTERNAL_MEMORY
 
 private:
     VkDeviceSize m_PreferredLargeHeapBlockSize;
@@ -8402,6 +8444,9 @@ private:
     VkPhysicalDevice m_PhysicalDevice;
     VMA_ATOMIC_UINT32 m_CurrentFrameIndex;
     VMA_ATOMIC_UINT32 m_GpuDefragmentationMemoryTypeBits; // UINT32_MAX means uninitialized.
+#if VMA_EXTERNAL_MEMORY
+    VkExternalMemoryHandleTypeFlagsKHR m_TypeExternalMemoryHandleTypes[VK_MAX_MEMORY_TYPES];
+#endif // #if VMA_EXTERNAL_MEMORY
 
     VMA_RW_MUTEX m_PoolsMutex;
     typedef VmaIntrusiveLinkedList<VmaPoolListItemTraits> PoolList;
@@ -13664,6 +13709,16 @@ VkResult VmaBlockVector::CreateBlock(VkDeviceSize blockSize, size_t* pNewBlockIn
     }
 #endif // #if VMA_MEMORY_PRIORITY
 
+#if VMA_EXTERNAL_MEMORY
+    // Attach VkExportMemoryAllocateInfoKHR if necessary.
+    VkExportMemoryAllocateInfoKHR exportMemoryAllocInfo = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHR };
+    exportMemoryAllocInfo.handleTypes = m_hAllocator->GetExternalMemoryHandleTypeFlags(m_MemoryTypeIndex);
+    if(exportMemoryAllocInfo.handleTypes != 0)
+    {
+        VmaPnextChainPushFront(&allocInfo, &exportMemoryAllocInfo);
+    }
+#endif // #if VMA_EXTERNAL_MEMORY
+
     VkDeviceMemory mem = VK_NULL_HANDLE;
     VkResult res = m_hAllocator->AllocateVulkanMemory(&allocInfo, &mem);
     if(res < 0)
@@ -16108,6 +16163,9 @@ VmaAllocator_T::VmaAllocator_T(const VmaAllocatorCreateInfo* pCreateInfo) :
     memset(&m_pBlockVectors, 0, sizeof(m_pBlockVectors));
     memset(&m_VulkanFunctions, 0, sizeof(m_VulkanFunctions));
 
+#if VMA_EXTERNAL_MEMORY
+    memset(&m_TypeExternalMemoryHandleTypes, 0, sizeof(m_TypeExternalMemoryHandleTypes));
+#endif // #if VMA_EXTERNAL_MEMORY
 
     if(pCreateInfo->pDeviceMemoryCallbacks != VMA_NULL)
     {
@@ -16131,6 +16189,13 @@ VmaAllocator_T::VmaAllocator_T(const VmaAllocatorCreateInfo* pCreateInfo) :
 
     m_GlobalMemoryTypeBits = CalculateGlobalMemoryTypeBits();
 
+#if VMA_EXTERNAL_MEMORY
+    if(pCreateInfo->pTypeExternalMemoryHandleTypes != VMA_NULL)
+    {
+        memcpy(m_TypeExternalMemoryHandleTypes, pCreateInfo->pTypeExternalMemoryHandleTypes,
+            sizeof(VkExternalMemoryHandleTypeFlagsKHR) * GetMemoryTypeCount());
+    }
+#endif // #if VMA_EXTERNAL_MEMORY
 
     if(pCreateInfo->pHeapSizeLimit != VMA_NULL)
     {
@@ -16663,6 +16728,16 @@ VkResult VmaAllocator_T::AllocateDedicatedMemory(
         VmaPnextChainPushFront(&allocInfo, &priorityInfo);
     }
 #endif // #if VMA_MEMORY_PRIORITY
+
+#if VMA_EXTERNAL_MEMORY
+    // Attach VkExportMemoryAllocateInfoKHR if necessary.
+    VkExportMemoryAllocateInfoKHR exportMemoryAllocInfo = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHR };
+    exportMemoryAllocInfo.handleTypes = GetExternalMemoryHandleTypeFlags(memTypeIndex);
+    if(exportMemoryAllocInfo.handleTypes != 0)
+    {
+        VmaPnextChainPushFront(&allocInfo, &exportMemoryAllocInfo);
+    }
+#endif // #if VMA_EXTERNAL_MEMORY
 
     size_t allocIndex;
     VkResult res = VK_SUCCESS;
@@ -19396,6 +19471,108 @@ VMA_CALL_PRE VkResult VMA_CALL_POST vmaCreateBuffer(
                 *pBufferCreateInfo,
                 *pAllocationCreateInfo,
                 *pAllocation);
+        }
+#endif
+
+        if(res >= 0)
+        {
+            // 3. Bind buffer with memory.
+            if((pAllocationCreateInfo->flags & VMA_ALLOCATION_CREATE_DONT_BIND_BIT) == 0)
+            {
+                res = allocator->BindBufferMemory(*pAllocation, 0, *pBuffer, VMA_NULL);
+            }
+            if(res >= 0)
+            {
+                // All steps succeeded.
+                #if VMA_STATS_STRING_ENABLED
+                    (*pAllocation)->InitBufferImageUsage(pBufferCreateInfo->usage);
+                #endif
+                if(pAllocationInfo != VMA_NULL)
+                {
+                    allocator->GetAllocationInfo(*pAllocation, pAllocationInfo);
+                }
+
+                return VK_SUCCESS;
+            }
+            allocator->FreeMemory(
+                1, // allocationCount
+                pAllocation);
+            *pAllocation = VK_NULL_HANDLE;
+            (*allocator->GetVulkanFunctions().vkDestroyBuffer)(allocator->m_hDevice, *pBuffer, allocator->GetAllocationCallbacks());
+            *pBuffer = VK_NULL_HANDLE;
+            return res;
+        }
+        (*allocator->GetVulkanFunctions().vkDestroyBuffer)(allocator->m_hDevice, *pBuffer, allocator->GetAllocationCallbacks());
+        *pBuffer = VK_NULL_HANDLE;
+        return res;
+    }
+    return res;
+}
+
+VMA_CALL_PRE VkResult VMA_CALL_POST vmaCreateBufferWithAlignment(
+    VmaAllocator allocator,
+    const VkBufferCreateInfo* pBufferCreateInfo,
+    const VmaAllocationCreateInfo* pAllocationCreateInfo,
+    VkDeviceSize minAlignment,
+    VkBuffer* pBuffer,
+    VmaAllocation* pAllocation,
+    VmaAllocationInfo* pAllocationInfo)
+{
+    VMA_ASSERT(allocator && pBufferCreateInfo && pAllocationCreateInfo && VmaIsPow2(minAlignment) && pBuffer && pAllocation);
+
+    if(pBufferCreateInfo->size == 0)
+    {
+        return VK_ERROR_VALIDATION_FAILED_EXT;
+    }
+    if((pBufferCreateInfo->usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_COPY) != 0 &&
+        !allocator->m_UseKhrBufferDeviceAddress)
+    {
+        VMA_ASSERT(0 && "Creating a buffer with VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT is not valid if VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT was not used.");
+        return VK_ERROR_VALIDATION_FAILED_EXT;
+    }
+
+    VMA_DEBUG_LOG("vmaCreateBufferWithAlignment");
+
+    VMA_DEBUG_GLOBAL_MUTEX_LOCK
+
+    *pBuffer = VK_NULL_HANDLE;
+    *pAllocation = VK_NULL_HANDLE;
+
+    // 1. Create VkBuffer.
+    VkResult res = (*allocator->GetVulkanFunctions().vkCreateBuffer)(
+        allocator->m_hDevice,
+        pBufferCreateInfo,
+        allocator->GetAllocationCallbacks(),
+        pBuffer);
+    if(res >= 0)
+    {
+        // 2. vkGetBufferMemoryRequirements.
+        VkMemoryRequirements vkMemReq = {};
+        bool requiresDedicatedAllocation = false;
+        bool prefersDedicatedAllocation  = false;
+        allocator->GetBufferMemoryRequirements(*pBuffer, vkMemReq,
+            requiresDedicatedAllocation, prefersDedicatedAllocation);
+
+        // 2a. Include minAlignment
+        vkMemReq.alignment = VMA_MAX(vkMemReq.alignment, minAlignment);
+
+        // 3. Allocate memory using allocator.
+        res = allocator->AllocateMemory(
+            vkMemReq,
+            requiresDedicatedAllocation,
+            prefersDedicatedAllocation,
+            *pBuffer, // dedicatedBuffer
+            pBufferCreateInfo->usage, // dedicatedBufferUsage
+            VK_NULL_HANDLE, // dedicatedImage
+            *pAllocationCreateInfo,
+            VMA_SUBALLOCATION_TYPE_BUFFER,
+            1, // allocationCount
+            pAllocation);
+
+#if VMA_RECORDING_ENABLED
+        if(allocator->GetRecorder() != VMA_NULL)
+        {
+            VMA_ASSERT(0 && "Not implemented.");
         }
 #endif
 
