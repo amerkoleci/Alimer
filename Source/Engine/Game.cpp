@@ -2,7 +2,7 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repository root for more information.
 
 #include "Game.h"
-#include "RHI/RHI.h"
+#include "Graphics/Graphics.h"
 #include "Core/Assert.h"
 #include "Core/Log.h"
 #include "Math/Color.h"
@@ -41,8 +41,8 @@ namespace Alimer
     {
         // Shutdown modules.
         host.reset();
-        RHIWaitForGPU();
-        RHIShutdown();
+        gGraphics().WaitIdle();
+        gGraphics().Shutdown();
         gLog().Shutdown();
         g_currentGame = nullptr;
     }
@@ -122,8 +122,8 @@ namespace Alimer
     {
         // Platform logic has been setup and main window has been created.
 
-        // Init RHI
-        if (!RHIInitialize(config.validationMode, config.backendType))
+        // Init graphics module
+        if (!Graphics::Initialize(config.validationMode, config.backendType))
         {
             headless = true;
         }
@@ -132,10 +132,10 @@ namespace Alimer
 
         }
 
-        Initialize();
-
         // Show main window.
         host->GetMainWindow()->Show();
+
+        Initialize();
     }
 
     void Game::Render()
@@ -147,30 +147,39 @@ namespace Alimer
             BeginDraw())
         {
             // Custom application draw.
-            CommandList commandBuffer = GDevice->BeginCommandList();
+            CommandBuffer* commandBuffer = gGraphics().BeginCommandBuffer();
+            {
+                commandBuffer->PushDebugGroup("Frame");
 
-            GDevice->BeginRenderPass(commandBuffer, host->GetMainWindow()->GetRHISwapChain(), Colors::CornflowerBlue);
-            OnDraw(commandBuffer);
-            GDevice->EndRenderPass(commandBuffer);
+                RenderPassInfo info;
+                info.colorAttachments[0].view = host->GetMainWindow()->GetSwapChain()->GetCurrentTextureView();
+                info.colorAttachments[0].loadAction = LoadAction::Clear;
+                info.colorAttachments[0].storeAction = StoreAction::Store;
+                info.colorAttachments[0].clearColor = Colors::CornflowerBlue;
+                //info.depthStencilAttachment.view = mainWindow->GetDepthStencilTexture()->GetView();
+                //info.depthStencilAttachment.clearDepth = 1.0f;
+                commandBuffer->BeginRenderPass(info);
+
+                OnDraw(commandBuffer);
+
+                // End main window render pass
+                commandBuffer->EndRenderPass();
+
+                commandBuffer->PopDebugGroup();
+            }
+            gGraphics().GetQueue().Submit(commandBuffer);
             EndDraw();
         }
     }
 
     bool Game::BeginDraw()
     {
-        return true; // RHIBeginFrame();
+        return gGraphics().BeginFrame();
     }
 
     void Game::EndDraw()
     {
-        GDevice->SubmitCommandLists();
-        //RHIEndFrame();
-    }
-
-    void Game::OnDraw(_In_ CommandList& commandBuffer)
-    {
-
-
+        gGraphics().EndFrame();
     }
 
     void Game::Exit()

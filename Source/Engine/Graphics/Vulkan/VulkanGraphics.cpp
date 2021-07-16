@@ -231,22 +231,38 @@ namespace Alimer
         }
     }
 
-    VulkanGraphics::VulkanGraphics(GPUDebugFlags flags)
+    bool VulkanGraphics::IsAvailable()
     {
-        const bool enableDebugLayers = any(flags & GPUDebugFlags::DebugLayers | GPUDebugFlags::GPUBasedValidation);
+        static bool available_initialized = false;
+        static bool available = false;
+
+        if (available_initialized) {
+            return available;
+        }
+
+        available_initialized = true;
 
         VkResult result = volkInitialize();
         if (result != VK_SUCCESS)
         {
-            return;
+            return false;
         }
 
         const uint32_t instanceVersion = volkGetInstanceVersion();
         if (instanceVersion < VK_API_VERSION_1_2)
         {
-            ErrorDialog("Error", "Vulkan 1.2 is required");
-            return;
+            return false;
         }
+
+        available = true;
+        return true;
+    }
+
+    VulkanGraphics::VulkanGraphics(GPUValidationMode validationMode)
+    {
+        ALIMER_VERIFY(IsAvailable());
+
+        const bool enableDebugLayers = validationMode != GPUValidationMode::Disabled;
 
         // Create instance and debug utils first.
         {
@@ -308,8 +324,7 @@ namespace Alimer
 
 #if defined(_DEBUG)
             bool validationFeatures = false;
-            const bool gpuValidation = any(flags & GPUDebugFlags::GPUBasedValidation);
-            if (enableDebugLayers && gpuValidation)
+            if (validationMode == GPUValidationMode::GPU)
             {
                 uint32_t layerInstanceExtensionCount;
                 VK_CHECK(vkEnumerateInstanceExtensionProperties("VK_LAYER_KHRONOS_validation", &layerInstanceExtensionCount, nullptr));
@@ -332,7 +347,7 @@ namespace Alimer
             appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
             appInfo.pEngineName = "Alimer";
             appInfo.engineVersion = VK_MAKE_VERSION(ALIMER_VERSION_MAJOR, ALIMER_VERSION_MINOR, ALIMER_VERSION_PATCH);
-            appInfo.apiVersion = instanceVersion;
+            appInfo.apiVersion = volkGetInstanceVersion();
 
             VkInstanceCreateInfo createInfo{ VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
             createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -435,7 +450,7 @@ namespace Alimer
             if (deviceCount == 0)
             {
                 LOGF("Vulkan: Failed to find GPUs with Vulkan support");
-                ErrorDialog("Error", "Vulkan: Failed to find GPUs with Vulkan support");
+                //ErrorDialog("Error", "Vulkan: Failed to find GPUs with Vulkan support");
                 return;
             }
 
@@ -643,7 +658,7 @@ namespace Alimer
             }
 
             caps.adapterName = properties2.properties.deviceName;
-            caps.blobType = ShaderBlobType::SPIRV;
+            caps.shaderFormat = ShaderFormat::SPIRV;
 
             caps.features.independentBlend = features2.features.independentBlend;
             caps.features.computeShader = true;
@@ -1343,18 +1358,13 @@ namespace Alimer
         ProcessDeletionQueue();
     }
 
-    void VulkanGraphics::FinishFrame()
+    bool VulkanGraphics::BeginFrame()
     {
-        // Update and Render additional Platform Windows
-        /*{
-            ImGuiIO& io = ImGui::GetIO();
-            if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-            {
-                ImGui::UpdatePlatformWindows();
-                ImGui::RenderPlatformWindowsDefault();
-            }
-        }*/
+        return true;
+    }
 
+    void VulkanGraphics::EndFrame()
+    {
         VkSubmitInfo submitInfo{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
         VK_CHECK(
             vkQueueSubmit(ToVulkan(graphicsQueue)->GetHandle(), 1, &submitInfo, frameFences[frameIndex])
@@ -1578,17 +1588,17 @@ namespace Alimer
 
         while (processCommands)
         {
-            VkFence fence;
+            //VkFence fence;
 
             lock.lock();
-            while (submittedFences.try_pop(fence))
-            {
-                if (vkGetFenceStatus(device, fence) == VK_SUCCESS)
-                {
-                    // Reuse fences
-                    ReleaseFence(fence);
-                }
-            }
+            //while (submittedFences.try_pop(fence))
+            //{
+            //    if (vkGetFenceStatus(device, fence) == VK_SUCCESS)
+            //    {
+            //        // Reuse fences
+            //        ReleaseFence(fence);
+            //    }
+            //}
 
             lock.unlock();
         }
@@ -1737,7 +1747,7 @@ namespace Alimer
 
     void VulkanGraphics::SubmitFence(VkFence fence)
     {
-        submittedFences.push(fence);
+        //submittedFences.push(fence);
     }
 
     /* Cache */

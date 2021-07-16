@@ -31,8 +31,8 @@ namespace Alimer
 
     GameWindowWin32::~GameWindowWin32()
     {
-        RHIWaitForGPU();
-        swapChain = {};
+        //RHIWaitForGPU();
+        swapChain.Reset();
 
         if (handle)
         {
@@ -42,7 +42,7 @@ namespace Alimer
 
     void GameWindowWin32::Show()
     {
-        if (!swapChain.IsValid())
+        if (swapChain.IsNull())
         {
             CreateSwapChain(handle);
         }

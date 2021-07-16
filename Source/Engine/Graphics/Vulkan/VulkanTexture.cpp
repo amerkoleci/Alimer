@@ -90,15 +90,15 @@ namespace Alimer
             imageInfo.samples = VulkanSampleCount(info.sampleCount);
             imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
             imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-            if (any(info.usage & TextureUsage::Sampled))
+            if (Any(info.usage, TextureUsage::Sampled))
             {
                 imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
             }
-            if (any(info.usage & TextureUsage::Storage))
+            if (Any(info.usage, TextureUsage::Storage))
             {
                 imageInfo.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
             }
-            if (any(info.usage & TextureUsage::RenderTarget))
+            if (Any(info.usage, TextureUsage::RenderTarget))
             {
                 if (IsDepthStencilFormat(info.format))
                 {
@@ -435,7 +435,7 @@ namespace Alimer
         }
 
         // Allocate bindless SRV
-        if (any(texture->GetUsage() & TextureUsage::Sampled))
+        if (Any(texture->GetUsage(), TextureUsage::Sampled))
         {
             bindless_srv = device.AllocateSRV();
             if (bindless_srv != -1)
@@ -455,7 +455,7 @@ namespace Alimer
             }
         }
 
-        if (any(texture->GetUsage() & TextureUsage::Storage))
+        if (Any(texture->GetUsage(), TextureUsage::Storage))
         {
             //bindless_uav = device.AllocateUAV();
             //if (bindless_uav != -1)

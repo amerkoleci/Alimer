@@ -14,7 +14,6 @@ alimer_define_engine_source_files(
   Math
   IO
   Graphics
-  RHI
   Assets
 )
 

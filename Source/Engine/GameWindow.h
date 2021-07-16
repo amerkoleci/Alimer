@@ -4,7 +4,7 @@
 #pragma once
 
 #include "Core/Signal.h"
-#include "RHI/RHI.h"
+#include "Graphics/SwapChain.h"
 #include <memory>
 
 namespace Alimer
@@ -27,7 +27,7 @@ namespace Alimer
         virtual void Show() = 0;
         virtual bool IsMinimized() const = 0;
 
-        const SwapChain* GetRHISwapChain() const { return &swapChain; }
+        const SwapChain* GetSwapChain() const { return swapChain.Get(); }
 
 	protected:
 		/// Constructor.
@@ -38,6 +38,6 @@ namespace Alimer
         void CreateSwapChain(void* windowHandle);
 
         String title;
-        SwapChain swapChain;
+        SwapChainRef swapChain;
 	};
 }

@@ -18,25 +18,27 @@ namespace Alimer
             }
 
             VkPipelineStageFlags flags = 0u;
-            if (any(state & (VulkanBufferState::Vertex | VulkanBufferState::Index))) {
+            if (Any(state, VulkanBufferState::Vertex | VulkanBufferState::Index)) {
                 flags |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
             }
 
-            if (any(state & (VulkanBufferState::Uniform | VulkanBufferState::ShaderRead | VulkanBufferState::ShaderWrite))) {
+            if (Any(state, VulkanBufferState::Uniform | VulkanBufferState::ShaderRead | VulkanBufferState::ShaderWrite))
+            {
                 flags |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
                     VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
             }
 
-            if (any(state & VulkanBufferState::IndirectArgument)) {
+            if (Any(state, VulkanBufferState::IndirectArgument)) {
                 flags |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
             }
 
-            if (any(state & (VulkanBufferState::CopySource | VulkanBufferState::CopyDest))) {
+            if (Any(state, VulkanBufferState::CopySource | VulkanBufferState::CopyDest)) {
                 flags |= VK_PIPELINE_STAGE_TRANSFER_BIT;
             }
 
-            if (any(state & (VulkanBufferState::AccelerationStructureRead | VulkanBufferState::AccelerationStructureWrite))) {
+            if (Any(state, VulkanBufferState::AccelerationStructureRead | VulkanBufferState::AccelerationStructureWrite))
+            {
                 flags |= VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR;
             }
 
@@ -47,34 +49,34 @@ namespace Alimer
 
             VkAccessFlags flags = 0; // VK_ACCESS_HOST_READ_BIT | VK_ACCESS_HOST_WRITE_BIT?
 
-            if (any(state & VulkanBufferState::Vertex)) {
+            if (Any(state, VulkanBufferState::Vertex)) {
                 flags |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
             }
-            if (any(state & VulkanBufferState::Index)) {
+            if (Any(state, VulkanBufferState::Index)) {
                 flags |= VK_ACCESS_INDEX_READ_BIT;
             }
-            if (any(state & VulkanBufferState::Uniform)) {
+            if (Any(state, VulkanBufferState::Uniform)) {
                 flags |= VK_ACCESS_UNIFORM_READ_BIT;
             }
-            if (any(state & VulkanBufferState::ShaderRead)) {
+            if (Any(state, VulkanBufferState::ShaderRead)) {
                 flags |= VK_ACCESS_SHADER_READ_BIT;
             }
-            if (any(state & VulkanBufferState::ShaderWrite)) {
+            if (Any(state, VulkanBufferState::ShaderWrite)) {
                 flags |= VK_ACCESS_SHADER_WRITE_BIT;
             }
-            if (any(state & VulkanBufferState::IndirectArgument)) {
+            if (Any(state, VulkanBufferState::IndirectArgument)) {
                 flags |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
             }
-            if (any(state & VulkanBufferState::CopySource)) {
+            if (Any(state, VulkanBufferState::CopySource)) {
                 flags |= VK_ACCESS_TRANSFER_READ_BIT;
             }
-            if (any(state & VulkanBufferState::CopyDest)) {
+            if (Any(state, VulkanBufferState::CopyDest)) {
                 flags |= VK_ACCESS_TRANSFER_WRITE_BIT;
             }
-            if (any(state & VulkanBufferState::AccelerationStructureRead)) {
+            if (Any(state, VulkanBufferState::AccelerationStructureRead)) {
                 flags |= VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
             }
-            if (any(state & VulkanBufferState::AccelerationStructureWrite)) {
+            if (Any(state, VulkanBufferState::AccelerationStructureWrite)) {
                 flags |= VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
             }
 
@@ -90,24 +92,24 @@ namespace Alimer
         createInfo.size = size;
         createInfo.usage = 0u;
 
-        if (any(usage & BufferUsage::Uniform))
+        if (Any(usage, BufferUsage::Uniform))
         {
             // Align the buffer size to multiples of the dynamic uniform buffer minimum size
             uint64_t minAlignment = gGraphics().GetCaps().limits.minUniformBufferOffsetAlignment;
             createInfo.size = AlignTo(createInfo.size, minAlignment);
         }
 
-        if (any(usage & BufferUsage::Vertex)) {
+        if (Any(usage, BufferUsage::Vertex)) {
             createInfo.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
         }
-        if (any(usage & BufferUsage::Index)) {
+        if (Any(usage, BufferUsage::Index)) {
             createInfo.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
         }
-        if (any(usage & BufferUsage::Uniform)) {
+        if (Any(usage, BufferUsage::Uniform)) {
             createInfo.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
         }
 
-        if (any(usage & (BufferUsage::ShaderResource)))
+        if (Any(usage, BufferUsage::ShaderResource))
         {
             createInfo.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
@@ -117,7 +119,7 @@ namespace Alimer
             }
         }
 
-        if (any(usage & (BufferUsage::UnorderedAccess)))
+        if (Any(usage, BufferUsage::UnorderedAccess))
         {
             createInfo.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
@@ -127,7 +129,7 @@ namespace Alimer
             }
         }
 
-        if (any(usage & BufferUsage::Indirect)) {
+        if (Any(usage, BufferUsage::Indirect)) {
             createInfo.usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
         }
         if (device.BufferDeviceAddressSupported()) {
@@ -322,23 +324,23 @@ namespace Alimer
             barrier.srcAccessMask = barrier.dstAccessMask;
             barrier.dstAccessMask = 0;
 
-            if (any(usage & BufferUsage::Vertex))
+            if (Any(usage, BufferUsage::Vertex))
             {
                 barrier.dstAccessMask |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
             }
-            if (any(usage & BufferUsage::Index))
+            if (Any(usage, BufferUsage::Index))
             {
                 barrier.dstAccessMask |= VK_ACCESS_INDEX_READ_BIT;
             }
-            if (any(usage & BufferUsage::Uniform))
+            if (Any(usage, BufferUsage::Uniform))
             {
                 barrier.dstAccessMask |= VK_ACCESS_UNIFORM_READ_BIT;
             }
-            if (any(usage & BufferUsage::ShaderResource))
+            if (Any(usage, BufferUsage::ShaderResource))
             {
                 barrier.dstAccessMask |= VK_ACCESS_SHADER_READ_BIT;
             }
-            if (any(usage & BufferUsage::UnorderedAccess))
+            if (Any(usage, BufferUsage::UnorderedAccess))
             {
                 barrier.dstAccessMask |= VK_ACCESS_SHADER_WRITE_BIT;
             }

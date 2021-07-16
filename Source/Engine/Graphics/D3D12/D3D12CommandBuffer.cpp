@@ -151,7 +151,7 @@ namespace Alimer
 
     void D3D12CommandBuffer::PushDebugGroup(const std::string& name)
     {
-        auto wideName = StringUtils::ToUtf16(name);
+        auto wideName = ToUtf16(name);
         PIXBeginEvent(handle, PIX_COLOR_DEFAULT, wideName.c_str());
     }
 
@@ -162,7 +162,7 @@ namespace Alimer
 
     void D3D12CommandBuffer::InsertDebugMarker(const std::string& name)
     {
-        auto wideName = StringUtils::ToUtf16(name);
+        auto wideName = ToUtf16(name);
         PIXSetMarker(handle, PIX_COLOR_DEFAULT, wideName.c_str());
     }
 
@@ -309,7 +309,7 @@ namespace Alimer
                 switch (attachment.loadAction)
                 {
                     case LoadAction::Clear:
-                        handle->ClearRenderTargetView(colorRTVHandles[i], attachment.clearColor.data, 0, nullptr);
+                        handle->ClearRenderTargetView(colorRTVHandles[i], attachment.clearColor.Data(), 0, nullptr);
                         break;
 
                     default:
@@ -513,7 +513,7 @@ namespace Alimer
 
     void D3D12CommandBuffer::SetBlendColor(const Color& color)
     {
-        handle->OMSetBlendFactor(color.data);
+        handle->OMSetBlendFactor(color.Data());
     }
 
     void D3D12CommandBuffer::SetBlendColor(const float blendColor[4])

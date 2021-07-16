@@ -8,11 +8,10 @@ using namespace Alimer;
 class TriangleGame final : public Game
 {
 private:
-    GPUBuffer vertexBuffer;
-    RHIShader vertexShader;
-    RHIShader pixelShader;
-    InputLayout inputLayout;
-    PipelineState renderPipeline;
+    BufferRef vertexBuffer;
+    ShaderRef vertexShader;
+    ShaderRef pixelShader;
+    PipelineRef renderPipeline;
 
 public:
     TriangleGame()
@@ -50,40 +49,28 @@ public:
             -0.5f, -0.5f, 0.5f,     0.0f, 0.0f, 1.0f, 1.0f
         };
 
-        BufferDescriptor bufferDesc = {};
-       // bufferDesc.label = "Triangle VertexBuffer";
-        bufferDesc.size = sizeof(vertices);
-        bufferDesc.usage = BufferUsage::Vertex;
-        ALIMER_ASSERT(GDevice->CreateBuffer(&bufferDesc, vertices, &vertexBuffer));
+        vertexBuffer = Buffer::Create(vertices, BufferUsage::Vertex, sizeof(vertices));
 
-        ShaderCompiler::Compile(ShaderStage::Vertex, "Assets/Shaders/triangle.hlsl", &vertexShader);
-        ShaderCompiler::Compile(ShaderStage::Pixel, "Assets/Shaders/triangle.hlsl", &pixelShader);
+        vertexShader = ShaderCompiler::Compile(ShaderStage::Vertex, "Assets/Shaders/triangle.hlsl");
+        pixelShader = ShaderCompiler::Compile(ShaderStage::Pixel, "Assets/Shaders/triangle.hlsl");
 
-        inputLayout.elements =
-        {
-            { "ATTRIBUTE", 0, FORMAT_R32G32B32_FLOAT, 0, InputLayout::APPEND_ALIGNED_ELEMENT, INPUT_PER_VERTEX_DATA },
-            { "ATTRIBUTE", 1, FORMAT_R32G32B32A32_FLOAT, 0, InputLayout::APPEND_ALIGNED_ELEMENT, INPUT_PER_VERTEX_DATA },
-        };
+        RenderPipelineStateCreateInfo pipelineInfo = {};
+        pipelineInfo.label = "Triangle";
+        pipelineInfo.vertexShader = vertexShader;
+        pipelineInfo.fragmentShader = pixelShader;
+        pipelineInfo.vertexLayout.attributes[0].format = VertexFormat::Float3;
+        pipelineInfo.vertexLayout.attributes[1].format = VertexFormat::Float4;
 
-        PipelineStateDesc renderPipelineDesc;
-        renderPipelineDesc.vertex = &vertexShader;
-        renderPipelineDesc.pixel = &pixelShader;
-        renderPipelineDesc.il = &inputLayout;
-        ALIMER_ASSERT(GDevice->CreatePipelineState(&renderPipelineDesc, &renderPipeline));
+        pipelineInfo.colorFormats[0] = GetWindow()->GetSwapChain()->GetColorFormat();
+        //pipelineInfo.depthStencilFormat = mainWindow->GetDepthStencilFormat();
+        renderPipeline = Pipeline::Create(pipelineInfo);
     }
 
-    void OnDraw([[maybe_unused]] CommandList& commandBuffer) override
+    void OnDraw([[maybe_unused]] CommandBuffer* commandBuffer) override
     {
-        const GPUBuffer* vbs[] = {
-            &vertexBuffer,
-        };
-        const uint32_t strides[] = {
-            28,
-        };
-
-        GDevice->BindVertexBuffers(vbs, 0, 1, strides, nullptr, commandBuffer);
-        GDevice->BindPipelineState(&renderPipeline, commandBuffer);
-        GDevice->Draw(3, 0, commandBuffer);
+        commandBuffer->SetPipeline(renderPipeline);
+        commandBuffer->SetVertexBuffer(0, vertexBuffer);
+        commandBuffer->Draw(0, 3);
     }
 };
 

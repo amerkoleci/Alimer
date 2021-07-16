@@ -11,7 +11,7 @@ namespace Alimer
 		: refCount(new RefCount())
 	{
 		// Hold a weak ref to self to avoid possible double delete of the refcount
-		refCount->weakRefs.fetch_add(+1, std::memory_order_relaxed);
+		(void)refCount->weakRefs.fetch_add(+1, std::memory_order_relaxed);
 	}
 
 	RefCounted::~RefCounted()
@@ -35,21 +35,25 @@ namespace Alimer
 
 	int32_t RefCounted::AddRef()
 	{
-		int refs = refCount->refs.fetch_add(+1, std::memory_order_relaxed);
+		(void)refCount->refs.fetch_add(+1, std::memory_order_relaxed);
 
-		ALIMER_ASSERT(refs > 0);
+		ALIMER_ASSERT(Refs() > 0);
 		//Scripting::Callback(CALLBACK_ADD_REF, this);
 
-		return refs;
+		return Refs();
 	}
 
 	int32_t RefCounted::Release()
 	{
-		int refs = refCount->refs.fetch_add(-1, std::memory_order_relaxed);
+		(void)refCount->refs.fetch_add(-1, std::memory_order_relaxed);
+
+        const int32_t refs = Refs();
+
 		ALIMER_ASSERT(refs >= 0);
 		if (refs == 0)
 		{
 			delete this;
+            return 0;
 		}
 
 		return refs;

@@ -81,7 +81,7 @@ namespace Alimer
                 resourceDesc.DepthOrArraySize = info.depthOrArraySize;
             }
 
-            if (any(usage & TextureUsage::Storage))
+            if (Any(usage, TextureUsage::Storage))
             {
                 resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
             }
@@ -89,7 +89,7 @@ namespace Alimer
             D3D12_CLEAR_VALUE clearValue = {};
             D3D12_CLEAR_VALUE* pClearValue = nullptr;
 
-            if (any(usage & TextureUsage::RenderTarget))
+            if (Any(usage, TextureUsage::RenderTarget))
             {
                 // Render targets and Depth/Stencil targets are always committed resources
                 allocationDesc.Flags |= D3D12MA::ALLOCATION_FLAG_COMMITTED;
@@ -100,7 +100,7 @@ namespace Alimer
                 {
                     state = D3D12_RESOURCE_STATE_DEPTH_WRITE;
                     resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-                    if (!any(usage & TextureUsage::Sampled))
+                    if (!Any(usage, TextureUsage::Sampled))
                     {
                         resourceDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
                     }
@@ -117,7 +117,7 @@ namespace Alimer
             }
 
             // If depth and either ua or sr, set to typeless
-            if (IsDepthFormat(format) && any(usage & (TextureUsage::Sampled | TextureUsage::Storage)))
+            if (IsDepthFormat(format) && Any(usage, TextureUsage::Sampled | TextureUsage::Storage))
             {
                 resourceDesc.Format = GetTypelessFormatFromDepthFormat(format);
                 pClearValue = nullptr;
@@ -234,7 +234,7 @@ namespace Alimer
 
     void D3D12Texture::ApiSetName()
     {
-        auto wideName = StringUtils::ToUtf16(name);
+        auto wideName = ToUtf16(name);
         handle->SetName(wideName.c_str());
     }
 
@@ -249,7 +249,7 @@ namespace Alimer
         , device(texture->GetDevice())
     {
         const TextureUsage usage = texture->GetUsage();
-        if (any(usage & TextureUsage::RenderTarget))
+        if (Any(usage, TextureUsage::RenderTarget))
         {
             if (!IsDepthStencilFormat(format))
             {
@@ -261,7 +261,7 @@ namespace Alimer
             }
         }
 
-        if (any(usage & TextureUsage::Sampled))
+        if (Any(usage, TextureUsage::Sampled))
         {
             srv = device.AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 

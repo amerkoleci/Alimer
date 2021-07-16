@@ -30,14 +30,19 @@ namespace Alimer
 
         virtual ~Graphics() = default;
 
+        static bool Initialize(GPUValidationMode validationMode, GPUBackendType backendType = GPUBackendType::Count);
+
         void AddGPUObject(GPUObject* resource);
         void RemoveGPUObject(GPUObject* resource);
 
         /// Wait for device to finish all pending GPU operations
         virtual void WaitIdle() = 0;
 
+        /// Begin rendering frame, return false if frame rendering is not possible, true otherwise.
+        virtual bool BeginFrame() = 0;
+
         /// Finish the rendering frame and releases all stale resources.
-        virtual void FinishFrame() = 0;
+        virtual void EndFrame() = 0;
 
         /// Create new texture.
         [[nodiscard]] TextureRef CreateTexture(const TextureCreateInfo& info, const void* initialData = nullptr);
@@ -47,6 +52,8 @@ namespace Alimer
 
         /// Return the graphics capabilities.
         const GraphicsDeviceCaps& GetCaps() const noexcept { return caps; }
+
+        CommandBuffer* BeginCommandBuffer(CommandQueueType queueType = CommandQueueType::Graphics);
 
         CommandQueue& GetQueue(CommandQueueType type = CommandQueueType::Graphics)
         {

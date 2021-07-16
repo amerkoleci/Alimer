@@ -16,13 +16,15 @@ namespace Alimer
         uint32_t width = 1200;
         uint32_t height = 800;
 
-        RHIBackendType backendType = RHIBackendType::Count;
+        GPUBackendType backendType = GPUBackendType::Count;
 #if defined(_DEBUG)
-        RHIValidationMode validationMode = RHIValidationMode::Disabled;
+        GPUValidationMode validationMode = GPUValidationMode::Disabled;
 #else
-        RHIValidationMode validationMode = RHIValidationMode::Enabled;
+        GPUValidationMode validationMode = GPUValidationMode::Enabled;
 #endif
     };
+
+    class CommandBuffer;
 
 	/// Class that provides graphics initialization, game logic, and rendering code.
 	class ALIMER_API Game
@@ -59,7 +61,7 @@ namespace Alimer
 
 		virtual void Initialize() {}
 		virtual void Update();
-		virtual void OnDraw([[maybe_unused]] CommandList& commandBuffer);
+		virtual void OnDraw([[maybe_unused]] CommandBuffer* commandBuffer) {}
 
         virtual void BeginRun() {}
         virtual void EndRun() {}

@@ -23,7 +23,6 @@ namespace Alimer::ShaderCompiler
         ShaderModel shaderModel = { 6, 0 };
     };
 
-    ALIMER_API ShaderRef Compile(const std::string& fileName, ShaderBlobType blobType);
-    ALIMER_API ShaderRef Compile(ShaderStage stage, const std::string& fileName, ShaderBlobType blobType);
-    ALIMER_API ShaderRef Compile(const ShaderCompileOptions& options, ShaderBlobType blobType);
+    ALIMER_API ShaderRef Compile(ShaderStage stage, const std::string& fileName, ShaderFormat shaderFormat = ShaderFormat::Undefined);
+    ALIMER_API ShaderRef Compile(const ShaderCompileOptions& options, ShaderFormat shaderFormat = ShaderFormat::Undefined);
 }

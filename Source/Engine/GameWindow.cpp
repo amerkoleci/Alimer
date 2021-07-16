@@ -2,6 +2,7 @@
 // Licensed under the MIT License (MIT). See LICENSE in the repository root for more information.
 
 #include "GameWindow.h"
+#include "Graphics/Graphics.h"
 
 namespace Alimer
 {
@@ -25,8 +26,9 @@ namespace Alimer
 
     void GameWindow::CreateSwapChain(void* windowHandle)
     {
-        SwapChainDescriptor swapChainDesc{};
+        SwapChainCreateInfo swapChainDesc{};
         //swapChainDesc.format = PixelFormat::BGRA8UNormSrgb;
-        ALIMER_ASSERT(GDevice->CreateSwapChain(&swapChainDesc, windowHandle, &swapChain));
+        swapChain = SwapChain::Create(windowHandle, swapChainDesc);
+        ALIMER_ASSERT(swapChain.IsNotNull());
     }
 }

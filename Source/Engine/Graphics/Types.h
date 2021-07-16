@@ -57,13 +57,17 @@ namespace Alimer
 		Count
 	};
 
-	enum class GPUDebugFlags
-	{
-		None,
-		DebugLayers = 1 << 0,
-		GPUBasedValidation = 1 << 1,
-		RenderDoc = 1 << 2,
-	};
+    enum class GPUValidationMode : uint32_t
+    {
+        /// No validation is enabled.
+        Disabled,
+        /// Print warnings and errors
+        Enabled,
+        /// Print all warnings, errors and info messages
+        Verbose,
+        /// Enable GPU-based validation
+        GPU
+    };
 
 	enum class GPUAdapterType
 	{
@@ -243,8 +247,9 @@ namespace Alimer
 		All
 	};
 
-	enum class ShaderBlobType
+	enum class ShaderFormat
 	{
+        Undefined,
 		DXIL,
 		SPIRV
 	};
@@ -338,10 +343,10 @@ namespace Alimer
 		String					adapterName;
 		GraphicsFeatures		features;
 		GraphicsLimits			limits;
-		PixelFormat defaultDepthFormat = PixelFormat::Undefined;
-		PixelFormat defaultDepthStencilFormat = PixelFormat::Undefined;
-		ShaderBlobType blobType = ShaderBlobType::DXIL;
-		PixelFormatProperties formatProperties[ecast(PixelFormat::Count)] = {};
+		PixelFormat             defaultDepthFormat = PixelFormat::Undefined;
+		PixelFormat             defaultDepthStencilFormat = PixelFormat::Undefined;
+        ShaderFormat            shaderFormat = ShaderFormat::Undefined;
+		PixelFormatProperties   formatProperties[ecast(PixelFormat::Count)] = {};
 	};
 
 	inline const char* GetVendorName(uint32_t vendorId)
@@ -370,6 +375,5 @@ namespace Alimer
 	ALIMER_API uint32_t GetVertexFormatSize(VertexFormat format);
 }
 
-ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(Alimer::GPUDebugFlags);
 ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(Alimer::ShaderStages);
 ALIMER_DEFINE_ENUM_BITWISE_OPERATORS(Alimer::PixelFormatFeatures);

@@ -569,7 +569,7 @@ namespace Alimer
 
 		if (info->label != nullptr)
 		{
-			auto name = StringUtils::ToUtf16(info->label, strlen(info->label));
+			auto name = ToUtf16(info->label, strlen(info->label));
 			handle->SetName(name.c_str());
 		}
 	}
@@ -602,7 +602,7 @@ namespace Alimer
 
 		if (info->label != nullptr)
 		{
-			auto name = StringUtils::ToUtf16(info->label, strlen(info->label));
+			auto name = ToUtf16(info->label, strlen(info->label));
 			handle->SetName(name.c_str());
 		}
 	}

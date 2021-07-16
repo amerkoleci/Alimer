@@ -125,7 +125,7 @@ namespace Alimer
         return false;
     }
 
-    D3D12Graphics::D3D12Graphics(GPUDebugFlags flags, D3D_FEATURE_LEVEL minFeatureLevel_)
+    D3D12Graphics::D3D12Graphics(GPUValidationMode validationMode, D3D_FEATURE_LEVEL minFeatureLevel_)
         : minFeatureLevel(minFeatureLevel_)
     {
         ALIMER_VERIFY(IsAvailable());
@@ -135,25 +135,28 @@ namespace Alimer
             ThrowIfFailed(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils)));
         }
 
-        const bool enableDebugLayers = any(flags & GPUDebugFlags::DebugLayers | GPUDebugFlags::GPUBasedValidation);
-        if (enableDebugLayers)
+        if (validationMode != GPUValidationMode::Disabled)
         {
             ComPtr<ID3D12Debug> d3d12Debug;
             if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(d3d12Debug.GetAddressOf()))))
             {
                 d3d12Debug->EnableDebugLayer();
 
-#if defined(_DEBUG)
-                const bool gpuValidation = any(flags & GPUDebugFlags::GPUBasedValidation);
-                if (gpuValidation)
+                if (validationMode == GPUValidationMode::GPU)
                 {
                     ComPtr<ID3D12Debug1> d3d12Debug1;
                     if (SUCCEEDED(d3d12Debug.As(&d3d12Debug1)))
                     {
                         d3d12Debug1->SetEnableGPUBasedValidation(TRUE);
+                        d3d12Debug1->SetEnableSynchronizedCommandQueueValidation(TRUE);
+                    }
+
+                    ComPtr<ID3D12Debug2> d3d12Debug2;
+                    if (SUCCEEDED(d3d12Debug.As(&d3d12Debug2)))
+                    {
+                        d3d12Debug2->SetGPUBasedValidationFlags(D3D12_GPU_BASED_VALIDATION_FLAGS_NONE);
                     }
                 }
-#endif
             }
             else
             {
@@ -297,7 +300,7 @@ namespace Alimer
                 ToString(featureLevel),
                 adapterDesc.VendorId,
                 adapterDesc.DeviceId,
-                StringUtils::ToUtf8(adapterDesc.Description)
+                ToUtf8(adapterDesc.Description)
             );
 
             D3D12_FEATURE_DATA_ROOT_SIGNATURE dataRootSignature = {};
@@ -307,11 +310,11 @@ namespace Alimer
             );
             if (dataRootSignature.HighestVersion < D3D_ROOT_SIGNATURE_VERSION_1_1)
             {
-                ErrorDialog("Error", "Direct3D12: Root signature version 1.1 not supported!");
+                LOGF("Direct3D12: Root signature version 1.1 not supported!");
                 return;
             }
 
-            caps.blobType = ShaderBlobType::DXIL;
+            caps.shaderFormat = ShaderFormat::DXIL;
 
             caps.features.independentBlend = true;
             caps.features.computeShader = true;
@@ -846,7 +849,12 @@ namespace Alimer
         ProcessDeletionQueue();
     }
 
-    void D3D12Graphics::FinishFrame()
+    bool D3D12Graphics::BeginFrame()
+    {
+        return !deviceLost;
+    }
+
+    void D3D12Graphics::EndFrame()
     {
         ToD3D12(graphicsQueue)->GetHandle()->Signal(frameFence, ++frameCount);
 

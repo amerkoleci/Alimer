@@ -8,6 +8,14 @@
 #include "Graphics/Graphics.h"
 #include "Core/Log.h"
 
+#if defined(ALIMER_RHI_D3D12)
+#include "Graphics/D3D12/D3D12Graphics.h"
+#endif
+
+#if defined(ALIMER_RHI_VULKAN)
+#include "Graphics/Vulkan/VulkanGraphics.h"
+#endif
+
 namespace Alimer
 {
     void Graphics::Destroy()
@@ -31,6 +39,49 @@ namespace Alimer
 
             objects.clear();
         }
+    }
+
+    bool Graphics::Initialize(GPUValidationMode validationMode, GPUBackendType backendType)
+    {
+        if (gGraphics().IsInitialized())
+            return true;
+
+        if (backendType == GPUBackendType::Count)
+        {
+#if defined(ALIMER_RHI_D3D12)
+            if (D3D12Graphics::IsAvailable())
+                backendType = GPUBackendType::Direct3D12;
+#endif
+
+            if (backendType == GPUBackendType::Count)
+            {
+#if defined(ALIMER_RHI_VULKAN)
+                if (VulkanGraphics::IsAvailable())
+                    backendType = GPUBackendType::Vulkan;
+#endif
+            }
+        }
+
+        switch (backendType)
+        {
+#if defined(ALIMER_RHI_D3D12)
+            case GPUBackendType::Direct3D12:
+                gGraphics().Start<D3D12Graphics>(validationMode);
+                break;
+#endif
+
+#if defined(ALIMER_RHI_VULKAN)
+            case GPUBackendType::Vulkan:
+                gGraphics().Start<VulkanGraphics>(validationMode);
+                break;
+#endif
+
+            default:
+                LOGE("RHI: Cannot detect supported backend");
+                return false;
+        }
+
+        return gGraphics().IsInitialized();
     }
 
 	void Graphics::AddGPUObject(GPUObject* resource)
@@ -57,12 +108,17 @@ namespace Alimer
 		}
 	}
 
-	RefPtr<Texture> Graphics::CreateTexture(const TextureCreateInfo& info, const void* initialData)
+    TextureRef Graphics::CreateTexture(const TextureCreateInfo& info, const void* initialData)
 	{
 		ALIMER_ASSERT(info.width >= 1);
 
 		return CreateTextureCore(info, initialData);
 	}
+
+    CommandBuffer* Graphics::BeginCommandBuffer(CommandQueueType queueType)
+    {
+        return GetQueue(queueType).GetCommandBuffer();
+    }
 
 	Graphics& gGraphics()
 	{

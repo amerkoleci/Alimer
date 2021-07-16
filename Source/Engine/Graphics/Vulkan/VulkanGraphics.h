@@ -39,12 +39,14 @@ namespace Alimer
 		VkSampler		nullSampler = VK_NULL_HANDLE;
 
 	public:
-		VulkanGraphics(GPUDebugFlags flags);
+        static bool IsAvailable();
+
+		VulkanGraphics(GPUValidationMode validationMode);
 		~VulkanGraphics() override;
 
 		void WaitIdle() override;
-
-		void FinishFrame() override;
+        bool BeginFrame() override;
+		void EndFrame() override;
 
 		void SetObjectName(VkObjectType type, uint64_t handle, const std::string_view& name);
 

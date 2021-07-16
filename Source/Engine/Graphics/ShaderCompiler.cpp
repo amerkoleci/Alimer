@@ -21,27 +21,27 @@ namespace Alimer::ShaderCompiler
         std::wstring shaderProfile;
         switch (stage)
         {
-        case ShaderStage::Vertex:
-            shaderProfile = L"vs";
-            break;
-        case ShaderStage::Hull:
-            shaderProfile = L"hs";
-            break;
-        case ShaderStage::Domain:
-            shaderProfile = L"ds";
-            break;
-        case ShaderStage::Geometry:
-            shaderProfile = L"gs";
-            break;
-        case ShaderStage::Pixel:
-            shaderProfile = L"ps";
-            break;
-        case ShaderStage::Compute:
-            shaderProfile = L"cs";
-            break;
+            case ShaderStage::Vertex:
+                shaderProfile = L"vs";
+                break;
+            case ShaderStage::Hull:
+                shaderProfile = L"hs";
+                break;
+            case ShaderStage::Domain:
+                shaderProfile = L"ds";
+                break;
+            case ShaderStage::Geometry:
+                shaderProfile = L"gs";
+                break;
+            case ShaderStage::Pixel:
+                shaderProfile = L"ps";
+                break;
+            case ShaderStage::Compute:
+                shaderProfile = L"cs";
+                break;
 
-        default:
-            ALIMER_UNREACHABLE();
+            default:
+                ALIMER_UNREACHABLE();
         }
 
         shaderProfile.push_back(L'_');
@@ -91,14 +91,7 @@ namespace Alimer::ShaderCompiler
         ULONG STDMETHODCALLTYPE Release() override { return E_NOTIMPL; }
     };
 
-    ShaderRef Compile(const std::string& fileName, ShaderBlobType blobType)
-    {
-        ShaderCompileOptions options{};
-        options.source = File::ReadAllText(fileName);
-        return Compile(options, blobType);
-    }
-
-    ShaderRef Compile(ShaderStage stage, const std::string& fileName, ShaderBlobType blobType)
+    ShaderRef Compile(ShaderStage stage, const std::string& fileName, ShaderFormat shaderFormat)
     {
         ShaderCompileOptions options{};
         options.source = File::ReadAllText(fileName);
@@ -113,10 +106,10 @@ namespace Alimer::ShaderCompiler
 
         options.fileName = fileName;
         options.stage = stage;
-        return Compile(options, blobType);
+        return Compile(options, shaderFormat);
     }
 
-    ShaderRef Compile(const ShaderCompileOptions& options, ShaderBlobType blobType)
+    ShaderRef Compile(const ShaderCompileOptions& options, ShaderFormat shaderFormat)
     {
         if (DxcCreateInstance == nullptr)
         {
@@ -184,23 +177,28 @@ namespace Alimer::ShaderCompiler
             args.push_back(L"-D"); args.push_back(L"BINDLESS");
         }
 
-        switch (blobType)
+        if (shaderFormat == ShaderFormat::Undefined)
         {
-        case ShaderBlobType::DXIL:
-            args.push_back(L"-D"); args.push_back(L"DXIL");
-            break;
-        case ShaderBlobType::SPIRV:
-            args.push_back(L"-D"); args.push_back(L"SPIRV");
-            args.push_back(L"-spirv");
-            args.push_back(L"-fspv-target-env=vulkan1.2");
-            args.push_back(L"-fvk-use-dx-layout");
-            args.push_back(L"-fvk-use-dx-position-w");
+            shaderFormat = gGraphics().GetCaps().shaderFormat;
+        }
 
-            //args.push_back(L"-fvk-b-shift"); args.push_back(L"0"); args.push_back(L"0");
-            //args.push_back(L"-fvk-t-shift"); args.push_back(L"1000"); args.push_back(L"0");
-            //args.push_back(L"-fvk-u-shift"); args.push_back(L"2000"); args.push_back(L"0");
-            //args.push_back(L"-fvk-s-shift"); args.push_back(L"3000"); args.push_back(L"0");
-            break;
+        switch (shaderFormat)
+        {
+            case ShaderFormat::DXIL:
+                args.push_back(L"-D"); args.push_back(L"DXIL");
+                break;
+            case ShaderFormat::SPIRV:
+                args.push_back(L"-D"); args.push_back(L"SPIRV");
+                args.push_back(L"-spirv");
+                args.push_back(L"-fspv-target-env=vulkan1.2");
+                args.push_back(L"-fvk-use-dx-layout");
+                args.push_back(L"-fvk-use-dx-position-w");
+
+                //args.push_back(L"-fvk-b-shift"); args.push_back(L"0"); args.push_back(L"0");
+                //args.push_back(L"-fvk-t-shift"); args.push_back(L"1000"); args.push_back(L"0");
+                //args.push_back(L"-fvk-u-shift"); args.push_back(L"2000"); args.push_back(L"0");
+                //args.push_back(L"-fvk-s-shift"); args.push_back(L"3000"); args.push_back(L"0");
+                break;
         }
 
         std::string fullPath = GetPath(options.fileName);
@@ -263,13 +261,13 @@ namespace Alimer::ShaderCompiler
             _wfopen_s(&fp, pShaderName->GetStringPointer(), L"wb");
             fwrite(pShader->GetBufferPointer(), pShader->GetBufferSize(), 1, fp);
             fclose(fp);
-        }
+    }
 #endif
 
         std::vector<uint8_t> bytecode(pShader->GetBufferSize());
         memcpy(bytecode.data(), pShader->GetBufferPointer(), pShader->GetBufferSize());
         return Shader::Create(options.stage, bytecode, options.entryPoint);
-    }
+}
 }
 
 #else

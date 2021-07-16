@@ -22,6 +22,14 @@
 #include "IO/MemoryStream.h"
 #include "IO/FileSystem.h"
 
+// Graphics
+#include "Graphics/Buffer.h"
+#include "Graphics/Texture.h"
+#include "Graphics/Pipeline.h"
+#include "Graphics/CommandBuffer.h"
+#include "Graphics/SwapChain.h"
+#include "Graphics/Graphics.h"
+
 // Assets
 #include "Assets/Asset.h"
 #include "Assets/AssetManager.h"

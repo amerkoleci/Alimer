@@ -140,6 +140,30 @@ namespace Alimer
         return hash;
     }
 
+    template <typename T>
+    void SafeDelete(T*& resource)
+    {
+        delete resource;
+        resource = nullptr;
+    }
+
+    template <typename T>
+    void SafeDeleteContainer(T& resource)
+    {
+        for (auto& element : resource)
+        {
+            SafeDelete(element);
+        }
+        resource.clear();
+    }
+
+    template <typename T>
+    void SafeDeleteArray(T*& resource)
+    {
+        delete[] resource;
+        resource = nullptr;
+    }
+
     /// Returns whether all the set bits in bits are set in v.
     template <typename T>
     inline bool All(T v, T bits)

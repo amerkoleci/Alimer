@@ -29,11 +29,12 @@ namespace Alimer
 	public:
 		static bool IsAvailable();
 
-		D3D12Graphics(GPUDebugFlags flags, D3D_FEATURE_LEVEL minFeatureLevel = D3D_FEATURE_LEVEL_11_0);
+		D3D12Graphics(GPUValidationMode validationMode, D3D_FEATURE_LEVEL minFeatureLevel = D3D_FEATURE_LEVEL_11_0);
 		~D3D12Graphics() override;
 
 		void WaitIdle() override;
-		void FinishFrame() override;
+        bool BeginFrame() override;
+		void EndFrame() override;
 
 		D3D12_CPU_DESCRIPTOR_HANDLE AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type);
 		void FreeDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE type, D3D12_CPU_DESCRIPTOR_HANDLE handle);
