@@ -2,7 +2,7 @@
 // Distributed under the MIT license. See the LICENSE file in the project root for more information.
 
 #include <Alimer.h>
-#include <Assets/ShaderCompiler.h>
+#include <Graphics/ShaderCompiler.h>
 using namespace Alimer;
 
 class TriangleGame final : public Game

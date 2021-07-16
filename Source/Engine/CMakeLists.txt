@@ -13,9 +13,18 @@ alimer_define_engine_source_files(
   Core
   Math
   IO
+  Graphics
   RHI
   Assets
 )
+
+if (ALIMER_RHI_D3D12)
+  alimer_define_engine_source_files(Graphics/D3D12 NO_INSTALL)
+endif ()
+
+if (ALIMER_RHI_VULKAN)
+  alimer_define_engine_source_files(Graphics/Vulkan NO_INSTALL)
+endif()
 
 # Include platform files.
 alimer_define_engine_source_files(Platform/Private NO_INSTALL)

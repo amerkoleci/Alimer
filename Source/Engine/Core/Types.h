@@ -153,4 +153,11 @@ namespace Alimer
     {
         return (v & bits) != (T)0;
     }
+
+    template <typename T>
+    constexpr typename std::underlying_type<T>::type ecast(T x)
+    {
+        typedef typename std::underlying_type<T>::type enum_type;
+        return static_cast<enum_type>(x);
+    }
 }

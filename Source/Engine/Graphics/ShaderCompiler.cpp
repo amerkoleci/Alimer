@@ -1,8 +1,8 @@
 // Copyright © Amer Koleci and Contributors.
 // Licensed under the MIT License (MIT). See LICENSE in the repository root for more information.
 
-#include "Assets/ShaderCompiler.h"
-#include "IO/FileStream.h"
+#include "Graphics/ShaderCompiler.h"
+#include "Graphics/Graphics.h"
 #include "IO/FileSystem.h"
 #include "Core/Log.h"
 #include <spdlog/fmt/fmt.h>
@@ -16,109 +16,38 @@ namespace Alimer::ShaderCompiler
 {
     DxcCreateInstanceProc DxcCreateInstance = nullptr;
 
-    [[nodiscard]] constexpr uint32_t GetMajor(ShaderModel shaderModel)
-    {
-        switch (shaderModel)
-        {
-            case ShaderModel::Model6_0:
-            case ShaderModel::Model6_1:
-            case ShaderModel::Model6_2:
-            case ShaderModel::Model6_3:
-            case ShaderModel::Model6_4:
-            case ShaderModel::Model6_5:
-            case ShaderModel::Model6_6:
-            case ShaderModel::Model6_7:
-                return 6;
-
-            default:
-                return 6;
-                break;
-        }
-    }
-
-    [[nodiscard]] constexpr uint32_t GetMinor(ShaderModel shaderModel)
-    {
-        switch (shaderModel)
-        {
-            case ShaderModel::Model6_0:
-                return 0;
-            case ShaderModel::Model6_1:
-                return 1;
-            case ShaderModel::Model6_2:
-                return 2;
-            case ShaderModel::Model6_3:
-                return 3;
-            case ShaderModel::Model6_4:
-                return 4;
-            case ShaderModel::Model6_5:
-                return 5;
-            case ShaderModel::Model6_6:
-                return 6;
-            case ShaderModel::Model6_7:
-                return 7;
-
-            default:
-                return 0;
-                break;
-        }
-    }
-
     std::wstring ShaderProfileName(ShaderStage stage, ShaderModel shaderModel)
     {
-        uint32_t major = GetMajor(shaderModel);
-        uint32_t minor = GetMinor(shaderModel);
-
         std::wstring shaderProfile;
         switch (stage)
         {
-            case ShaderStage::Vertex:
-                shaderProfile = L"vs";
-                break;
-            case ShaderStage::Hull:
-                shaderProfile = L"hs";
-                break;
-            case ShaderStage::Domain:
-                shaderProfile = L"ds";
-                break;
-            case ShaderStage::Geometry:
-                shaderProfile = L"gs";
-                break;
-            case ShaderStage::Pixel:
-                shaderProfile = L"ps";
-                break;
-            case ShaderStage::Compute:
-                shaderProfile = L"cs";
-                break;
-            case ShaderStage::Mesh:
-                shaderProfile = L"ms";
-                if (shaderModel < ShaderModel::Model6_5)
-                {
-                    minor = GetMinor(ShaderModel::Model6_5);
-                }
-                break;
-            case ShaderStage::Amplification:
-                shaderProfile = L"as";
-                if (shaderModel < ShaderModel::Model6_5)
-                {
-                    minor = GetMinor(ShaderModel::Model6_5);
-                }
-                break;
-            case ShaderStage::Library:
-                shaderProfile = L"lib";
-                if (shaderModel < ShaderModel::Model6_5)
-                {
-                    minor = GetMinor(ShaderModel::Model6_5);
-                }
-                break;
+        case ShaderStage::Vertex:
+            shaderProfile = L"vs";
+            break;
+        case ShaderStage::Hull:
+            shaderProfile = L"hs";
+            break;
+        case ShaderStage::Domain:
+            shaderProfile = L"ds";
+            break;
+        case ShaderStage::Geometry:
+            shaderProfile = L"gs";
+            break;
+        case ShaderStage::Pixel:
+            shaderProfile = L"ps";
+            break;
+        case ShaderStage::Compute:
+            shaderProfile = L"cs";
+            break;
 
-            default:
-                ALIMER_UNREACHABLE();
+        default:
+            ALIMER_UNREACHABLE();
         }
 
         shaderProfile.push_back(L'_');
-        shaderProfile.push_back(L'0' + major);
+        shaderProfile.push_back(L'0' + shaderModel.major);
         shaderProfile.push_back(L'_');
-        shaderProfile.push_back(L'0' + minor);
+        shaderProfile.push_back(L'0' + shaderModel.minor);
 
         return shaderProfile;
     }
@@ -162,14 +91,14 @@ namespace Alimer::ShaderCompiler
         ULONG STDMETHODCALLTYPE Release() override { return E_NOTIMPL; }
     };
 
-    bool Compile(const std::string& fileName, RHIShader* shader)
+    ShaderRef Compile(const std::string& fileName, ShaderBlobType blobType)
     {
         ShaderCompileOptions options{};
         options.source = File::ReadAllText(fileName);
-        return Compile(options, shader);
+        return Compile(options, blobType);
     }
 
-    bool Compile(ShaderStage stage, const std::string& fileName, RHIShader* shader)
+    ShaderRef Compile(ShaderStage stage, const std::string& fileName, ShaderBlobType blobType)
     {
         ShaderCompileOptions options{};
         options.source = File::ReadAllText(fileName);
@@ -184,10 +113,10 @@ namespace Alimer::ShaderCompiler
 
         options.fileName = fileName;
         options.stage = stage;
-        return Compile(options, shader);
+        return Compile(options, blobType);
     }
 
-    bool Compile(const ShaderCompileOptions& options, RHIShader* shader)
+    ShaderRef Compile(const ShaderCompileOptions& options, ShaderBlobType blobType)
     {
         if (DxcCreateInstance == nullptr)
         {
@@ -250,28 +179,28 @@ namespace Alimer::ShaderCompiler
             args.push_back(L"-D"); args.push_back(wDefine.c_str());
         }
 
-        if (GDevice->CheckCapability(GRAPHICSDEVICE_CAPABILITY_BINDLESS_DESCRIPTORS))
+        if (gGraphics().IsInitialized() && gGraphics().GetCaps().features.bindlessDescriptors)
         {
             args.push_back(L"-D"); args.push_back(L"BINDLESS");
         }
 
-        switch (GDevice->GetShaderFormat())
+        switch (blobType)
         {
-            case ShaderFormat::DXIL:
-                args.push_back(L"-D"); args.push_back(L"DXIL");
-                break;
-            case ShaderFormat::SPIRV:
-                args.push_back(L"-D"); args.push_back(L"SPIRV");
-                args.push_back(L"-spirv");
-                args.push_back(L"-fspv-target-env=vulkan1.2");
-                args.push_back(L"-fvk-use-dx-layout");
-                args.push_back(L"-fvk-use-dx-position-w");
+        case ShaderBlobType::DXIL:
+            args.push_back(L"-D"); args.push_back(L"DXIL");
+            break;
+        case ShaderBlobType::SPIRV:
+            args.push_back(L"-D"); args.push_back(L"SPIRV");
+            args.push_back(L"-spirv");
+            args.push_back(L"-fspv-target-env=vulkan1.2");
+            args.push_back(L"-fvk-use-dx-layout");
+            args.push_back(L"-fvk-use-dx-position-w");
 
-                //args.push_back(L"-fvk-b-shift"); args.push_back(L"0"); args.push_back(L"0");
-                args.push_back(L"-fvk-t-shift"); args.push_back(L"1000"); args.push_back(L"0");
-                args.push_back(L"-fvk-u-shift"); args.push_back(L"2000"); args.push_back(L"0");
-                args.push_back(L"-fvk-s-shift"); args.push_back(L"3000"); args.push_back(L"0");
-                break;
+            //args.push_back(L"-fvk-b-shift"); args.push_back(L"0"); args.push_back(L"0");
+            //args.push_back(L"-fvk-t-shift"); args.push_back(L"1000"); args.push_back(L"0");
+            //args.push_back(L"-fvk-u-shift"); args.push_back(L"2000"); args.push_back(L"0");
+            //args.push_back(L"-fvk-s-shift"); args.push_back(L"3000"); args.push_back(L"0");
+            break;
         }
 
         std::string fullPath = GetPath(options.fileName);
@@ -339,7 +268,7 @@ namespace Alimer::ShaderCompiler
 
         std::vector<uint8_t> bytecode(pShader->GetBufferSize());
         memcpy(bytecode.data(), pShader->GetBufferPointer(), pShader->GetBufferSize());
-        return GDevice->CreateShader(options.stage, bytecode.data(), bytecode.size(), shader);
+        return Shader::Create(options.stage, bytecode, options.entryPoint);
     }
 }
 

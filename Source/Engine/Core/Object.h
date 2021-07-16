@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "Core/RefPtr.h"
 #include "Core/StringId.h"
 
 namespace Alimer
@@ -43,10 +44,8 @@ namespace Alimer
     template <class T> class ObjectFactoryImpl;
     template <class T> class ObjectCreateFactoryImpl;
 
-    //class Input;
-
     /// Base class for objects with type identification
-    class ALIMER_API Object
+    class ALIMER_API Object : public RefCounted
     {
     public:
         /// Constructor.

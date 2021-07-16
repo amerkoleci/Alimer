@@ -7,7 +7,7 @@
 #include "Core/Types.h"
 #include "Math/Matrix3x4.h"
 #include "Math/Rect.h"
-#include "RHI/PixelFormat.h"
+#include "Graphics/PixelFormat.h"
 #include <unordered_map>
 #include <mutex>
 

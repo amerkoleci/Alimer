@@ -4,7 +4,6 @@
 #pragma once
 
 #include "AlimerConfig.h"
-#include "Core/Types.h"
 #include "Core/Assert.h"
 
 namespace Alimer
@@ -106,7 +105,7 @@ namespace Alimer
     struct PixelFormatDesc
     {
         PixelFormat format;
-        const char* name;
+        const std::string name;
         PixelFormatType type;
         uint8_t bitsPerPixel;
         struct
@@ -170,21 +169,21 @@ namespace Alimer
         ALIMER_ASSERT(kFormatDesc[(uint32_t)format].format == format);
         switch (format)
         {
-            case PixelFormat::BC1RGBAUnorm:
-            case PixelFormat::BC1RGBAUnormSrgb:
-            case PixelFormat::BC2RGBAUnorm:
-            case PixelFormat::BC2RGBAUnormSrgb:
-            case PixelFormat::BC3RGBAUnorm:
-            case PixelFormat::BC3RGBAUnormSrgb:
-            case PixelFormat::BC4RUnorm:
-            case PixelFormat::BC4RSnorm:
-            case PixelFormat::BC5RGUnorm:
-            case PixelFormat::BC5RGSnorm:
-            case PixelFormat::BC6HRGBUfloat:
-            case PixelFormat::BC6HRGBFloat:
-            case PixelFormat::BC7RGBAUnorm:
-            case PixelFormat::BC7RGBAUnormSrgb:
-                return true;
+        case PixelFormat::BC1RGBAUnorm:
+        case PixelFormat::BC1RGBAUnormSrgb:
+        case PixelFormat::BC2RGBAUnorm:
+        case PixelFormat::BC2RGBAUnormSrgb:
+        case PixelFormat::BC3RGBAUnorm:
+        case PixelFormat::BC3RGBAUnormSrgb:
+        case PixelFormat::BC4RUnorm:
+        case PixelFormat::BC4RSnorm:
+        case PixelFormat::BC5RGUnorm:
+        case PixelFormat::BC5RGSnorm:
+        case PixelFormat::BC6HRGBUfloat:
+        case PixelFormat::BC6HRGBFloat:
+        case PixelFormat::BC7RGBAUnorm:
+        case PixelFormat::BC7RGBAUnormSrgb:
+            return true;
         }
 
         return false;
@@ -211,7 +210,11 @@ namespace Alimer
         return kFormatDesc[(uint32_t)format].type;
     }
 
-    ALIMER_API const char* ToString(PixelFormat format);
+    constexpr const std::string& ToString(PixelFormat format)
+    {
+        ALIMER_ASSERT(kFormatDesc[(uint32_t)format].format == format);
+        return kFormatDesc[(uint32_t)format].name;
+    }
 
     /// Check if a format represents sRGB color space.
     constexpr bool IsSrgbFormat(PixelFormat format) { return (GetFormatType(format) == PixelFormatType::UnormSrgb); }
@@ -221,21 +224,21 @@ namespace Alimer
     {
         switch (format)
         {
-            case PixelFormat::BC1RGBAUnormSrgb:
-                return PixelFormat::BC1RGBAUnorm;
-            case PixelFormat::BC2RGBAUnormSrgb:
-                return PixelFormat::BC2RGBAUnorm;
-            case PixelFormat::BC3RGBAUnormSrgb:
-                return PixelFormat::BC3RGBAUnorm;
-            case PixelFormat::BGRA8UNormSrgb:
-                return PixelFormat::BGRA8UNorm;
-            case PixelFormat::RGBA8UNormSrgb:
-                return PixelFormat::RGBA8UNorm;
-            case PixelFormat::BC7RGBAUnormSrgb:
-                return PixelFormat::BC7RGBAUnorm;
-            default:
-                ALIMER_ASSERT(IsSrgbFormat(format) == false);
-                return format;
+        case PixelFormat::BC1RGBAUnormSrgb:
+            return PixelFormat::BC1RGBAUnorm;
+        case PixelFormat::BC2RGBAUnormSrgb:
+            return PixelFormat::BC2RGBAUnorm;
+        case PixelFormat::BC3RGBAUnormSrgb:
+            return PixelFormat::BC3RGBAUnorm;
+        case PixelFormat::BGRA8UNormSrgb:
+            return PixelFormat::BGRA8UNorm;
+        case PixelFormat::RGBA8UNormSrgb:
+            return PixelFormat::RGBA8UNorm;
+        case PixelFormat::BC7RGBAUnormSrgb:
+            return PixelFormat::BC7RGBAUnorm;
+        default:
+            ALIMER_ASSERT(IsSrgbFormat(format) == false);
+            return format;
         }
     }
 
@@ -244,20 +247,20 @@ namespace Alimer
     {
         switch (format)
         {
-            case PixelFormat::BC1RGBAUnorm:
-                return PixelFormat::BC1RGBAUnormSrgb;
-            case PixelFormat::BC2RGBAUnorm:
-                return PixelFormat::BC2RGBAUnormSrgb;
-            case PixelFormat::BC3RGBAUnorm:
-                return PixelFormat::BC3RGBAUnormSrgb;
-            case PixelFormat::BGRA8UNorm:
-                return PixelFormat::BGRA8UNormSrgb;
-            case PixelFormat::RGBA8UNorm:
-                return PixelFormat::RGBA8UNormSrgb;
-            case PixelFormat::BC7RGBAUnorm:
-                return PixelFormat::BC7RGBAUnormSrgb;
-            default:
-                return format;
+        case PixelFormat::BC1RGBAUnorm:
+            return PixelFormat::BC1RGBAUnormSrgb;
+        case PixelFormat::BC2RGBAUnorm:
+            return PixelFormat::BC2RGBAUnormSrgb;
+        case PixelFormat::BC3RGBAUnorm:
+            return PixelFormat::BC3RGBAUnormSrgb;
+        case PixelFormat::BGRA8UNorm:
+            return PixelFormat::BGRA8UNormSrgb;
+        case PixelFormat::RGBA8UNorm:
+            return PixelFormat::RGBA8UNormSrgb;
+        case PixelFormat::BC7RGBAUnorm:
+            return PixelFormat::BC7RGBAUnormSrgb;
+        default:
+            return format;
         }
     }
 }
