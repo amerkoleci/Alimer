@@ -34,11 +34,11 @@ namespace Alimer
         {
             switch (format)
             {
-                case PixelFormat::Depth16Unorm:
+                case PixelFormat::Depth16UNorm:
                     return DXGI_FORMAT_R16_TYPELESS;
                 case PixelFormat::Depth32Float:
                     return DXGI_FORMAT_R32_TYPELESS;
-                case PixelFormat::Depth24UnormStencil8:
+                case PixelFormat::Depth24UNormStencil8:
                     return DXGI_FORMAT_R24G8_TYPELESS;
                 case PixelFormat::Depth32FloatStencil8:
                     return DXGI_FORMAT_R32G8X24_TYPELESS;
@@ -81,11 +81,6 @@ namespace Alimer
                 resourceDesc.DepthOrArraySize = info.depthOrArraySize;
             }
 
-            if (Any(usage, TextureUsage::Storage))
-            {
-                resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-            }
-
             D3D12_CLEAR_VALUE clearValue = {};
             D3D12_CLEAR_VALUE* pClearValue = nullptr;
 
@@ -100,7 +95,7 @@ namespace Alimer
                 {
                     state = D3D12_RESOURCE_STATE_DEPTH_WRITE;
                     resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-                    if (!Any(usage, TextureUsage::Sampled))
+                    if (!Any(usage, TextureUsage::ShaderRead))
                     {
                         resourceDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
                     }
@@ -116,8 +111,25 @@ namespace Alimer
                 pClearValue = &clearValue;
             }
 
+            if (Any(usage, TextureUsage::ShaderWrite))
+            {
+                // Remove unsupported flags.
+                resourceDesc.Flags &= ~D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+                resourceDesc.Flags &= ~D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+
+                // Remove unsupported states.
+                state &= ~D3D12_RESOURCE_STATE_DEPTH_READ;
+                state &= ~D3D12_RESOURCE_STATE_DEPTH_WRITE;
+                state &= ~D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+                state |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
+                resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+            }
+
             // If depth and either ua or sr, set to typeless
-            if (IsDepthFormat(format) && Any(usage, TextureUsage::Sampled | TextureUsage::Storage))
+            if (IsDepthFormat(format)
+                && Any(usage, TextureUsage::ShaderReadWrite))
             {
                 resourceDesc.Format = GetTypelessFormatFromDepthFormat(format);
                 pClearValue = nullptr;
@@ -261,7 +273,7 @@ namespace Alimer
             }
         }
 
-        if (Any(usage, TextureUsage::Sampled))
+        if (Any(usage, TextureUsage::ShaderRead))
         {
             srv = device.AllocateDescriptor(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
@@ -277,6 +289,10 @@ namespace Alimer
 
             // Allocate bindless handle
             bindless_srv = device.AllocateBindlessResource(srv);
+        }
+
+        if (Any(usage, TextureUsage::ShaderWrite))
+        {
         }
     }
 

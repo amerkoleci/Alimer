@@ -1278,9 +1278,9 @@ namespace Alimer
         return nullptr;
     }
 
-    BufferRef D3D12Graphics::CreateBuffer(const BufferCreateInfo& info, const void* initialData)
+    BufferRef D3D12Graphics::CreateBuffer(const BufferDescription& desc, const void* initialData)
     {
-        auto result = new D3D12Buffer(*this, info, initialData);
+        auto result = new D3D12Buffer(*this, desc, initialData);
 
         if (result->GetHandle() != nullptr)
         {

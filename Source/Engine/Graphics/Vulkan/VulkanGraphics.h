@@ -23,6 +23,9 @@ namespace Alimer
 	{
 	public:
 		// Null objects for descriptor sets
+        VkBuffer		nullBuffer = VK_NULL_HANDLE;
+        VmaAllocation	nullBufferAllocation = VK_NULL_HANDLE;
+        VkBufferView	nullBufferView = VK_NULL_HANDLE;
 		VkImage			nullImage1D = VK_NULL_HANDLE;
 		VkImage			nullImage2D = VK_NULL_HANDLE;
 		VkImage			nullImage3D = VK_NULL_HANDLE;
@@ -99,8 +102,8 @@ namespace Alimer
 		void ProcessDeletionQueue();
 
         TextureRef CreateTextureCore(const TextureCreateInfo& info, const void* initialData) override;
-		BufferRef CreateBuffer(const BufferCreateInfo& info, const void* initialData) override;
-		RefPtr<Shader> CreateShader(ShaderStage stage, const std::vector<uint8_t>& byteCode, const std::string& entryPoint) override;
+		BufferRef CreateBuffer(const BufferDescription& desc, const void* initialData) override;
+        ShaderRef CreateShader(ShaderStage stage, const std::vector<uint8_t>& byteCode, const std::string& entryPoint) override;
 		SamplerRef CreateSampler(const SamplerDescription& description) override;
 		PipelineRef CreateRenderPipeline(const RenderPipelineStateCreateInfo* info) override;
 		PipelineRef CreateComputePipeline(const ComputePipelineCreateInfo* info) override;

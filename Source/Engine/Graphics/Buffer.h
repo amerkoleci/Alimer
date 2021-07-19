@@ -11,15 +11,16 @@ namespace Alimer
 	enum class BufferUsage : uint32_t
 	{
 		None = 0,
-		Vertex = 1 << 0,
-		Index = 1 << 1,
-		Uniform = 1 << 2,
-		ShaderResource = 1 << 3,
-		UnorderedAccess = 1 << 4,
-		Indirect = 1 << 5,
+        InputAssembly = 1 << 0,
+		Constant = 1 << 1,
+        ShaderRead = 1 << 2,
+        ShaderWrite = 1 << 3,
+        ShaderReadWrite = ShaderRead | ShaderWrite,
+		Indirect = 1 << 4,
+        RayTracingAccelerationStructure = 1 << 5,
 	};
 
-    struct BufferCreateInfo
+    struct BufferDescription
     {
         MemoryUsage memoryUsage = MemoryUsage::GpuOnly;
         BufferUsage usage = BufferUsage::None;
@@ -31,7 +32,7 @@ namespace Alimer
 	class ALIMER_API Buffer : public GPUResource, public RefCounted
 	{
 	public:
-        [[nodiscard]] static BufferRef Create(const BufferCreateInfo& createInfo, const void* initialData = nullptr);
+        [[nodiscard]] static BufferRef Create(const BufferDescription& description, const void* initialData = nullptr);
 		[[nodiscard]] static BufferRef Create(const void* data, BufferUsage usage, uint64_t size, const char* label = nullptr);
 
 		BufferUsage GetUsage() const noexcept { return usage; }
@@ -43,7 +44,7 @@ namespace Alimer
 
 	protected:
 		/// Constructor.
-		Buffer(const BufferCreateInfo& info);
+		Buffer(const BufferDescription& info);
 
 		BufferUsage usage;
         uint64_t size;

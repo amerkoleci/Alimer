@@ -12,7 +12,6 @@ private:
     ShaderRef vertexShader;
     ShaderRef pixelShader;
     PipelineRef renderPipeline;
-    SamplerRef sampler;
 
 public:
     TriangleGame()
@@ -23,27 +22,11 @@ public:
 
     void Initialize() override
     {
-#if TODO
-        //{
-//    RHISamplerDescription samplerDesc{};
-//    RHISampler sampler;
-//    GRHIDevice->CreateSampler(&samplerDesc, &sampler);
-//}
-//
-//{
-//    RHISamplerDescription samplerDesc{};
-//    RHISampler sampler;
-//    GRHIDevice->CreateSampler(&samplerDesc, &sampler);
-//}
-
-        auto usage = RHITextureUsage::ShaderReadWrite | RHITextureUsage::RenderTarget;
-        auto descriptor = RHITextureDescription::TextureCube(PixelFormat::RGBA8UNorm, 256, 1, 1, usage);
-        descriptor.name = "CUBEMAP";
-        auto texture = RHICreateTexture(descriptor);
-        auto view = texture->GetView({});
-#endif // TODO
-
-        sampler = Sampler::Create({});
+        //auto usage = TextureUsage::ShaderReadWrite | TextureUsage::RenderTarget;
+        //auto descriptor = TextureCreateInfo::Tex2D(PixelFormat::Depth32Float, 256, 256, 1, 1, usage);
+        //descriptor.label = "CUBEMAP";
+        //auto texture = Texture::Create(descriptor);
+        //auto view = texture->GetView({});
 
         float vertices[] = {
             /* positions        colors */
@@ -52,7 +35,7 @@ public:
             -0.5f, -0.5f, 0.5f,     0.0f, 0.0f, 1.0f, 1.0f
         };
 
-        vertexBuffer = Buffer::Create(vertices, BufferUsage::Vertex, sizeof(vertices));
+        vertexBuffer = Buffer::Create(vertices, BufferUsage::InputAssembly, sizeof(vertices));
 
         vertexShader = ShaderCompiler::Compile(ShaderStage::Vertex, "Assets/Shaders/triangle.hlsl");
         pixelShader = ShaderCompiler::Compile(ShaderStage::Pixel, "Assets/Shaders/triangle.hlsl");

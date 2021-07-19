@@ -98,7 +98,7 @@ namespace Alimer
 	void CommandBuffer::SetIndexBuffer(const Buffer* buffer, IndexType indexType, uint64_t offset)
 	{
 		ALIMER_ASSERT(buffer != nullptr);
-		ALIMER_ASSERT_MSG(Any(buffer->GetUsage(), BufferUsage::Index), "Buffer created without Index usage");
+		ALIMER_ASSERT_MSG(Any(buffer->GetUsage(), BufferUsage::InputAssembly), "Buffer created without Index usage");
 
 		SetIndexBufferCore(buffer, indexType, offset);
 	}
@@ -190,10 +190,10 @@ namespace Alimer
 				size *= 2u;
 			}
 
-            BufferCreateInfo bufferInfo{};
+            BufferDescription bufferInfo{};
             bufferInfo.label = "ResourceFrameAllocator - Buffer";
             bufferInfo.memoryUsage = MemoryUsage::CpuToGpu;
-            bufferInfo.usage = BufferUsage::Vertex | BufferUsage::Index | BufferUsage::Uniform;
+            bufferInfo.usage = BufferUsage::InputAssembly | BufferUsage::ShaderRead;
             bufferInfo.size = size;
 			buffer = Buffer::Create(bufferInfo);
 

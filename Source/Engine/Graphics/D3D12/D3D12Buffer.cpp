@@ -7,15 +7,15 @@
 
 namespace Alimer
 {
-	D3D12Buffer::D3D12Buffer(D3D12Graphics& device_, const BufferCreateInfo& info, const void* initialData)
-		: Buffer(info)
+	D3D12Buffer::D3D12Buffer(D3D12Graphics& device_, const BufferDescription& desc, const void* initialData)
+		: Buffer(desc)
 		, device(device_)
 	{
 		D3D12_RESOURCE_DESC resourceDesc = {};
 		resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 		resourceDesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
 		resourceDesc.Width = size;
-        if (Any(usage, BufferUsage::Uniform))
+        if (Any(usage, BufferUsage::Constant))
         {
             // Align the buffer size to multiples of the dynamic uniform buffer minimum size
             resourceDesc.Width = AlignTo(resourceDesc.Width, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
@@ -28,11 +28,11 @@ namespace Alimer
 		resourceDesc.SampleDesc.Quality = 0;
 		resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-		if (!Any(usage, BufferUsage::ShaderResource))
+		if (!Any(usage, BufferUsage::ShaderRead))
 		{
 			resourceDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
 		}
-		if (Any(usage, BufferUsage::UnorderedAccess))
+		if (Any(usage, BufferUsage::ShaderWrite))
 		{
 			resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 		}
@@ -75,9 +75,9 @@ namespace Alimer
 			return;
 		}
 
-        if (info.label != nullptr)
+        if (desc.label != nullptr)
         {
-            auto wideName = ToUtf16(info.label, strlen(info.label));
+            auto wideName = ToUtf16(desc.label, strlen(desc.label));
             handle->SetName(wideName.c_str());
         }
 

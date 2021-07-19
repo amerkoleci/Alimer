@@ -90,11 +90,11 @@ namespace Alimer
             imageInfo.samples = VulkanSampleCount(info.sampleCount);
             imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
             imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-            if (Any(info.usage, TextureUsage::Sampled))
+            if (Any(info.usage, TextureUsage::ShaderRead))
             {
                 imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
             }
-            if (Any(info.usage, TextureUsage::Storage))
+            if (Any(info.usage, TextureUsage::ShaderWrite))
             {
                 imageInfo.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
             }
@@ -431,7 +431,7 @@ namespace Alimer
         }
 
         // Allocate bindless SRV
-        if (Any(texture->GetUsage(), TextureUsage::Sampled))
+        if (Any(texture->GetUsage(), TextureUsage::ShaderRead))
         {
             bindless_srv = device.AllocateSRV();
             if (bindless_srv != -1)
@@ -451,7 +451,7 @@ namespace Alimer
             }
         }
 
-        if (Any(texture->GetUsage(), TextureUsage::Storage))
+        if (Any(texture->GetUsage(), TextureUsage::ShaderWrite))
         {
             //bindless_uav = device.AllocateUAV();
             //if (bindless_uav != -1)

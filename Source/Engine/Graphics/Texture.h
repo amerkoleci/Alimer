@@ -21,8 +21,9 @@ namespace Alimer
     enum class TextureUsage : uint32_t
     {
         None,
-        Sampled = 1 << 0,
-        Storage = 1 << 1,
+        ShaderRead = 1 << 0,
+        ShaderWrite = 1 << 1,
+        ShaderReadWrite = ShaderRead | ShaderWrite,
         RenderTarget = 1 << 2,
     };
 
@@ -35,7 +36,7 @@ namespace Alimer
         uint32_t depthOrArraySize = 1;
         PixelFormat format = PixelFormat::RGBA8UNorm;
         uint32_t mipLevels = 1;
-        TextureUsage usage = TextureUsage::Sampled;
+        TextureUsage usage = TextureUsage::ShaderRead;
         SampleCount sampleCount = SampleCount::Count1;
 
         static inline TextureCreateInfo Tex1D(
@@ -43,7 +44,7 @@ namespace Alimer
             uint32_t width,
             uint32_t arraySize = 1,
             uint32_t mipLevels = 1,
-            TextureUsage usage = TextureUsage::Sampled) noexcept
+            TextureUsage usage = TextureUsage::ShaderRead) noexcept
         {
             TextureCreateInfo info;
             info.type = TextureType::Texture1D;
@@ -63,7 +64,7 @@ namespace Alimer
             uint32_t height,
             uint32_t arraySize = 1,
             uint32_t mipLevels = 1,
-            TextureUsage usage = TextureUsage::Sampled,
+            TextureUsage usage = TextureUsage::ShaderRead,
             SampleCount sampleCount = SampleCount::Count1) noexcept
         {
             TextureCreateInfo info;
@@ -84,7 +85,7 @@ namespace Alimer
             uint32_t height,
             uint32_t depth,
             uint32_t mipLevels = 1,
-            TextureUsage usage = TextureUsage::Sampled) noexcept
+            TextureUsage usage = TextureUsage::ShaderRead) noexcept
         {
             TextureCreateInfo info;
             info.type = TextureType::Texture3D;
@@ -103,7 +104,7 @@ namespace Alimer
             uint32_t size,
             uint32_t mipLevels = 1,
             uint32_t arraySize = 1,
-            TextureUsage usage = TextureUsage::Sampled) noexcept
+            TextureUsage usage = TextureUsage::ShaderRead) noexcept
         {
             TextureCreateInfo info;
             info.type = TextureType::TextureCube;
@@ -144,7 +145,7 @@ namespace Alimer
 
 	public:
         [[nodiscard]] static TextureRef Create(const TextureCreateInfo& info, const void* initialData = nullptr);
-        [[nodiscard]] static TextureRef Create2D(uint32_t width, uint32_t height, PixelFormat format, uint32_t arraySize = 1, uint32_t mipLevels = 1, TextureUsage usage = TextureUsage::Sampled, const void* initialData = nullptr);
+        [[nodiscard]] static TextureRef Create2D(uint32_t width, uint32_t height, PixelFormat format, uint32_t arraySize = 1, uint32_t mipLevels = 1, TextureUsage usage = TextureUsage::ShaderRead, const void* initialData = nullptr);
 
         [[nodiscard]] static TextureRef FromFile(const std::string& path);
         [[nodiscard]] static TextureRef FromStream(Stream& stream);

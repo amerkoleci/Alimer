@@ -207,16 +207,6 @@ namespace Alimer
             VkPhysicalDeviceProperties props;
             vkGetPhysicalDeviceProperties(physicalDevice, &props);
 
-            LOGI("Found Vulkan GPU: {}", props.deviceName);
-            LOGI("    API: {}.{}.{}",
-                VK_VERSION_MAJOR(props.apiVersion),
-                VK_VERSION_MINOR(props.apiVersion),
-                VK_VERSION_PATCH(props.apiVersion));
-            LOGI("    Driver: {}.{}.{}",
-                VK_VERSION_MAJOR(props.driverVersion),
-                VK_VERSION_MINOR(props.driverVersion),
-                VK_VERSION_PATCH(props.driverVersion));
-
             // Promoted in 1.2
             if (props.apiVersion >= VK_API_VERSION_1_2)
             {
@@ -453,6 +443,7 @@ namespace Alimer
         VkPhysicalDevicePerformanceQueryFeaturesKHR perf_counter_features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_FEATURES_KHR };
         VkPhysicalDeviceHostQueryResetFeatures host_query_reset_features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES };
 
+        // Enumerate physical devices and create logical device.
         {
             uint32_t deviceCount = 0;
             VK_CHECK(vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr));
@@ -957,8 +948,16 @@ namespace Alimer
             LOGI("Vendor : {}", GetVendorName(properties2.properties.vendorID));
             LOGI("Name   : {}", properties2.properties.deviceName);
             LOGI("Type   : {}", kDeviceTypes[properties2.properties.deviceType]);
-            LOGI("Driver : {}", properties2.properties.driverVersion);
-
+            LOGI("API    : {}.{}.{}",
+                VK_VERSION_MAJOR(properties2.properties.apiVersion),
+                VK_VERSION_MINOR(properties2.properties.apiVersion),
+                VK_VERSION_PATCH(properties2.properties.apiVersion)
+            );
+            LOGI("Driver : {}.{}.{}",
+                VK_VERSION_MAJOR(properties2.properties.driverVersion),
+                VK_VERSION_MINOR(properties2.properties.driverVersion),
+                VK_VERSION_PATCH(properties2.properties.driverVersion)
+            );
             LOGI("Enabled {} Device Extensions:", createInfo.enabledExtensionCount);
             for (uint32_t i = 0; i < createInfo.enabledExtensionCount; ++i)
             {
@@ -1066,6 +1065,21 @@ namespace Alimer
         {
             VmaAllocationCreateInfo allocInfo = {};
             allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+            VkBufferCreateInfo bufferInfo { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+            bufferInfo.size = 4;
+            bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+            bufferInfo.flags = 0;
+
+            VK_CHECK(
+                vmaCreateBuffer(allocator, &bufferInfo, &allocInfo, &nullBuffer, &nullBufferAllocation, nullptr)
+                );
+
+            VkBufferViewCreateInfo bufferViewInfo{ VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO };
+            bufferViewInfo.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+            bufferViewInfo.range = VK_WHOLE_SIZE;
+            bufferViewInfo.buffer = nullBuffer;
+            VK_CHECK(vkCreateBufferView(device, &bufferViewInfo, nullptr, &nullBufferView));
 
             VkImageCreateInfo imageInfo = {};
             imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -1278,8 +1292,8 @@ namespace Alimer
 
         // Null resources
         {
-            //vmaDestroyBuffer(allocator, nullBuffer, nullBufferAllocation);
-            //vkDestroyBufferView(device, nullBufferView, nullptr);
+            vmaDestroyBuffer(allocator, nullBuffer, nullBufferAllocation);
+            vkDestroyBufferView(device, nullBufferView, nullptr);
             vmaDestroyImage(allocator, nullImage1D, nullImageAllocation1D);
             vmaDestroyImage(allocator, nullImage2D, nullImageAllocation2D);
             vmaDestroyImage(allocator, nullImage3D, nullImageAllocation3D);
@@ -1472,9 +1486,9 @@ namespace Alimer
         return nullptr;
     }
 
-    BufferRef VulkanGraphics::CreateBuffer(const BufferCreateInfo& info, const void* initialData)
+    BufferRef VulkanGraphics::CreateBuffer(const BufferDescription& desc, const void* initialData)
     {
-        auto result = new VulkanBuffer(*this, info, initialData);
+        auto result = new VulkanBuffer(*this, desc, initialData);
 
         if (result->GetHandle() != VK_NULL_HANDLE)
         {
@@ -1485,7 +1499,7 @@ namespace Alimer
         return nullptr;
     }
 
-    RefPtr<Shader> VulkanGraphics::CreateShader(ShaderStage stage, const std::vector<uint8_t>& byteCode, const std::string& entryPoint)
+    ShaderRef VulkanGraphics::CreateShader(ShaderStage stage, const std::vector<uint8_t>& byteCode, const std::string& entryPoint)
     {
         auto result = new VulkanShader(*this, stage, byteCode, entryPoint);
 
@@ -2052,7 +2066,7 @@ namespace Alimer
         if (context.uploadBuffer == nullptr
             || context.uploadBuffer->GetSize() < size)
         {
-            BufferCreateInfo uploadBufferDesc{};
+            BufferDescription uploadBufferDesc{};
             uploadBufferDesc.size = NextPowerOfTwo((uint32_t)size);
             uploadBufferDesc.memoryUsage = MemoryUsage::CpuOnly;
             context.uploadBuffer = new VulkanBuffer(*device, uploadBufferDesc, nullptr);

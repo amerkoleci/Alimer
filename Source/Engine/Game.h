@@ -18,9 +18,9 @@ namespace Alimer
 
         GPUBackendType backendType = GPUBackendType::Count;
 #if defined(_DEBUG)
-        GPUValidationMode validationMode = GPUValidationMode::Disabled;
-#else
         GPUValidationMode validationMode = GPUValidationMode::Enabled;
+#else
+        GPUValidationMode validationMode = GPUValidationMode::Disabled;
 #endif
     };
 

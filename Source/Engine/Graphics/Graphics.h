@@ -10,7 +10,7 @@
 
 namespace Alimer
 {
-    struct BufferCreateInfo;
+    struct BufferDescription;
     struct TextureCreateInfo;
     struct SamplerDescription;
     struct SwapChainCreateInfo;
@@ -68,7 +68,7 @@ namespace Alimer
     private:
         virtual TextureRef CreateTextureCore(const TextureCreateInfo& info, const void* initialData) = 0;
         virtual SamplerRef CreateSampler(const SamplerDescription& description) = 0;
-        virtual BufferRef CreateBuffer(const BufferCreateInfo& info, const void* initialData) = 0;
+        virtual BufferRef CreateBuffer(const BufferDescription& description, const void* initialData) = 0;
         virtual RefPtr<Shader> CreateShader(ShaderStage stage, const std::vector<uint8_t>& byteCode, const std::string& entryPoint) = 0;
         virtual PipelineRef CreateRenderPipeline(const RenderPipelineStateCreateInfo* info) = 0;
         virtual PipelineRef CreateComputePipeline(const ComputePipelineCreateInfo* info) = 0;

@@ -22,11 +22,6 @@ namespace Alimer
 		VkSampler handle{ VK_NULL_HANDLE };
 	};
 
-	constexpr VulkanSampler* ToVulkan(Sampler* resource)
-	{
-		return static_cast<VulkanSampler*>(resource);
-	}
-
 	constexpr const VulkanSampler* ToVulkan(const Sampler* resource)
 	{
 		return static_cast<const VulkanSampler*>(resource);

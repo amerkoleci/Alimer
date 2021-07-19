@@ -75,57 +75,57 @@ namespace Alimer
         switch (format)
         {
             // 8-bit formats
-        case PixelFormat::R8Unorm:  return VK_FORMAT_R8_UNORM;
-        case PixelFormat::R8Snorm:  return VK_FORMAT_R8_SNORM;
-        case PixelFormat::R8Uint:   return VK_FORMAT_R8_UINT;
-        case PixelFormat::R8Sint:   return VK_FORMAT_R8_SINT;
+        case PixelFormat::R8UNorm:  return VK_FORMAT_R8_UNORM;
+        case PixelFormat::R8SNorm:  return VK_FORMAT_R8_SNORM;
+        case PixelFormat::R8UInt:   return VK_FORMAT_R8_UINT;
+        case PixelFormat::R8SInt:   return VK_FORMAT_R8_SINT;
             // 16-bit formats
-        case PixelFormat::R16Unorm:     return VK_FORMAT_R16_UNORM;
-        case PixelFormat::R16Snorm:     return VK_FORMAT_R16_SNORM;
-        case PixelFormat::R16Uint:      return VK_FORMAT_R16_UINT;
-        case PixelFormat::R16Sint:      return VK_FORMAT_R16_SINT;
+        case PixelFormat::R16UNorm:     return VK_FORMAT_R16_UNORM;
+        case PixelFormat::R16SNorm:     return VK_FORMAT_R16_SNORM;
+        case PixelFormat::R16UInt:      return VK_FORMAT_R16_UINT;
+        case PixelFormat::R16SInt:      return VK_FORMAT_R16_SINT;
         case PixelFormat::R16Float:     return VK_FORMAT_R16_SFLOAT;
-        case PixelFormat::RG8Unorm:     return VK_FORMAT_R8G8_UNORM;
-        case PixelFormat::RG8Snorm:     return VK_FORMAT_R8G8_SNORM;
-        case PixelFormat::RG8Uint:      return VK_FORMAT_R8G8_UINT;
-        case PixelFormat::RG8Sint:      return VK_FORMAT_R8G8_SINT;
+        case PixelFormat::RG8UNorm:     return VK_FORMAT_R8G8_UNORM;
+        case PixelFormat::RG8SNorm:     return VK_FORMAT_R8G8_SNORM;
+        case PixelFormat::RG8UInt:      return VK_FORMAT_R8G8_UINT;
+        case PixelFormat::RG8SInt:      return VK_FORMAT_R8G8_SINT;
             // 32-bit formats
-        case PixelFormat::R32Uint:          return VK_FORMAT_R32_UINT;
-        case PixelFormat::R32Sint:          return VK_FORMAT_R32_SINT;
+        case PixelFormat::R32UInt:          return VK_FORMAT_R32_UINT;
+        case PixelFormat::R32SInt:          return VK_FORMAT_R32_SINT;
         case PixelFormat::R32Float:         return VK_FORMAT_R32_SFLOAT;
-        case PixelFormat::RG16Unorm:        return VK_FORMAT_R16G16_UNORM;
-        case PixelFormat::RG16Snorm:        return VK_FORMAT_R16G16_SNORM;
-        case PixelFormat::RG16Uint:         return VK_FORMAT_R16G16_UINT;
-        case PixelFormat::RG16Sint:         return VK_FORMAT_R16G16_SINT;
+        case PixelFormat::RG16UNorm:        return VK_FORMAT_R16G16_UNORM;
+        case PixelFormat::RG16SNorm:        return VK_FORMAT_R16G16_SNORM;
+        case PixelFormat::RG16UInt:         return VK_FORMAT_R16G16_UINT;
+        case PixelFormat::RG16SInt:         return VK_FORMAT_R16G16_SINT;
         case PixelFormat::RG16Float:        return VK_FORMAT_R16G16_SFLOAT;
         case PixelFormat::RGBA8UNorm:       return VK_FORMAT_R8G8B8A8_UNORM;
         case PixelFormat::RGBA8UNormSrgb:   return VK_FORMAT_R8G8B8A8_SRGB;
         case PixelFormat::RGBA8SNorm:       return VK_FORMAT_R8G8B8A8_SNORM;
-        case PixelFormat::RGBA8Uint:        return VK_FORMAT_R8G8B8A8_UINT;
-        case PixelFormat::RGBA8Sint:        return VK_FORMAT_R8G8B8A8_SINT;
+        case PixelFormat::RGBA8UInt:        return VK_FORMAT_R8G8B8A8_UINT;
+        case PixelFormat::RGBA8SInt:        return VK_FORMAT_R8G8B8A8_SINT;
         case PixelFormat::BGRA8UNorm:       return VK_FORMAT_B8G8R8A8_UNORM;
         case PixelFormat::BGRA8UNormSrgb:   return VK_FORMAT_B8G8R8A8_SRGB;
             // Packed 32-Bit formats
-        case PixelFormat::RGB10A2Unorm:     return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+        case PixelFormat::RGB10A2UNorm:     return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
         case PixelFormat::RG11B10Float:     return VK_FORMAT_B10G11R11_UFLOAT_PACK32;
         case PixelFormat::RGB9E5Float:      return VK_FORMAT_E5B9G9R9_UFLOAT_PACK32;
             // 64-Bit formats
-        case PixelFormat::RG32Uint:         return VK_FORMAT_R32G32_UINT;
-        case PixelFormat::RG32Sint:         return VK_FORMAT_R32G32_SINT;
+        case PixelFormat::RG32UInt:         return VK_FORMAT_R32G32_UINT;
+        case PixelFormat::RG32SInt:         return VK_FORMAT_R32G32_SINT;
         case PixelFormat::RG32Float:        return VK_FORMAT_R32G32_SFLOAT;
-        case PixelFormat::RGBA16Unorm:      return VK_FORMAT_R16G16B16A16_UNORM;
-        case PixelFormat::RGBA16Snorm:      return VK_FORMAT_R16G16B16A16_SNORM;
-        case PixelFormat::RGBA16Uint:       return VK_FORMAT_R16G16B16A16_UINT;
-        case PixelFormat::RGBA16Sint:       return VK_FORMAT_R16G16B16A16_SINT;
+        case PixelFormat::RGBA16UNorm:      return VK_FORMAT_R16G16B16A16_UNORM;
+        case PixelFormat::RGBA16SNorm:      return VK_FORMAT_R16G16B16A16_SNORM;
+        case PixelFormat::RGBA16UInt:       return VK_FORMAT_R16G16B16A16_UINT;
+        case PixelFormat::RGBA16SInt:       return VK_FORMAT_R16G16B16A16_SINT;
         case PixelFormat::RGBA16Float:      return VK_FORMAT_R16G16B16A16_SFLOAT;
             // 128-Bit formats
-        case PixelFormat::RGBA32Uint:       return VK_FORMAT_R32G32B32A32_UINT;
-        case PixelFormat::RGBA32Sint:       return VK_FORMAT_R32G32B32A32_SINT;
+        case PixelFormat::RGBA32UInt:       return VK_FORMAT_R32G32B32A32_UINT;
+        case PixelFormat::RGBA32SInt:       return VK_FORMAT_R32G32B32A32_SINT;
         case PixelFormat::RGBA32Float:      return VK_FORMAT_R32G32B32A32_SFLOAT;
             // Depth-stencil formats
-        case PixelFormat::Depth16Unorm:     return VK_FORMAT_D16_UNORM;
+        case PixelFormat::Depth16UNorm:     return VK_FORMAT_D16_UNORM;
         case PixelFormat::Depth32Float:     return VK_FORMAT_D32_SFLOAT;
-        case PixelFormat::Depth24UnormStencil8: return VK_FORMAT_D24_UNORM_S8_UINT;
+        case PixelFormat::Depth24UNormStencil8: return VK_FORMAT_D24_UNORM_S8_UINT;
         case PixelFormat::Depth32FloatStencil8: return VK_FORMAT_D32_SFLOAT_S8_UINT;
             // Compressed BC formats
         case PixelFormat::BC1RGBAUnorm:         return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
@@ -154,57 +154,57 @@ namespace Alimer
         switch (format)
         {
             // 8-bit formats
-        case VK_FORMAT_R8_UNORM:	return PixelFormat::R8Unorm;
-        case VK_FORMAT_R8_SNORM:	return PixelFormat::R8Snorm;
-        case VK_FORMAT_R8_UINT:		return PixelFormat::R8Uint;
-        case VK_FORMAT_R8_SINT:		return PixelFormat::R8Sint;
+        case VK_FORMAT_R8_UNORM:	return PixelFormat::R8UNorm;
+        case VK_FORMAT_R8_SNORM:	return PixelFormat::R8SNorm;
+        case VK_FORMAT_R8_UINT:		return PixelFormat::R8UInt;
+        case VK_FORMAT_R8_SINT:		return PixelFormat::R8SInt;
             // 16-bit formats
-        case VK_FORMAT_R16_UNORM:	return PixelFormat::R16Unorm;
-        case VK_FORMAT_R16_SNORM:	return PixelFormat::R16Snorm;
-        case VK_FORMAT_R16_UINT:	return PixelFormat::R16Uint;
-        case VK_FORMAT_R16_SINT:	return PixelFormat::R16Sint;
+        case VK_FORMAT_R16_UNORM:	return PixelFormat::R16UNorm;
+        case VK_FORMAT_R16_SNORM:	return PixelFormat::R16SNorm;
+        case VK_FORMAT_R16_UINT:	return PixelFormat::R16UInt;
+        case VK_FORMAT_R16_SINT:	return PixelFormat::R16SInt;
         case VK_FORMAT_R16_SFLOAT:	return PixelFormat::R16Float;
-        case VK_FORMAT_R8G8_UNORM:	return PixelFormat::RG8Unorm;
-        case VK_FORMAT_R8G8_SNORM:	return PixelFormat::RG8Snorm;
-        case VK_FORMAT_R8G8_UINT:	return PixelFormat::RG8Uint;
-        case VK_FORMAT_R8G8_SINT:	return PixelFormat::RG8Sint;
+        case VK_FORMAT_R8G8_UNORM:	return PixelFormat::RG8UNorm;
+        case VK_FORMAT_R8G8_SNORM:	return PixelFormat::RG8SNorm;
+        case VK_FORMAT_R8G8_UINT:	return PixelFormat::RG8UInt;
+        case VK_FORMAT_R8G8_SINT:	return PixelFormat::RG8SInt;
             // 32-bit formats
-        case VK_FORMAT_R32_UINT:        return PixelFormat::R32Uint;
-        case VK_FORMAT_R32_SINT:        return PixelFormat::R32Sint;
+        case VK_FORMAT_R32_UINT:        return PixelFormat::R32UInt;
+        case VK_FORMAT_R32_SINT:        return PixelFormat::R32SInt;
         case VK_FORMAT_R32_SFLOAT:      return PixelFormat::R32Float;
-        case VK_FORMAT_R16G16_UNORM:	return PixelFormat::RG16Unorm;
-        case VK_FORMAT_R16G16_SNORM:	return PixelFormat::RG16Snorm;
-        case VK_FORMAT_R16G16_UINT:		return PixelFormat::RG16Uint;
-        case VK_FORMAT_R16G16_SINT:		return PixelFormat::RG16Sint;
+        case VK_FORMAT_R16G16_UNORM:	return PixelFormat::RG16UNorm;
+        case VK_FORMAT_R16G16_SNORM:	return PixelFormat::RG16SNorm;
+        case VK_FORMAT_R16G16_UINT:		return PixelFormat::RG16UInt;
+        case VK_FORMAT_R16G16_SINT:		return PixelFormat::RG16SInt;
         case VK_FORMAT_R16G16_SFLOAT:	return PixelFormat::RG16Float;
         case VK_FORMAT_R8G8B8A8_UNORM:	return PixelFormat::RGBA8UNorm;
         case VK_FORMAT_R8G8B8A8_SRGB:	return PixelFormat::RGBA8UNormSrgb;
         case VK_FORMAT_R8G8B8A8_SNORM:	return PixelFormat::RGBA8SNorm;
-        case VK_FORMAT_R8G8B8A8_UINT:	return PixelFormat::RGBA8Uint;
-        case VK_FORMAT_R8G8B8A8_SINT:	return PixelFormat::RGBA8Sint;
+        case VK_FORMAT_R8G8B8A8_UINT:	return PixelFormat::RGBA8UInt;
+        case VK_FORMAT_R8G8B8A8_SINT:	return PixelFormat::RGBA8SInt;
         case VK_FORMAT_B8G8R8A8_UNORM:	return PixelFormat::BGRA8UNorm;
         case VK_FORMAT_B8G8R8A8_SRGB:   return PixelFormat::BGRA8UNormSrgb;
             // Packed 32-Bit formats
-        case VK_FORMAT_A2B10G10R10_UNORM_PACK32:	return PixelFormat::RGB10A2Unorm;
+        case VK_FORMAT_A2B10G10R10_UNORM_PACK32:	return PixelFormat::RGB10A2UNorm;
         case VK_FORMAT_B10G11R11_UFLOAT_PACK32:     return PixelFormat::RG11B10Float;
         case VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:      return PixelFormat::RGB9E5Float;
             // 64-Bit formats
-        case VK_FORMAT_R32G32_UINT:			return PixelFormat::RG32Uint;
-        case VK_FORMAT_R32G32_SINT:         return PixelFormat::RG32Sint;
+        case VK_FORMAT_R32G32_UINT:			return PixelFormat::RG32UInt;
+        case VK_FORMAT_R32G32_SINT:         return PixelFormat::RG32SInt;
         case VK_FORMAT_R32G32_SFLOAT:       return PixelFormat::RG32Float;
-        case VK_FORMAT_R16G16B16A16_UNORM:  return PixelFormat::RGBA16Unorm;
-        case VK_FORMAT_R16G16B16A16_SNORM:  return PixelFormat::RGBA16Snorm;
-        case VK_FORMAT_R16G16B16A16_UINT:   return PixelFormat::RGBA16Uint;
-        case VK_FORMAT_R16G16B16A16_SINT:   return PixelFormat::RGBA16Sint;
+        case VK_FORMAT_R16G16B16A16_UNORM:  return PixelFormat::RGBA16UNorm;
+        case VK_FORMAT_R16G16B16A16_SNORM:  return PixelFormat::RGBA16SNorm;
+        case VK_FORMAT_R16G16B16A16_UINT:   return PixelFormat::RGBA16UInt;
+        case VK_FORMAT_R16G16B16A16_SINT:   return PixelFormat::RGBA16SInt;
         case VK_FORMAT_R16G16B16A16_SFLOAT: return PixelFormat::RGBA16Float;
             // 128-Bit formats
-        case VK_FORMAT_R32G32B32A32_UINT:   return PixelFormat::RGBA32Uint;
-        case VK_FORMAT_R32G32B32A32_SINT:   return PixelFormat::RGBA32Sint;
+        case VK_FORMAT_R32G32B32A32_UINT:   return PixelFormat::RGBA32UInt;
+        case VK_FORMAT_R32G32B32A32_SINT:   return PixelFormat::RGBA32SInt;
         case VK_FORMAT_R32G32B32A32_SFLOAT: return PixelFormat::RGBA32Float;
             // Depth-stencil formats
-        case VK_FORMAT_D16_UNORM:			return PixelFormat::Depth16Unorm;
+        case VK_FORMAT_D16_UNORM:			return PixelFormat::Depth16UNorm;
         case VK_FORMAT_D32_SFLOAT:			return PixelFormat::Depth32Float;
-        case VK_FORMAT_D24_UNORM_S8_UINT:	return PixelFormat::Depth24UnormStencil8;
+        case VK_FORMAT_D24_UNORM_S8_UINT:	return PixelFormat::Depth24UNormStencil8;
         case VK_FORMAT_D32_SFLOAT_S8_UINT:	return PixelFormat::Depth32FloatStencil8;
             // Compressed BC formats
         case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:	return PixelFormat::BC1RGBAUnorm;

@@ -186,7 +186,7 @@ namespace Alimer
         {
             switch (colorFormat)
             {
-                case PixelFormat::RGB10A2Unorm:
+                case PixelFormat::RGB10A2UNorm:
                     // The application creates the HDR10 signal.
                     colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
                     break;

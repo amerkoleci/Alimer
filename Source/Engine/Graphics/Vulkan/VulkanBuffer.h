@@ -11,7 +11,7 @@ namespace Alimer
 	class VulkanBuffer final : public Buffer
 	{
 	public:
-		VulkanBuffer(VulkanGraphics& device, const BufferCreateInfo& info, const void* initialData);
+		VulkanBuffer(VulkanGraphics& device, const BufferDescription& desc, const void* initialData);
 		~VulkanBuffer() override;
 		void Destroy() override;
 

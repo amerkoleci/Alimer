@@ -84,57 +84,59 @@ namespace Alimer
         }
     }
 
-    VulkanBuffer::VulkanBuffer(VulkanGraphics& device_, const BufferCreateInfo& info, const void* initialData)
-        : Buffer(info)
+    VulkanBuffer::VulkanBuffer(VulkanGraphics& device_, const BufferDescription& desc, const void* initialData)
+        : Buffer(desc)
         , device(device_)
     {
         VkBufferCreateInfo createInfo{ VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
         createInfo.size = size;
         createInfo.usage = 0u;
 
-        if (Any(usage, BufferUsage::Uniform))
+        if (Any(usage, BufferUsage::InputAssembly))
+        {
+            createInfo.usage |=
+                VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+            if (device.BufferDeviceAddressSupported())
+            {
+                createInfo.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+            }
+        }
+
+        if (Any(usage, BufferUsage::Constant))
         {
             // Align the buffer size to multiples of the dynamic uniform buffer minimum size
             uint64_t minAlignment = gGraphics().GetCaps().limits.minUniformBufferOffsetAlignment;
             createInfo.size = AlignTo(createInfo.size, minAlignment);
-        }
 
-        if (Any(usage, BufferUsage::Vertex)) {
-            createInfo.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-        }
-        if (Any(usage, BufferUsage::Index)) {
-            createInfo.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-        }
-        if (Any(usage, BufferUsage::Uniform)) {
             createInfo.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
         }
 
-        if (Any(usage, BufferUsage::ShaderResource))
+        if (Any(usage, BufferUsage::ShaderRead))
         {
-            createInfo.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-
-            if (info.format != PixelFormat::Undefined)
-            {
-                createInfo.usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
-            }
+            createInfo.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
         }
 
-        if (Any(usage, BufferUsage::UnorderedAccess))
+        if (Any(usage, BufferUsage::ShaderWrite))
         {
-            createInfo.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-
-            if (info.format != PixelFormat::Undefined)
-            {
-                createInfo.usage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-            }
+            createInfo.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
         }
 
-        if (Any(usage, BufferUsage::Indirect)) {
+        if (Any(usage, BufferUsage::Indirect))
+        {
             createInfo.usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
         }
-        if (device.BufferDeviceAddressSupported()) {
-            createInfo.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+
+        if (Any(usage, BufferUsage::RayTracingAccelerationStructure))
+        {
+            createInfo.usage |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
         }
+
+        //if (Any(usage, BufferUsage::RayTracingShaderTable))
+        //{
+        //    createInfo.usage |= VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+        //}
 
         VmaAllocationCreateInfo memoryInfo{};
         memoryInfo.flags = 0;
@@ -207,9 +209,9 @@ namespace Alimer
             return;
         }
 
-        if (info.label != nullptr)
+        if (desc.label != nullptr)
         {
-            device.SetObjectName(VK_OBJECT_TYPE_BUFFER, (uint64_t)handle, info.label);
+            device.SetObjectName(VK_OBJECT_TYPE_BUFFER, (uint64_t)handle, desc.label);
         }
 
         allocatedSize = allocationInfo.size;
@@ -319,30 +321,38 @@ namespace Alimer
             barrier.srcAccessMask = barrier.dstAccessMask;
             barrier.dstAccessMask = 0;
 
-            if (Any(usage, BufferUsage::Vertex))
+            if (Any(usage, BufferUsage::InputAssembly))
             {
-                barrier.dstAccessMask |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+                barrier.dstAccessMask |= VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
             }
-            if (Any(usage, BufferUsage::Index))
-            {
-                barrier.dstAccessMask |= VK_ACCESS_INDEX_READ_BIT;
-            }
-            if (Any(usage, BufferUsage::Uniform))
+                
+            if (Any(usage, BufferUsage::Constant))
             {
                 barrier.dstAccessMask |= VK_ACCESS_UNIFORM_READ_BIT;
             }
-            if (Any(usage, BufferUsage::ShaderResource))
+            if (Any(usage, BufferUsage::ShaderRead))
             {
                 barrier.dstAccessMask |= VK_ACCESS_SHADER_READ_BIT;
             }
-            if (Any(usage, BufferUsage::UnorderedAccess))
+            if (Any(usage, BufferUsage::ShaderRead))
             {
                 barrier.dstAccessMask |= VK_ACCESS_SHADER_WRITE_BIT;
             }
-            //if (buffer->desc.MiscFlags & RESOURCE_MISC_RAY_TRACING)
+
+            //if (Any(usage, BufferUsage::Predication))
             //{
-            //    barrier.srcAccessMask |= VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+            //    barrier.dstAccessMask |= VK_ACCESS_CONDITIONAL_RENDERING_READ_BIT_EXT;
             //}
+
+            if (Any(usage, BufferUsage::Indirect))
+            {
+                barrier.dstAccessMask |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+            }
+
+            if (Any(usage, BufferUsage::RayTracingAccelerationStructure))
+            {
+                barrier.dstAccessMask |= VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+            }
 
             vkCmdPipelineBarrier(
                 context.commandBuffer,
