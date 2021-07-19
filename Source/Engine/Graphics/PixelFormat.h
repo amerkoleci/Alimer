@@ -66,20 +66,20 @@ namespace Alimer
         Depth24UNormStencil8,
         Depth32FloatStencil8,
         // Compressed BC formats
-        BC1RGBAUnorm,
-        BC1RGBAUnormSrgb,
-        BC2RGBAUnorm,
-        BC2RGBAUnormSrgb,
-        BC3RGBAUnorm,
-        BC3RGBAUnormSrgb,
-        BC4RUnorm,
-        BC4RSnorm,
-        BC5RGUnorm,
-        BC5RGSnorm,
-        BC6HRGBUfloat,
+        BC1RGBAUNorm,
+        BC1RGBAUNormSrgb,
+        BC2RGBAUNorm,
+        BC2RGBAUNormSrgb,
+        BC3RGBAUNorm,
+        BC3RGBAUNormSrgb,
+        BC4RUNorm,
+        BC4RSNorm,
+        BC5RGUNorm,
+        BC5RGSNorm,
+        BC6HRGBUFloat,
         BC6HRGBFloat,
-        BC7RGBAUnorm,
-        BC7RGBAUnormSrgb,
+        BC7RGBAUNorm,
+        BC7RGBAUNormSrgb,
         Count
     };
 
@@ -169,20 +169,20 @@ namespace Alimer
         ALIMER_ASSERT(kFormatDesc[(uint32_t)format].format == format);
         switch (format)
         {
-        case PixelFormat::BC1RGBAUnorm:
-        case PixelFormat::BC1RGBAUnormSrgb:
-        case PixelFormat::BC2RGBAUnorm:
-        case PixelFormat::BC2RGBAUnormSrgb:
-        case PixelFormat::BC3RGBAUnorm:
-        case PixelFormat::BC3RGBAUnormSrgb:
-        case PixelFormat::BC4RUnorm:
-        case PixelFormat::BC4RSnorm:
-        case PixelFormat::BC5RGUnorm:
-        case PixelFormat::BC5RGSnorm:
-        case PixelFormat::BC6HRGBUfloat:
+        case PixelFormat::BC1RGBAUNorm:
+        case PixelFormat::BC1RGBAUNormSrgb:
+        case PixelFormat::BC2RGBAUNorm:
+        case PixelFormat::BC2RGBAUNormSrgb:
+        case PixelFormat::BC3RGBAUNorm:
+        case PixelFormat::BC3RGBAUNormSrgb:
+        case PixelFormat::BC4RUNorm:
+        case PixelFormat::BC4RSNorm:
+        case PixelFormat::BC5RGUNorm:
+        case PixelFormat::BC5RGSNorm:
+        case PixelFormat::BC6HRGBUFloat:
         case PixelFormat::BC6HRGBFloat:
-        case PixelFormat::BC7RGBAUnorm:
-        case PixelFormat::BC7RGBAUnormSrgb:
+        case PixelFormat::BC7RGBAUNorm:
+        case PixelFormat::BC7RGBAUNormSrgb:
             return true;
         }
 
@@ -224,18 +224,18 @@ namespace Alimer
     {
         switch (format)
         {
-        case PixelFormat::BC1RGBAUnormSrgb:
-            return PixelFormat::BC1RGBAUnorm;
-        case PixelFormat::BC2RGBAUnormSrgb:
-            return PixelFormat::BC2RGBAUnorm;
-        case PixelFormat::BC3RGBAUnormSrgb:
-            return PixelFormat::BC3RGBAUnorm;
+        case PixelFormat::BC1RGBAUNormSrgb:
+            return PixelFormat::BC1RGBAUNorm;
+        case PixelFormat::BC2RGBAUNormSrgb:
+            return PixelFormat::BC2RGBAUNorm;
+        case PixelFormat::BC3RGBAUNormSrgb:
+            return PixelFormat::BC3RGBAUNorm;
         case PixelFormat::BGRA8UNormSrgb:
             return PixelFormat::BGRA8UNorm;
         case PixelFormat::RGBA8UNormSrgb:
             return PixelFormat::RGBA8UNorm;
-        case PixelFormat::BC7RGBAUnormSrgb:
-            return PixelFormat::BC7RGBAUnorm;
+        case PixelFormat::BC7RGBAUNormSrgb:
+            return PixelFormat::BC7RGBAUNorm;
         default:
             ALIMER_ASSERT(IsSrgbFormat(format) == false);
             return format;
@@ -247,18 +247,18 @@ namespace Alimer
     {
         switch (format)
         {
-        case PixelFormat::BC1RGBAUnorm:
-            return PixelFormat::BC1RGBAUnormSrgb;
-        case PixelFormat::BC2RGBAUnorm:
-            return PixelFormat::BC2RGBAUnormSrgb;
-        case PixelFormat::BC3RGBAUnorm:
-            return PixelFormat::BC3RGBAUnormSrgb;
+        case PixelFormat::BC1RGBAUNorm:
+            return PixelFormat::BC1RGBAUNormSrgb;
+        case PixelFormat::BC2RGBAUNorm:
+            return PixelFormat::BC2RGBAUNormSrgb;
+        case PixelFormat::BC3RGBAUNorm:
+            return PixelFormat::BC3RGBAUNormSrgb;
         case PixelFormat::BGRA8UNorm:
             return PixelFormat::BGRA8UNormSrgb;
         case PixelFormat::RGBA8UNorm:
             return PixelFormat::RGBA8UNormSrgb;
-        case PixelFormat::BC7RGBAUnorm:
-            return PixelFormat::BC7RGBAUnormSrgb;
+        case PixelFormat::BC7RGBAUNorm:
+            return PixelFormat::BC7RGBAUNormSrgb;
         default:
             return format;
         }

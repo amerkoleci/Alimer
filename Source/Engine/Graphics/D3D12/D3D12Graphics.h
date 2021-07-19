@@ -110,7 +110,7 @@ namespace Alimer
 		void ProcessDeletionQueue();
 
 		void GetAdapter(IDXGIAdapter1** ppAdapter);
-        TextureRef CreateTextureCore(const TextureCreateInfo& info, const void* initialData) override;
+        TextureRef CreateTexture(const TextureCreateInfo& info, const void* initialData) override;
 		BufferRef CreateBuffer(const BufferDescription& description, const void* initialData) override;
         ShaderRef CreateShader(ShaderStage stage, const std::vector<uint8_t>& byteCode, const std::string& entryPoint) override;
         SamplerRef CreateSampler(const SamplerDescription& description) override;

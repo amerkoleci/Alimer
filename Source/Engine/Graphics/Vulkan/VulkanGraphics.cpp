@@ -1473,7 +1473,7 @@ namespace Alimer
     }
 
 
-    TextureRef VulkanGraphics::CreateTextureCore(const TextureCreateInfo& info, const void* initialData)
+    TextureRef VulkanGraphics::CreateTexture(const TextureCreateInfo& info, const void* initialData)
     {
         auto result = new VulkanTexture(*this, info, nullptr, initialData);
 

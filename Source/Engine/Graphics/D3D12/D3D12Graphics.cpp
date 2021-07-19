@@ -1265,7 +1265,7 @@ namespace Alimer
         context = D3D12UploadContext();
     }
 
-    TextureRef D3D12Graphics::CreateTextureCore(const TextureCreateInfo& info, const void* initialData)
+    TextureRef D3D12Graphics::CreateTexture(const TextureCreateInfo& info, const void* initialData)
     {
         auto result = new D3D12Texture(*this, info, initialData);
 

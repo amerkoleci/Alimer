@@ -19,6 +19,7 @@ namespace Alimer
 
     class ALIMER_API Graphics : public Module<Graphics>
     {
+        friend class Texture;
         friend class Buffer;
         friend class Shader;
         friend class Sampler;
@@ -44,9 +45,6 @@ namespace Alimer
         /// Finish the rendering frame and releases all stale resources.
         virtual void EndFrame() = 0;
 
-        /// Create new texture.
-        [[nodiscard]] TextureRef CreateTexture(const TextureCreateInfo& info, const void* initialData = nullptr);
-
         /// Return the graphics capabilities.
         const GraphicsDeviceCaps& GetCaps() const noexcept { return caps; }
 
@@ -66,7 +64,7 @@ namespace Alimer
         bool IsDeviceLost() const noexcept { return deviceLost; }
 
     private:
-        virtual TextureRef CreateTextureCore(const TextureCreateInfo& info, const void* initialData) = 0;
+        virtual TextureRef CreateTexture(const TextureCreateInfo& info, const void* initialData) = 0;
         virtual SamplerRef CreateSampler(const SamplerDescription& description) = 0;
         virtual BufferRef CreateBuffer(const BufferDescription& description, const void* initialData) = 0;
         virtual RefPtr<Shader> CreateShader(ShaderStage stage, const std::vector<uint8_t>& byteCode, const std::string& entryPoint) = 0;

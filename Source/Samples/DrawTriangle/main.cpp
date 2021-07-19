@@ -17,15 +17,15 @@ public:
     TriangleGame()
     {
         config.title = "Triangle";
-        config.backendType = GPUBackendType::Vulkan;
+        //config.backendType = GPUBackendType::Vulkan;
     }
 
     void Initialize() override
     {
-        //auto usage = TextureUsage::ShaderReadWrite | TextureUsage::RenderTarget;
-        //auto descriptor = TextureCreateInfo::Tex2D(PixelFormat::Depth32Float, 256, 256, 1, 1, usage);
-        //descriptor.label = "CUBEMAP";
-        //auto texture = Texture::Create(descriptor);
+        auto usage = TextureUsage::ShaderRead | TextureUsage::RenderTarget;
+        auto descriptor = TextureCreateInfo::Tex2D(PixelFormat::Depth32Float, 256, 256, 1, 1, usage);
+        descriptor.label = "DepthTexture";
+        auto texture = Texture::Create(descriptor);
         //auto view = texture->GetView({});
 
         float vertices[] = {

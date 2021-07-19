@@ -113,20 +113,20 @@ namespace Alimer
         case PixelFormat::Depth24UNormStencil8: return DXGI_FORMAT_D24_UNORM_S8_UINT;
         case PixelFormat::Depth32FloatStencil8: return DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
             // Compressed BC formats
-        case PixelFormat::BC1RGBAUnorm:         return DXGI_FORMAT_BC1_UNORM;
-        case PixelFormat::BC1RGBAUnormSrgb:     return DXGI_FORMAT_BC1_UNORM_SRGB;
-        case PixelFormat::BC2RGBAUnorm:         return DXGI_FORMAT_BC2_UNORM;
-        case PixelFormat::BC2RGBAUnormSrgb:     return DXGI_FORMAT_BC2_UNORM_SRGB;
-        case PixelFormat::BC3RGBAUnorm:         return DXGI_FORMAT_BC3_UNORM;
-        case PixelFormat::BC3RGBAUnormSrgb:     return DXGI_FORMAT_BC3_UNORM_SRGB;
-        case PixelFormat::BC4RSnorm:            return DXGI_FORMAT_BC4_SNORM;
-        case PixelFormat::BC4RUnorm:            return DXGI_FORMAT_BC4_UNORM;
-        case PixelFormat::BC5RGSnorm:           return DXGI_FORMAT_BC5_SNORM;
-        case PixelFormat::BC5RGUnorm:           return DXGI_FORMAT_BC5_UNORM;
+        case PixelFormat::BC1RGBAUNorm:         return DXGI_FORMAT_BC1_UNORM;
+        case PixelFormat::BC1RGBAUNormSrgb:     return DXGI_FORMAT_BC1_UNORM_SRGB;
+        case PixelFormat::BC2RGBAUNorm:         return DXGI_FORMAT_BC2_UNORM;
+        case PixelFormat::BC2RGBAUNormSrgb:     return DXGI_FORMAT_BC2_UNORM_SRGB;
+        case PixelFormat::BC3RGBAUNorm:         return DXGI_FORMAT_BC3_UNORM;
+        case PixelFormat::BC3RGBAUNormSrgb:     return DXGI_FORMAT_BC3_UNORM_SRGB;
+        case PixelFormat::BC4RSNorm:            return DXGI_FORMAT_BC4_SNORM;
+        case PixelFormat::BC4RUNorm:            return DXGI_FORMAT_BC4_UNORM;
+        case PixelFormat::BC5RGSNorm:           return DXGI_FORMAT_BC5_SNORM;
+        case PixelFormat::BC5RGUNorm:           return DXGI_FORMAT_BC5_UNORM;
         case PixelFormat::BC6HRGBFloat:         return DXGI_FORMAT_BC6H_SF16;
-        case PixelFormat::BC6HRGBUfloat:        return DXGI_FORMAT_BC6H_UF16;
-        case PixelFormat::BC7RGBAUnorm:         return DXGI_FORMAT_BC7_UNORM;
-        case PixelFormat::BC7RGBAUnormSrgb:     return DXGI_FORMAT_BC7_UNORM_SRGB;
+        case PixelFormat::BC6HRGBUFloat:        return DXGI_FORMAT_BC6H_UF16;
+        case PixelFormat::BC7RGBAUNorm:         return DXGI_FORMAT_BC7_UNORM;
+        case PixelFormat::BC7RGBAUNormSrgb:     return DXGI_FORMAT_BC7_UNORM_SRGB;
 
         default:
             ALIMER_UNREACHABLE();
@@ -192,20 +192,20 @@ namespace Alimer
         case DXGI_FORMAT_D24_UNORM_S8_UINT:		return PixelFormat::Depth24UNormStencil8;
         case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:	return PixelFormat::Depth32FloatStencil8;
             // Compressed BC formats
-        case DXGI_FORMAT_BC1_UNORM:			return PixelFormat::BC1RGBAUnorm;
-        case DXGI_FORMAT_BC1_UNORM_SRGB:	return PixelFormat::BC1RGBAUnormSrgb;
-        case DXGI_FORMAT_BC2_UNORM:			return PixelFormat::BC2RGBAUnorm;
-        case DXGI_FORMAT_BC2_UNORM_SRGB:	return PixelFormat::BC2RGBAUnormSrgb;
-        case DXGI_FORMAT_BC3_UNORM:			return PixelFormat::BC3RGBAUnorm;
-        case DXGI_FORMAT_BC3_UNORM_SRGB:	return PixelFormat::BC3RGBAUnormSrgb;
-        case DXGI_FORMAT_BC4_SNORM:			return PixelFormat::BC4RSnorm;
-        case DXGI_FORMAT_BC4_UNORM:			return PixelFormat::BC4RUnorm;
-        case DXGI_FORMAT_BC5_SNORM:			return PixelFormat::BC5RGSnorm;
-        case DXGI_FORMAT_BC5_UNORM:			return PixelFormat::BC5RGUnorm;
+        case DXGI_FORMAT_BC1_UNORM:			return PixelFormat::BC1RGBAUNorm;
+        case DXGI_FORMAT_BC1_UNORM_SRGB:	return PixelFormat::BC1RGBAUNormSrgb;
+        case DXGI_FORMAT_BC2_UNORM:			return PixelFormat::BC2RGBAUNorm;
+        case DXGI_FORMAT_BC2_UNORM_SRGB:	return PixelFormat::BC2RGBAUNormSrgb;
+        case DXGI_FORMAT_BC3_UNORM:			return PixelFormat::BC3RGBAUNorm;
+        case DXGI_FORMAT_BC3_UNORM_SRGB:	return PixelFormat::BC3RGBAUNormSrgb;
+        case DXGI_FORMAT_BC4_SNORM:			return PixelFormat::BC4RSNorm;
+        case DXGI_FORMAT_BC4_UNORM:			return PixelFormat::BC4RUNorm;
+        case DXGI_FORMAT_BC5_SNORM:			return PixelFormat::BC5RGSNorm;
+        case DXGI_FORMAT_BC5_UNORM:			return PixelFormat::BC5RGUNorm;
         case DXGI_FORMAT_BC6H_SF16:			return PixelFormat::BC6HRGBFloat;
-        case DXGI_FORMAT_BC6H_UF16:			return PixelFormat::BC6HRGBUfloat;
-        case DXGI_FORMAT_BC7_UNORM:			return PixelFormat::BC7RGBAUnorm;
-        case DXGI_FORMAT_BC7_UNORM_SRGB:	return PixelFormat::BC7RGBAUnormSrgb;
+        case DXGI_FORMAT_BC6H_UF16:			return PixelFormat::BC6HRGBUFloat;
+        case DXGI_FORMAT_BC7_UNORM:			return PixelFormat::BC7RGBAUNorm;
+        case DXGI_FORMAT_BC7_UNORM_SRGB:	return PixelFormat::BC7RGBAUNormSrgb;
 
         default:
             ALIMER_UNREACHABLE();

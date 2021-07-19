@@ -39,6 +39,18 @@ namespace Alimer
     {
         ALIMER_ASSERT(gGraphics().IsInitialized());
 
+        ALIMER_ASSERT(info.width >= 1);
+        ALIMER_ASSERT(info.usage != TextureUsage::None);
+
+        if (Any(info.usage, TextureUsage::ShaderWrite))
+        {
+            if (Any(info.usage, TextureUsage::RenderTarget) && IsDepthStencilFormat(info.format))
+            {
+                LOGE("Cannot create depth texture with ShaderWrite usage");
+                return nullptr;
+            }
+        }
+
         return gGraphics().CreateTexture(info, initialData);
     }
 
@@ -60,7 +72,7 @@ namespace Alimer
         info.format = format;
         info.sampleCount = SampleCount::Count1;
         info.usage = usage;
-        return gGraphics().CreateTexture(info, initialData);
+        return Create(info, initialData);
     }
 
     TextureRef Texture::FromFile(const std::string& path)

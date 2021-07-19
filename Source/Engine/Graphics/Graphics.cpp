@@ -108,13 +108,6 @@ namespace Alimer
 		}
 	}
 
-    TextureRef Graphics::CreateTexture(const TextureCreateInfo& info, const void* initialData)
-	{
-		ALIMER_ASSERT(info.width >= 1);
-
-		return CreateTextureCore(info, initialData);
-	}
-
     CommandBuffer* Graphics::BeginCommandBuffer(CommandQueueType queueType)
     {
         return GetQueue(queueType).GetCommandBuffer();

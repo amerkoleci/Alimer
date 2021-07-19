@@ -127,9 +127,9 @@ namespace Alimer
                 resourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
             }
 
-            // If depth and either ua or sr, set to typeless
+            // If depth and either shader read, set to typeless
             if (IsDepthFormat(format)
-                && Any(usage, TextureUsage::ShaderReadWrite))
+                && Any(usage, TextureUsage::ShaderRead))
             {
                 resourceDesc.Format = GetTypelessFormatFromDepthFormat(format);
                 pClearValue = nullptr;
@@ -279,6 +279,25 @@ namespace Alimer
 
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = { };
             srvDesc.Format = ToDXGIFormat(format);
+
+            // Remap depth stencil format.
+            switch (format)
+            {
+                case PixelFormat::Depth16UNorm:
+                    srvDesc.Format = DXGI_FORMAT_R16_UNORM;
+                    break;
+                case PixelFormat::Depth32Float:
+                    srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+                    break;
+                case PixelFormat::Depth24UNormStencil8:
+                    srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+                case PixelFormat::Depth32FloatStencil8:
+                    srvDesc.Format = DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+                default:
+                    srvDesc.Format = ToDXGIFormat(format);
+                    break;
+            }
+
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
             srvDesc.Texture2D.MostDetailedMip = 0;
