@@ -59,7 +59,7 @@ namespace Alimer
         ALIMER_ASSERT(gGraphics().IsInitialized());
         ALIMER_ASSERT(width >= 1);
         ALIMER_ASSERT(height >= 1);
-        ALIMER_ASSERT(format != PixelFormat::Undefined);
+        ALIMER_ASSERT(format != PixelFormat::Unknown);
         ALIMER_ASSERT(arraySize >= 1);
         ALIMER_ASSERT(mipLevels >= 0);
 
@@ -117,7 +117,7 @@ namespace Alimer
     {
         ALIMER_ASSERT(texture != nullptr);
 
-        if (info.format == PixelFormat::Undefined)
+        if (info.format == PixelFormat::Unknown)
         {
             format = texture->GetFormat();
         }

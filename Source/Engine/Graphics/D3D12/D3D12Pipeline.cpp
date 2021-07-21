@@ -428,10 +428,10 @@ namespace Alimer
 		blendState.IndependentBlendEnable = info->blendState.independentBlendEnable;
 		for (uint32_t i = 0; i < kMaxSimultaneousRenderTargets; ++i)
 		{
-            if (info->colorFormats[i] == PixelFormat::Undefined)
+            if (info->colorFormats[i] == PixelFormat::Unknown)
                 break;
 
-			RTVFormats.RTFormats[RTVFormats.NumRenderTargets++] = ToDXGIFormat(info->colorFormats[i]);
+			RTVFormats.RTFormats[RTVFormats.NumRenderTargets++] = GetDxgiFormatMapping(info->colorFormats[i]).rtvFormat;
 
 			const RenderTargetBlendState& renderTarget = info->blendState.renderTargets[i];
 			blendState.RenderTarget[i].BlendEnable = EnableBlend(renderTarget);
@@ -543,7 +543,7 @@ namespace Alimer
 		}
 
 		stream.stream1.RTVFormats = RTVFormats;
-		stream.stream1.DSVFormat = ToDXGIFormat(info->depthStencilFormat);
+		stream.stream1.DSVFormat = GetDxgiFormatMapping(info->depthStencilFormat).rtvFormat;
 
 		DXGI_SAMPLE_DESC sampleDesc = {};
 		sampleDesc.Count = D3D12SampleCount(info->sampleCount);

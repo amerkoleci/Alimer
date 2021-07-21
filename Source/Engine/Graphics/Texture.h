@@ -120,7 +120,7 @@ namespace Alimer
     };
 
     struct TextureViewCreateInfo {
-        PixelFormat format = PixelFormat::Undefined;
+        PixelFormat format = PixelFormat::Unknown;
         uint32_t baseMipLevel = 0;
         uint32_t mipLevelCount = 0;
         uint32_t baseArrayLayer = 0;

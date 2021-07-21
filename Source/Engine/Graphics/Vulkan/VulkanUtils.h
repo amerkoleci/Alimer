@@ -128,20 +128,20 @@ namespace Alimer
         case PixelFormat::Depth24UNormStencil8: return VK_FORMAT_D24_UNORM_S8_UINT;
         case PixelFormat::Depth32FloatStencil8: return VK_FORMAT_D32_SFLOAT_S8_UINT;
             // Compressed BC formats
-        case PixelFormat::BC1RGBAUNorm:         return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
-        case PixelFormat::BC1RGBAUNormSrgb:     return VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
-        case PixelFormat::BC2RGBAUNorm:         return VK_FORMAT_BC2_UNORM_BLOCK;
-        case PixelFormat::BC2RGBAUNormSrgb:     return VK_FORMAT_BC2_SRGB_BLOCK;
-        case PixelFormat::BC3RGBAUNorm:         return VK_FORMAT_BC3_UNORM_BLOCK;
-        case PixelFormat::BC3RGBAUNormSrgb:     return VK_FORMAT_BC3_SRGB_BLOCK;
-        case PixelFormat::BC4RSNorm:            return VK_FORMAT_BC4_SNORM_BLOCK;
-        case PixelFormat::BC4RUNorm:            return VK_FORMAT_BC4_UNORM_BLOCK;
-        case PixelFormat::BC5RGSNorm:           return VK_FORMAT_BC5_SNORM_BLOCK;
-        case PixelFormat::BC5RGUNorm:           return VK_FORMAT_BC5_UNORM_BLOCK;
-        case PixelFormat::BC6HRGBFloat:         return VK_FORMAT_BC6H_SFLOAT_BLOCK;
-        case PixelFormat::BC6HRGBUFloat:        return VK_FORMAT_BC6H_UFLOAT_BLOCK;
-        case PixelFormat::BC7RGBAUNorm:         return VK_FORMAT_BC7_UNORM_BLOCK;
-        case PixelFormat::BC7RGBAUNormSrgb:     return VK_FORMAT_BC7_SRGB_BLOCK;
+        case PixelFormat::BC1UNorm:         return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+        case PixelFormat::BC1UNormSrgb:     return VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
+        case PixelFormat::BC2UNorm:         return VK_FORMAT_BC2_UNORM_BLOCK;
+        case PixelFormat::BC2UNormSrgb:     return VK_FORMAT_BC2_SRGB_BLOCK;
+        case PixelFormat::BC3UNorm:         return VK_FORMAT_BC3_UNORM_BLOCK;
+        case PixelFormat::BC3UNormSrgb:     return VK_FORMAT_BC3_SRGB_BLOCK;
+        case PixelFormat::BC4SNorm:         return VK_FORMAT_BC4_SNORM_BLOCK;
+        case PixelFormat::BC4UNorm:         return VK_FORMAT_BC4_UNORM_BLOCK;
+        case PixelFormat::BC5SNorm:         return VK_FORMAT_BC5_SNORM_BLOCK;
+        case PixelFormat::BC5UNorm:         return VK_FORMAT_BC5_UNORM_BLOCK;
+        case PixelFormat::BC6HUFloat:       return VK_FORMAT_BC6H_UFLOAT_BLOCK;
+        case PixelFormat::BC6HSFloat:       return VK_FORMAT_BC6H_SFLOAT_BLOCK;
+        case PixelFormat::BC7UNorm:         return VK_FORMAT_BC7_UNORM_BLOCK;
+        case PixelFormat::BC7UNormSrgb:     return VK_FORMAT_BC7_SRGB_BLOCK;
 
         default:
             ALIMER_UNREACHABLE();
@@ -207,24 +207,24 @@ namespace Alimer
         case VK_FORMAT_D24_UNORM_S8_UINT:	return PixelFormat::Depth24UNormStencil8;
         case VK_FORMAT_D32_SFLOAT_S8_UINT:	return PixelFormat::Depth32FloatStencil8;
             // Compressed BC formats
-        case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:	return PixelFormat::BC1RGBAUNorm;
-        case VK_FORMAT_BC1_RGBA_SRGB_BLOCK:		return PixelFormat::BC1RGBAUNormSrgb;
-        case VK_FORMAT_BC2_UNORM_BLOCK:			return PixelFormat::BC2RGBAUNorm;
-        case VK_FORMAT_BC2_SRGB_BLOCK:			return PixelFormat::BC2RGBAUNormSrgb;
-        case VK_FORMAT_BC3_UNORM_BLOCK:			return PixelFormat::BC3RGBAUNorm;
-        case VK_FORMAT_BC3_SRGB_BLOCK:			return PixelFormat::BC3RGBAUNormSrgb;
-        case VK_FORMAT_BC4_SNORM_BLOCK:			return PixelFormat::BC4RSNorm;
-        case VK_FORMAT_BC4_UNORM_BLOCK:			return PixelFormat::BC4RUNorm;
-        case VK_FORMAT_BC5_SNORM_BLOCK:			return PixelFormat::BC5RGSNorm;
-        case VK_FORMAT_BC5_UNORM_BLOCK:			return PixelFormat::BC5RGUNorm;
-        case VK_FORMAT_BC6H_SFLOAT_BLOCK:		return PixelFormat::BC6HRGBFloat;
-        case VK_FORMAT_BC6H_UFLOAT_BLOCK:		return PixelFormat::BC6HRGBUFloat;
-        case VK_FORMAT_BC7_UNORM_BLOCK:			return PixelFormat::BC7RGBAUNorm;
-        case VK_FORMAT_BC7_SRGB_BLOCK:			return PixelFormat::BC7RGBAUNormSrgb;
+        case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:	return PixelFormat::BC1UNorm;
+        case VK_FORMAT_BC1_RGBA_SRGB_BLOCK:		return PixelFormat::BC1UNormSrgb;
+        case VK_FORMAT_BC2_UNORM_BLOCK:			return PixelFormat::BC2UNorm;
+        case VK_FORMAT_BC2_SRGB_BLOCK:			return PixelFormat::BC2UNormSrgb;
+        case VK_FORMAT_BC3_UNORM_BLOCK:			return PixelFormat::BC3UNorm;
+        case VK_FORMAT_BC3_SRGB_BLOCK:			return PixelFormat::BC3UNormSrgb;
+        case VK_FORMAT_BC4_SNORM_BLOCK:			return PixelFormat::BC4SNorm;
+        case VK_FORMAT_BC4_UNORM_BLOCK:			return PixelFormat::BC4UNorm;
+        case VK_FORMAT_BC5_SNORM_BLOCK:			return PixelFormat::BC5SNorm;
+        case VK_FORMAT_BC5_UNORM_BLOCK:			return PixelFormat::BC5UNorm;
+        case VK_FORMAT_BC6H_UFLOAT_BLOCK:		return PixelFormat::BC6HUFloat;
+        case VK_FORMAT_BC6H_SFLOAT_BLOCK:		return PixelFormat::BC6HSFloat;
+        case VK_FORMAT_BC7_UNORM_BLOCK:			return PixelFormat::BC7UNorm;
+        case VK_FORMAT_BC7_SRGB_BLOCK:			return PixelFormat::BC7UNormSrgb;
 
         default:
             ALIMER_UNREACHABLE();
-            return PixelFormat::Undefined;
+            return PixelFormat::Unknown;
         }
     }
 

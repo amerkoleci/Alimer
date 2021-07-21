@@ -321,7 +321,7 @@ namespace Alimer
 
 		for (uint32_t i = 0; i < kMaxSimultaneousRenderTargets; ++i)
 		{
-            if (info->colorFormats[i] == PixelFormat::Undefined)
+            if (info->colorFormats[i] == PixelFormat::Unknown)
                 break;
 
             uint32_t rtIndex = 0;

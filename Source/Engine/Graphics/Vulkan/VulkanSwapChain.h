@@ -18,7 +18,7 @@ namespace Alimer
 		void AfterPresent(VkResult result);
 		VkSwapchainKHR GetHandle() const { return handle; }
 		uint32_t GetBackBufferIndex() const noexcept { return backBufferIndex; }
-		TextureView* GetCurrentTextureView() const override;
+		Texture* GetCurrentTexture() const override;
 
 	private:
 		void ResizeBackBuffer(uint32_t width, uint32_t height) override;

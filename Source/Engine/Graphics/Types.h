@@ -183,8 +183,12 @@ namespace Alimer
 
 	struct RenderPassColorAttachment
 	{
-        TextureView* view = nullptr;
-        TextureView* resolveView = nullptr;
+        Texture* texture = nullptr;
+        uint32_t level = 0;
+        uint32_t slice = 0;
+        Texture* resolveTexture = nullptr;
+        uint32_t resolveLevel = 0;
+        uint32_t resolveSlice = 0;
 		LoadAction loadAction = LoadAction::Discard;
 		StoreAction storeAction = StoreAction::Store;
 		Color clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -203,7 +207,7 @@ namespace Alimer
 		bool stencilReadOnly = false;
 	};
 
-	struct RenderPassInfo
+	struct RenderPassDescriptor
 	{
 		RenderPassColorAttachment colorAttachments[kMaxSimultaneousRenderTargets] = {};
 		RenderPassDepthStencilAttachment depthStencilAttachment;
@@ -343,8 +347,8 @@ namespace Alimer
 		String					adapterName;
 		GraphicsFeatures		features;
 		GraphicsLimits			limits;
-		PixelFormat             defaultDepthFormat = PixelFormat::Undefined;
-		PixelFormat             defaultDepthStencilFormat = PixelFormat::Undefined;
+		PixelFormat             defaultDepthFormat = PixelFormat::Unknown;
+		PixelFormat             defaultDepthStencilFormat = PixelFormat::Unknown;
         ShaderFormat            shaderFormat = ShaderFormat::Undefined;
 		PixelFormatProperties   formatProperties[ecast(PixelFormat::Count)] = {};
 	};

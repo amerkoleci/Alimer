@@ -206,7 +206,7 @@ namespace Alimer
         vkCmdCopyBuffer(handle, vkSource->GetHandle(), vkDestination->GetHandle(), 1, &region);
     }
 
-    void VulkanCommandBuffer::BeginRenderPassCore(const RenderPassInfo& info)
+    void VulkanCommandBuffer::BeginRenderPassCore(const RenderPassDescriptor& descriptor)
     {
         VulkanRenderPassKey renderPassKey;
         renderPassKey.colorAttachmentCount = 0;
@@ -221,12 +221,12 @@ namespace Alimer
 
         for (uint32_t i = 0; i < kMaxSimultaneousRenderTargets; i++)
         {
-            const RenderPassColorAttachment& attachment = info.colorAttachments[i];
-            if (attachment.view == nullptr)
+            const RenderPassColorAttachment& attachment = descriptor.colorAttachments[i];
+            if (attachment.texture == nullptr)
                 break;
 
-            VulkanTextureView* view = static_cast<VulkanTextureView*>(attachment.view);
-            VulkanTexture* texture = static_cast<VulkanTexture*>(view->GetTexture());
+            VulkanTexture* texture = static_cast<VulkanTexture*>(attachment.texture);
+            VulkanTextureView* view = nullptr; // static_cast<VulkanTextureView*>(attachment.view);
 
             if (texture->IsSwapChainTexture() && swapChainTextures.find(texture) == swapChainTextures.end())
             {
@@ -261,11 +261,11 @@ namespace Alimer
         }
 
         bool hasDepthStencil = false;
-        if (info.depthStencilAttachment.view != nullptr)
+        if (descriptor.depthStencilAttachment.view != nullptr)
         {
             hasDepthStencil = true;
 
-            const RenderPassDepthStencilAttachment& attachment = info.depthStencilAttachment;
+            const RenderPassDepthStencilAttachment& attachment = descriptor.depthStencilAttachment;
 
             VulkanTextureView* view = static_cast<VulkanTextureView*>(attachment.view);
             VulkanTexture* texture = static_cast<VulkanTexture*>(view->GetTexture());

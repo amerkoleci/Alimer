@@ -22,7 +22,7 @@ namespace Alimer
 	private:
 		void ResizeBackBuffer(uint32_t width, uint32_t height) override;
 		void UpdateColorSpace();
-        TextureView* GetCurrentTextureView() const override;
+        Texture* GetCurrentTexture() const override;
 
 		D3D12Graphics& device;
 

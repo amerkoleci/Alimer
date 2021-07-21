@@ -209,9 +209,9 @@ namespace Alimer
         }
     }
 
-    TextureView* D3D12SwapChain::GetCurrentTextureView() const
+    Texture* D3D12SwapChain::GetCurrentTexture() const
     {
         uint32_t backbufferIndex = handle->GetCurrentBackBufferIndex();
-        return colorTextures[backbufferIndex]->GetDefault();
+        return colorTextures[backbufferIndex].Get();
     }
 }

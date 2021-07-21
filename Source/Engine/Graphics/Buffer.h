@@ -25,7 +25,7 @@ namespace Alimer
         MemoryUsage memoryUsage = MemoryUsage::GpuOnly;
         BufferUsage usage = BufferUsage::None;
         uint64_t size = 0;
-        PixelFormat format = PixelFormat::Undefined;
+        PixelFormat format = PixelFormat::Unknown;
         const char* label = nullptr;
     };
 

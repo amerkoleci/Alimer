@@ -189,7 +189,7 @@ namespace Alimer
         handle->CopyBufferRegion(d3d12Destination->GetHandle(), destinationOffset, d3d12Source->GetHandle(), sourceOffset, size);
     }
 
-    void D3D12CommandBuffer::BeginRenderPassCore(const RenderPassInfo& info)
+    void D3D12CommandBuffer::BeginRenderPassCore(const RenderPassDescriptor& descriptor)
     {
         uint32_t width = UINT32_MAX;
         uint32_t height = UINT32_MAX;
@@ -198,12 +198,12 @@ namespace Alimer
         uint32_t colorAttachmentCount = 0;
         for (uint32_t i = 0; i < kMaxSimultaneousRenderTargets; i++)
         {
-            const RenderPassColorAttachment& attachment = info.colorAttachments[i];
-            if (attachment.view == nullptr)
+            const RenderPassColorAttachment& attachment = descriptor.colorAttachments[i];
+            if (attachment.texture == nullptr)
                 break;
 
-            D3D12Texture* sourceTexture = static_cast<D3D12Texture*>(attachment.view->GetTexture());
-            D3D12TextureView* view = static_cast<D3D12TextureView*>(attachment.view);
+            D3D12Texture* sourceTexture = static_cast<D3D12Texture*>(attachment.texture);
+            //D3D12TextureView* view = static_cast<D3D12TextureView*>(attachment.view);
 
             if (sourceTexture->IsSwapChainTexture())
             {
@@ -211,7 +211,7 @@ namespace Alimer
                 queue.QueuePresent(sourceTexture->GetSwapChain());
             }
 
-            const uint32_t mipLevel = view->GetBaseMipLevel();
+            const uint32_t mipLevel = attachment.level;
 
             width = Min(width, sourceTexture->GetWidth(mipLevel));
             height = Min(height, sourceTexture->GetHeight(mipLevel));
@@ -220,7 +220,7 @@ namespace Alimer
 
             if (supportsRenderPass)
             {
-                rtvDescs[i].cpuDescriptor = view->GetRTV();
+                rtvDescs[i].cpuDescriptor = sourceTexture->GetRTV(attachment.level, attachment.slice);
 
                 switch (attachment.loadAction)
                 {
@@ -255,9 +255,9 @@ namespace Alimer
                         break;
                 }
 
-                if (attachment.resolveView != nullptr)
+                if (attachment.resolveTexture != nullptr)
                 {
-                    D3D12Texture* destTexture = static_cast<D3D12Texture*>(attachment.resolveView->GetTexture());
+                    D3D12Texture* destTexture = static_cast<D3D12Texture*>(attachment.resolveTexture);
 
                     TransitionResource(sourceTexture, D3D12_RESOURCE_STATE_RESOLVE_SOURCE, false);
                     TransitionResource(destTexture, D3D12_RESOURCE_STATE_RESOLVE_DEST, false);
@@ -268,8 +268,8 @@ namespace Alimer
                     rtvDescs[i].EndingAccess.Resolve.pDstResource = destTexture->GetHandle();
                     rtvDescs[i].EndingAccess.Resolve.SubresourceCount = 1;
 
-                    subresourceParameters[i].SrcSubresource = sourceTexture->GetSubresourceIndex(mipLevel, attachment.view->GetBaseArrayLayer());
-                    subresourceParameters[i].DstSubresource = destTexture->GetSubresourceIndex(mipLevel, attachment.view->GetBaseArrayLayer());
+                    subresourceParameters[i].SrcSubresource = sourceTexture->GetSubresourceIndex(mipLevel, attachment.slice);
+                    subresourceParameters[i].DstSubresource = destTexture->GetSubresourceIndex(attachment.resolveLevel, attachment.resolveSlice);
                     subresourceParameters[i].DstX = 0;
                     subresourceParameters[i].DstY = 0;
                     subresourceParameters[i].SrcRect = { 0, 0, 0, 0 };
@@ -278,10 +278,9 @@ namespace Alimer
                     rtvDescs[i].EndingAccess.Resolve.Format = destTexture->GetDXGIFormat();
 
                     // RESOLVE_MODE_AVERAGE is only valid for non-integer formats.
-                    switch (GetFormatType(destTexture->GetFormat()))
+                    switch (GetFormatKind(destTexture->GetFormat()))
                     {
-                        case PixelFormatType::Sint:
-                        case PixelFormatType::Uint:
+                        case PixelFormatKind::Integer:
                             rtvDescs[i].EndingAccess.Resolve.ResolveMode = D3D12_RESOLVE_MODE_MAX;
                             break;
                         default:
@@ -304,7 +303,7 @@ namespace Alimer
             }
             else
             {
-                colorRTVHandles[i] = view->GetRTV();
+                colorRTVHandles[i] = sourceTexture->GetRTV(attachment.level, attachment.slice);
 
                 switch (attachment.loadAction)
                 {
@@ -323,10 +322,10 @@ namespace Alimer
         D3D12_RENDER_PASS_DEPTH_STENCIL_DESC dsvDesc{};
         D3D12_CPU_DESCRIPTOR_HANDLE dsv{};
         bool hasDepthStencil = false;
-        if (info.depthStencilAttachment.view != nullptr)
+        if (descriptor.depthStencilAttachment.view != nullptr)
         {
             hasDepthStencil = true;
-            const RenderPassDepthStencilAttachment& attachment = info.depthStencilAttachment;
+            const RenderPassDepthStencilAttachment& attachment = descriptor.depthStencilAttachment;
 
             D3D12TextureView* view = static_cast<D3D12TextureView*>(attachment.view);
             D3D12Texture* texture = static_cast<D3D12Texture*>(view->GetTexture());
@@ -335,7 +334,8 @@ namespace Alimer
             width = Min(width, texture->GetWidth(mipLevel));
             height = Min(height, texture->GetHeight(mipLevel));
 
-            dsv = view->GetDSV(attachment.depthReadOnly, attachment.stencilReadOnly);
+            // TODO:
+            //dsv = view->GetDSV(attachment.depthReadOnly, attachment.stencilReadOnly);
 
             TransitionResource(texture, D3D12_RESOURCE_STATE_DEPTH_WRITE, true);
 

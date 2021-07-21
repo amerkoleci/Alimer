@@ -804,7 +804,7 @@ namespace Alimer
             caps.limits.maxComputeWorkGroupSizeY = properties2.properties.limits.maxComputeWorkGroupSize[1];
             caps.limits.maxComputeWorkGroupSizeZ = properties2.properties.limits.maxComputeWorkGroupSize[2];
 
-            for (uint32_t i = ecast(PixelFormat::Undefined) + 1; i < ecast(PixelFormat::Count); i++)
+            for (uint32_t i = ecast(PixelFormat::Unknown) + 1; i < ecast(PixelFormat::Count); i++)
             {
                 const VkFormat vkFormat = ToVulkanFormat((PixelFormat)i);
                 if (vkFormat == VK_FORMAT_UNDEFINED)
@@ -1816,7 +1816,7 @@ namespace Alimer
 
             uint32_t attachmentCount = colorAttachmentIndex;
             VkAttachmentReference* depthStencilAttachment = nullptr;
-            if (key.depthStencilAttachment.format != PixelFormat::Undefined)
+            if (key.depthStencilAttachment.format != PixelFormat::Unknown)
             {
                 auto& attachmentDesc = attachmentDescs[attachmentCount];
 

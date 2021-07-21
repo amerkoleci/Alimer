@@ -25,8 +25,8 @@ namespace Alimer
 
 		void Resize(uint32_t width, uint32_t height);
 
-		/// Gets the current texture view (null if not available or minimized).
-		virtual TextureView* GetCurrentTextureView() const = 0;
+		/// Gets the current texture (null if not available or minimized).
+		virtual Texture* GetCurrentTexture() const = 0;
 
 		/// Gets the backbuffer color format.
 		PixelFormat GetColorFormat() const { return colorFormat; }

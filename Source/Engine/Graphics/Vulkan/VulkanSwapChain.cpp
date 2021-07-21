@@ -386,7 +386,7 @@ namespace Alimer
         return result;
     }
 
-    TextureView* VulkanSwapChain::GetCurrentTextureView() const
+    Texture* VulkanSwapChain::GetCurrentTexture() const
     {
         if (isMinimized)
         {
@@ -401,6 +401,6 @@ namespace Alimer
             return nullptr;
         }
 
-        return backBufferTextures[backBufferIndex]->GetDefault();
+        return backBufferTextures[backBufferIndex].Get();
     }
 }

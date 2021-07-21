@@ -90,7 +90,7 @@ namespace Alimer
 		void UpdateBufferCore(const Buffer* buffer, const void* data, uint64_t offset, uint64_t size) override;
 		void CopyBufferCore(const Buffer* source, uint64_t sourceOffset, const Buffer* destination, uint64_t destinationOffset, uint64_t size) override;
 
-		void BeginRenderPassCore(const RenderPassInfo& info) override;
+		void BeginRenderPassCore(const RenderPassDescriptor& descriptor) override;
 		void EndRenderPassCore() override;
 
 		void SetViewport(const Rect& rect) override;

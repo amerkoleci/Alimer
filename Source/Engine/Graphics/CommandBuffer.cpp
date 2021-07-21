@@ -64,11 +64,11 @@ namespace Alimer
 		CopyBufferCore(source, sourceOffset, destination, destinationOffset, size);
 	}
 
-	void CommandBuffer::BeginRenderPass(const RenderPassInfo& info)
+	void CommandBuffer::BeginRenderPass(const RenderPassDescriptor& descriptor)
 	{
 		ALIMER_ASSERT_MSG(!insideRenderPass, "Cannot begin render pass while inside render pass");
 
-		BeginRenderPassCore(info);
+		BeginRenderPassCore(descriptor);
 		insideRenderPass = true;
 	}
 

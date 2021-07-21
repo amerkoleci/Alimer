@@ -157,7 +157,7 @@ namespace Alimer
         RasterizerState     rasterizerState;
 		PrimitiveTopology   primitiveTopology = PrimitiveTopology::TriangleList;
         PixelFormat         colorFormats[kMaxSimultaneousRenderTargets] = {};
-        PixelFormat         depthStencilFormat{ PixelFormat::Undefined };
+        PixelFormat         depthStencilFormat = PixelFormat::Unknown;
 		SampleCount         sampleCount = SampleCount::Count1;
 	};
 

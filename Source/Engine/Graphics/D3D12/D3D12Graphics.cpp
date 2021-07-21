@@ -399,9 +399,9 @@ namespace Alimer
 
             /* see: https://docs.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_format_support */
             UINT formatSupport = 0;
-            for (int fmt = static_cast<uint32_t>(PixelFormat::Undefined) + 1; fmt < static_cast<uint32_t>(PixelFormat::Count); fmt++)
+            for (int fmt = static_cast<uint32_t>(PixelFormat::Unknown) + 1; fmt < static_cast<uint32_t>(PixelFormat::Count); fmt++)
             {
-                D3D12_FEATURE_DATA_FORMAT_SUPPORT formatSupport = { ToDXGIFormat((PixelFormat)fmt), D3D12_FORMAT_SUPPORT1_NONE, D3D12_FORMAT_SUPPORT2_NONE };
+                D3D12_FEATURE_DATA_FORMAT_SUPPORT formatSupport = { GetDxgiFormatMapping((PixelFormat)fmt).resourceFormat, D3D12_FORMAT_SUPPORT1_NONE, D3D12_FORMAT_SUPPORT2_NONE };
 
                 if (formatSupport.Format == DXGI_FORMAT_UNKNOWN)
                     continue;
